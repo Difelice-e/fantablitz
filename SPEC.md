@@ -78,7 +78,7 @@ Tutti i valori sono parametri, con i default indicati.
 - Soglie gol: 66, 72, 77, 81, 85, 89, 93, 97, 101, 105, poi ogni 4. Implementata come funzione parametrica: `soglia_base` (66) e scarti (6, 5, 4 ricorrente). Sotto la soglia base: 0 gol
 - Bonus/malus: configurabili (gol, assist, ammonizione, espulsione, rigore segnato/sbagliato/parato, autogol, gol subito), con default classici
 - Modificatore di difesa e modificatore portiere: attivabili, con soglie configurabili
-- Malus di adattamento Mantra: default −0.5, configurabile
+- Malus di adattamento Mantra: default −0.5, configurabile. **Il regolamento ufficiale prevede −1 e un solo livello di malus**: la differenza è deliberata e resta fra le decisioni aperte (§11)
 
 ---
 
@@ -303,30 +303,30 @@ Lo schieramento è l'**unico punto** in cui le due modalità divergono davvero. 
 Così le due modalità e i tre livelli si combinano senza duplicare codice: 2 + 3 implementazioni, non 2 × 3. Basic funziona su entrambe le modalità senza sapere quale sta usando.
 
 **Modalità `mantra`**
-- **11 moduli**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1. Ogni modulo prevede 5 slot di stampo difensivo e 5 offensivi
-Il modello poggia su **due classificazioni diverse** dello stesso ruolo, che servono a due regole diverse. Confonderle è l'errore facile.
 
-**Stampo** — difensivo (`Dd, Ds, Dc, B, E, M`) oppure offensivo (`C, T, W, A, Pc`). Serve a un solo scopo: ogni modulo schiera **5 uomini di movimento di stampo difensivo e 5 di stampo offensivo**, ed è il vincolo che tiene tutti i moduli equivalenti fra loro. Da notare che `E` e `M` sono difensivi mentre `C` è offensivo, pur essendo tutti e tre centrocampisti.
+**11 moduli**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1.
 
-**Linea di gioco** — porta, difesa, centrocampo, trequarti, attacco. Decide gli adattamenti, con una regola **direzionale**: ci si adatta nella propria linea o in una **più avanzata**, mai in una più arretrata. Un difensore può fare la punta con un malus; una punta non può fare il difensore nemmeno con un malus. Ne segue che all'asta conviene valutare un giocatore nel suo **ruolo più arretrato**, perché è quello che gli apre più caselle.
+Le regole sono la **trascrizione del materiale ufficiale** «Mantra Experience — Edizione 2026/2027»: schemi dei moduli, tabella delle sostituzioni, tabella dei ruoli. Vivono in `fanta/config/mantra.json`, nella notazione degli schemi originali, così da poter essere confrontate a occhio con le immagini del regolamento.
+
+**La tabella delle sostituzioni è la regola.** Riga = ruolo della casella da coprire, colonna = ruolo di chi la copre. Il verso conta: un difensore può coprire una punta con un malus, una punta non può coprire un difensore. Ne segue che all'asta conviene valutare un giocatore nel suo **ruolo più arretrato**, perché è quello che gli apre più caselle.
+
+Gli esiti possibili sono **solo tre**: `OK`, `−1`, `NO`. Tre simboli dipendono però dallo schema e non solo dai due ruoli:
+- `*` → `OK` se la casella elenca i due ruoli **in alternativa**, altrimenti `NO`
+- `**` → `OK` se in alternativa, altrimenti `−1`
+- `***` → `OK` se in alternativa, `NO` nel **4-1-4-1**, altrimenti `−1`
+
+È la ragione per cui la valutazione di una casella riceve anche il modulo: senza, metà della tabella non sarebbe esprimibile.
+
+**Non esistono aggravi di malus.** La tabella ha un solo livello, −1. Il `***` non è un malus più pesante: è la nota che vieta lo scambio W/T nel solo 4-1-4-1.
+
+**Linea e stampo sono due classificazioni diverse.** La *linea* raggruppa i ruoli sul campo: difesa (`DS, DC, DD, B`), centrocampo (`E, M, C`), trequarti (`W, T`), attacco (`A, PC`). Lo *stampo* divide i 5 difensivi (`Dd, Ds, Dc, B, E, M`) dai 5 offensivi (`C, T, W, A, Pc`) che ogni schema impiega. Non coincidono: nel centrocampo convivono entrambi, con `E` e `M` difensivi e `C` offensivo. Il vincolo dei cinque e cinque è verificato come **raggiungibile** e non come già deciso, perché le caselle che mettono in alternativa ruoli di stampo diverso — come `M/C` — lasciano la scelta al fantallenatore.
 
 Altre regole:
-- Dove una casella elenca **due ruoli**, sono alternativi: entrambi senza malus, e lo restano anche in caso di sostituzione
+- Dove una casella elenca **più ruoli** (`E/W`, `M/C`, `T/A/PC`), sono alternativi: tutti senza malus
 - Un giocatore con più ruoli entra col **migliore** dei suoi, non col primo dichiarato
-- Eccezioni che dipendono dal **modulo** e non solo dalla casella: W e T intercambiabili con aggravio, tranne nel 4-1-4-1 dove non lo sono nemmeno con malus
-- Il portiere non esce dalla porta e nessuno ci entra al posto suo: va detto esplicitamente, perché la regola delle linee da sola lo lascerebbe giocare ovunque
-- Invariante strutturale imposto in validazione: 1 portiere, 5 caselle di stampo difensivo, 5 offensive
+- Il portiere non esce dalla porta e nessuno ci entra al posto suo
 
-> ℹ️ **Stato della verifica.** Le regole qui sopra sono state confrontate col regolamento ufficiale di Fantacalcio.it ed è quello che il regolamento dice. Restano da confermare, e sono annotate in testa a `fanta/config/mantra.json`: la **sequenza esatta delle caselle** di ogni modulo (quelle presenti rispettano tutti i vincoli verificati, ma la scelta fra caselle equivalenti è nostra), la **linea del ruolo `W`** (qui fra i trequartisti), e se l'**aggravio** su W/T esista davvero. Correggerle non richiede di toccare codice.
-
-**Modalità `classic`**
-- Ruoli P, D, C, A. Lo schieramento è un **conteggio**, non una matrice: il modulo fissa quanti difensori, centrocampisti e attaccanti servono, e un giocatore è ammesso nello slot se il ruolo coincide
-- **Nessun malus di adattamento**: in classic un giocatore o può essere schierato o no
-- **7 moduli**: 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2, 5-4-1. Sempre 1 portiere, e da 3 a 5 difensori, da 3 a 5 centrocampisti, da 1 a 3 attaccanti
-- La rosa è di **esattamente 25 giocatori con quote 3-8-8-6** (§4): la panchina è quindi sempre di 14, e ogni modulo è coperto per costruzione
-
-Il modello classic è un caso particolare di quello Mantra, con matrice di compatibilità diagonale e malus nullo: implementarlo per primo non costa quasi nulla e mette alla prova l'interfaccia.
-
+**In entrambe le modalità**
 - La formazione è **persistente**: resta quella dell'ultima volta finché l'utente non la cambia
 - Con `giornate_per_ciclo > 1`: **una sola formazione per il ciclo, con auto-adattamento tra una giornata e l'altra** (infortunati e squalificati vengono sostituiti automaticamente dalla panchina secondo le regole di sostituzione)
 
@@ -456,9 +456,7 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 - Condizione esatta di chiusura dell'asta nativa (proposta: fase obbligatoria fino a 23 giocatori, poi possibilità di dichiarare chiusa la rosa)
 - Destino dei giocatori estratti e non aggiudicati nell'asta nativa (proposta: tornano nel pool svincolati)
-- **Valore del malus di adattamento Mantra**: §4 fissa il default a −0,5, ma il regolamento ufficiale di Fantacalcio.it parla di **−1**. Da decidere se allinearsi al regolamento o tenere la scelta attuale, che rende gli adattamenti meno punitivi
-- **Se l'aggravio di malus su W/T esista davvero**: §6.2 lo prevede, ma le fonti consultate parlano di un malus unico. Il meccanismo è già in configurazione: si toglie una riga se non serve
-- **Sequenza esatta delle caselle dei moduli Mantra e linea del ruolo `W`** (vedi l'avviso in §6.2). È quel che resta da confermare sulla milestone 2
+- **Valore del malus di adattamento Mantra**: §4 fissa il default a −0,5, ma il regolamento ufficiale parla di **−1**. È l'unica differenza rimasta fra la specifica e il regolamento, ed è una scelta di prodotto: −0,5 rende gli adattamenti meno punitivi
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono

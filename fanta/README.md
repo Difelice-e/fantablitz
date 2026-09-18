@@ -86,58 +86,62 @@ adattamenti**, sempre. C'è un test che lo dimostra.
 
 ## Modalità `mantra`
 
-Undici moduli. Il modello poggia su **due classificazioni diverse** dello stesso
-ruolo, e confonderle è l'errore facile — ci siamo cascati nella prima stesura.
+`config/mantra.json` è la **trascrizione del materiale ufficiale** «Mantra
+Experience — Edizione 2026/2027»: gli schemi degli undici moduli, la tabella
+delle sostituzioni e la tabella dei ruoli con le linee di gioco. Niente è
+dedotto, perché non serve più dedurre.
 
-**Lo stampo** divide i ruoli in difensivi (`Dd, Ds, Dc, B, E, M`) e offensivi
-(`C, T, W, A, Pc`), e serve a un solo scopo: ogni modulo schiera **cinque**
-uomini di movimento di stampo difensivo e **cinque** di stampo offensivo. È il
-vincolo che tiene tutti i moduli equivalenti fra loro. Da notare che `E` e `M`
-sono difensivi mentre `C` è offensivo, pur essendo tutti e tre centrocampisti.
+La configurazione usa le **sigle e la notazione degli schemi ufficiali**
+(`DC/B`, `M/C`, `E/W`, `T/A/PC`) apposta: così si confronta a occhio con le
+immagini del regolamento, riga per riga. Anche la matrice conserva il suo
+alfabeto originale — `OK`, `-1`, `NO`, `*`, `**`, `***` — invece di essere già
+interpretata: la trascrizione resta verificabile, e l'interpretazione sta nel
+codice.
 
-**La linea** di gioco è un'altra cosa: porta, difesa, centrocampo, trequarti,
-attacco. Decide chi può adattarsi a quale casella, e la regola è **direzionale**:
+### La tabella delle sostituzioni è la regola
 
-> Ci si adatta nella propria linea o in una **più avanzata**, mai in una più
-> arretrata. Un difensore può fare la punta con un malus; una punta non può fare
-> il difensore nemmeno con un malus.
+La riga è il ruolo della **casella da coprire**, la colonna il ruolo di **chi la
+copre**. Il verso conta: un difensore può coprire una punta con un malus, una
+punta non può coprire un difensore. Ne segue che all'asta conviene valutare un
+giocatore nel suo **ruolo più arretrato**, perché è quello che gli apre più
+caselle.
 
-Questa regola sostituisce gli elenchi di ruoli adattati scritti a mano: sono una
-conseguenza, non un dato da mantenere. Ha anche una conseguenza pratica che vale
-per l'asta: conviene valutare un giocatore nel suo **ruolo più arretrato**,
-perché è quello che gli apre più caselle.
+Tre simboli dipendono dallo **schema**, non solo dai due ruoli:
 
-Altre regole implementate:
+| simbolo | significato |
+|---|---|
+| `OK` | nessun malus |
+| `-1` | ammesso con un adattamento |
+| `NO` | non ammesso |
+| `*` | `OK` se la casella elenca i due ruoli in alternativa, altrimenti `NO` |
+| `**` | `OK` se in alternativa, altrimenti un adattamento |
+| `***` | `OK` se in alternativa, `NO` nel 4-1-4-1, altrimenti un adattamento |
 
-- dove una casella elenca **due ruoli** sono alternativi, entrambi senza malus, e
-  restano alternativi anche in caso di sostituzione
-- un giocatore con più ruoli entra col **migliore** dei suoi, non col primo
-- eccezioni che dipendono dal **modulo** e non solo dalla casella: è per questo
-  che `valuta` riceve anche il modulo. W e T sono intercambiabili con aggravio,
-  tranne nel 4-1-4-1 dove non lo sono nemmeno con malus
-- il portiere non esce dalla porta e nessuno ci entra al posto suo: senza una
-  riga esplicita la regola delle linee lo lascerebbe giocare ovunque, perché la
-  porta è la linea più arretrata di tutte
+È la ragione per cui `valuta` riceve anche il modulo: senza, metà della tabella
+non sarebbe esprimibile. Nel codice i tre simboli si risolvono sempre sul
+ripiego, perché il caso «in alternativa» è già stato deciso prima — se il ruolo
+è fra i nativi della casella, il giocatore è al suo posto e basta.
 
-### Cosa è verificato e cosa no
+### Il malus è −1, e non esistono aggravi
 
-Verificato sul regolamento ufficiale di Fantacalcio.it, riportato letteralmente
-da più fonti concordanti: gli stampi, il vincolo dei cinque e cinque, le quattro
-linee di gioco, la direzione degli adattamenti, i ruoli alternativi.
+La tabella ufficiale ha solo tre esiti: `OK`, `-1` e `NO`. Non c'è nessun
+secondo livello di malus. Il `***` — che avevamo letto come «aggravio» — non è
+un malus più pesante: è la nota che vieta lo scambio W/T **nel solo 4-1-4-1**.
 
-**Resta da confermare**, ed è annotato in testa a `config/mantra.json`:
+`SPEC.md` §4 fissa il malus a −0,5 mentre il regolamento dice −1: è una
+decisione del proprietario, non è stata cambiata in autonomia.
 
-- la **sequenza esatta delle caselle** di ogni modulo. Quelle presenti
-  rispettano tutti i vincoli verificati, ma la scelta fra caselle equivalenti è
-  nostra
-- la **linea del ruolo `W`**, qui messo fra i trequartisti anziché in attacco
-- se l'**aggravio** su W/T esista davvero: `SPEC.md` lo prevede, le fonti
-  trovate parlano di un malus unico
-- il **valore del malus**: il regolamento parla di −1, `SPEC.md` §4 fissa −0,5
+### Linea e stampo sono due cose diverse
 
-I test sono scritti apposta per non dipendere dalla sequenza delle caselle:
-verificano il meccanismo e gli invarianti. Quando la sequenza verrà confermata o
-corretta, continueranno a valere, e correggerla non richiede di toccare codice.
+La **linea** raggruppa i ruoli sul campo — difesa (`DS, DC, DD, B`), centrocampo
+(`E, M, C`), trequarti (`W, T`), attacco (`A, PC`). Lo **stampo** divide i cinque
+difensivi (`Dd, Ds, Dc, B, E, M`) dai cinque offensivi (`C, T, W, A, Pc`) che
+ogni schema impiega. Non coincidono: nel centrocampo convivono entrambi, con `E`
+e `M` difensivi e `C` offensivo.
+
+Il vincolo dei cinque e cinque è verificato come **raggiungibile**, non come
+già deciso: le caselle che mettono in alternativa ruoli di stampo diverso, come
+`M/C`, lasciano la scelta al fantallenatore.
 
 ## Copertura dei moduli
 

@@ -1,26 +1,27 @@
 /**
  * Regole di schieramento della modalita' Mantra.
  *
- * Il modello segue il regolamento ufficiale di Fantacalcio.it, che poggia su
- * due classificazioni **diverse** dello stesso ruolo. Confonderle e' l'errore
- * facile, e per un po' ci siamo cascati anche noi.
+ * Il modello e' la trascrizione del materiale ufficiale: gli schemi dei moduli,
+ * la tabella delle sostituzioni e la tabella dei ruoli con le linee di gioco.
+ * Niente e' dedotto, perche' non c'e' piu' bisogno di dedurre.
  *
- * **Lo stampo** divide i ruoli in difensivi (Dd, Ds, Dc, B, E, M) e offensivi
- * (C, T, W, A, Pc), e serve a un solo scopo: ogni modulo deve schierare cinque
- * uomini di movimento di stampo difensivo e cinque di stampo offensivo. E' il
- * vincolo che tiene tutti i moduli equivalenti fra loro, e vale la pena notare
- * che E e M sono difensivi mentre C e' offensivo, pur essendo tutti e tre
- * centrocampisti.
+ * **La tabella delle sostituzioni e' la regola.** La riga e' il ruolo della
+ * casella da coprire, la colonna il ruolo di chi la copre, e la cella dice se
+ * si puo' e a che prezzo. Il verso conta: un difensore puo' coprire una punta
+ * con un malus, una punta non puo' coprire un difensore. Ne segue che all'asta
+ * conviene valutare un giocatore nel suo ruolo piu' arretrato, perche' e' quello
+ * che gli apre piu' caselle.
  *
- * **La linea** di gioco e' un'altra cosa: porta, difesa, centrocampo,
- * trequarti, attacco. Decide chi puo' adattarsi a quale casella, e la regola e'
- * direzionale: si puo' giocare nella propria linea o in una **piu' avanzata**,
- * mai in una piu' arretrata. Un difensore puo' fare la punta con un malus, una
- * punta non puo' fare il difensore nemmeno con un malus. E' la ragione per cui
- * all'asta conviene valutare un giocatore nel suo ruolo piu' arretrato.
+ * Tre simboli della tabella dipendono dallo schema, non solo dai due ruoli:
+ * valgono `OK` quando la casella elenca i due ruoli **in alternativa** (come
+ * `E/W` o `M/C`), e altrimenti ripiegano su un malus o su un divieto. E' la
+ * ragione per cui `valuta` riceve anche il modulo: senza, meta' della tabella
+ * non sarebbe esprimibile.
  *
- * Questa regola sostituisce gli elenchi di ruoli adattati scritti a mano: sono
- * una conseguenza, non un dato da mantenere.
+ * Attenzione a non confondere la **linea** di gioco con lo **stampo**. La linea
+ * raggruppa i ruoli sul campo (difesa, centrocampo, trequarti, attacco); lo
+ * stampo divide i cinque difensivi dai cinque offensivi di ogni schema. Nel
+ * centrocampo convivono entrambi: E e M sono difensivi, C e' offensivo.
  */
 
 import type {
@@ -29,124 +30,128 @@ import type {
 import { NON_AMMESSO, PERFETTO, RUOLI_MANTRA } from './tipi.ts';
 import type { RegoleSchieramento } from './regole.ts';
 
-/** Le quattro linee di gioco, piu' la porta. L'ordine e' quello del campo. */
 export const LINEE = ['porta', 'difesa', 'centrocampo', 'trequarti', 'attacco'] as const;
 export type Linea = (typeof LINEE)[number];
 
-const ORDINE_LINEA: Record<Linea, number> = {
-  porta: 0, difesa: 1, centrocampo: 2, trequarti: 3, attacco: 4,
-};
-
 export type Stampo = 'difensivo' | 'offensivo';
 
-export type DefinizioneRuolo = { linea: Linea; stampo: Stampo };
+/** I simboli della tabella delle sostituzioni, nell'alfabeto del regolamento. */
+export type Simbolo = 'OK' | '-1' | 'NO' | '*' | '**' | '***';
 
 export type ConfigurazioneMantra = {
   versione: number;
-  costi: { adattamento: number; aggravato: number };
-  ruoli: Record<string, DefinizioneRuolo>;
-  tipiSlot: Record<string, RuoloMantra[] | unknown>;
-  moduli: { nome: string; slot: string[] }[];
-  aggravati: { tipoSlot: string; ruoli: RuoloMantra[] }[];
-  eccezioni: { modulo: string; tipoSlot: string; vietati?: RuoloMantra[] }[];
+  codici: Record<string, string>;
+  costi: { adattamento: number };
+  ruoli: Record<string, { nome?: string; linea: Linea; stampo: Stampo }>;
+  legenda: Record<string, unknown>;
+  matrice: Record<string, Record<string, Simbolo> | unknown>;
+  moduli: Record<string, string[] | unknown>;
   rosa: { minimo: number; minimoPortieri: number };
 };
 
-type SlotMantra = Slot & { tipo: string };
+/** Uno slot Mantra porta i ruoli che lo occupano senza malus. */
+type SlotMantra = Slot & { nativi: RuoloMantra[]; codiciNativi: string[] };
 
-/** Il reparto che l'interfaccia mostra, ricavato dalla linea. */
 const REPARTO_DI_LINEA: Record<Linea, RuoloClassico> = {
   porta: 'P', difesa: 'D', centrocampo: 'C', trequarti: 'C', attacco: 'A',
 };
+
+/** Nel 4-1-4-1 il simbolo *** vieta invece di ammettere col malus. */
+const MODULI_CON_DIVIETO_TRIPLO = new Set(['4-1-4-1']);
 
 function esigi(condizione: boolean, messaggio: string): void {
   if (!condizione) throw new Error(`Configurazione Mantra non valida: ${messaggio}`);
 }
 
-/** Gli elenchi di ruoli di una casella, saltando le chiavi di commento. */
-function ruoliDelTipo(config: ConfigurazioneMantra, tipo: string): RuoloMantra[] | null {
-  const voce = config.tipiSlot[tipo];
-  return Array.isArray(voce) ? (voce as RuoloMantra[]) : null;
-}
+const voceReale = (chiave: string): boolean => !chiave.startsWith('_');
+
+/* ------------------------------------------------------------------ */
 
 export function validaConfigurazioneMantra(c: ConfigurazioneMantra): ConfigurazioneMantra {
-  esigi(c.versione === 2, `versione ${c.versione} non supportata`);
+  esigi(c.versione === 4, `versione ${c.versione} non supportata`);
   esigi(c.costi.adattamento > 0, 'il costo di un adattamento deve essere positivo');
-  esigi(
-    c.costi.aggravato >= c.costi.adattamento,
-    'un adattamento aggravato non puo’ costare meno di uno normale',
-  );
 
-  for (const ruolo of RUOLI_MANTRA) {
-    const d = c.ruoli[ruolo];
-    esigi(d != null, `manca la definizione del ruolo "${ruolo}"`);
+  const codici = Object.keys(c.codici).filter(voceReale);
+  esigi(codici.length === 12, `attesi dodici codici di ruolo, trovati ${codici.length}`);
+
+  const noti = new Set<string>(RUOLI_MANTRA);
+  for (const codice of codici) {
+    esigi(noti.has(c.codici[codice]!), `codice "${codice}": ruolo "${c.codici[codice]}" sconosciuto`);
+    const d = c.ruoli[codice];
+    esigi(d != null, `manca la definizione del ruolo "${codice}"`);
     esigi(
       (LINEE as readonly string[]).includes(d!.linea),
-      `ruolo "${ruolo}": linea "${d!.linea}" sconosciuta`,
+      `ruolo "${codice}": linea "${d!.linea}" sconosciuta`,
     );
     esigi(
       d!.stampo === 'difensivo' || d!.stampo === 'offensivo',
-      `ruolo "${ruolo}": stampo "${d!.stampo}" sconosciuto`,
+      `ruolo "${codice}": stampo "${d!.stampo}" sconosciuto`,
     );
   }
+  esigi(
+    new Set(codici.map((k) => c.codici[k])).size === 12,
+    'due codici puntano allo stesso ruolo del listone',
+  );
 
-  for (const tipo of Object.keys(c.tipiSlot)) {
-    if (tipo.startsWith('_')) continue;
-    const ruoli = ruoliDelTipo(c, tipo);
-    esigi(ruoli != null && ruoli.length > 0, `casella "${tipo}": nessun ruolo titolare`);
-    for (const r of ruoli!) {
-      esigi(c.ruoli[r] != null, `casella "${tipo}": ruolo sconosciuto "${r}"`);
+  /* --- matrice: dev'essere completa ------------------------------- */
+
+  const simboli = new Set<string>(['OK', '-1', 'NO', '*', '**', '***']);
+  for (const riga of codici) {
+    const voce = c.matrice[riga] as Record<string, Simbolo> | undefined;
+    esigi(voce != null, `matrice: manca la riga "${riga}"`);
+    for (const colonna of codici) {
+      const cella = voce![colonna];
+      esigi(cella != null, `matrice: manca la cella ${riga}/${colonna}`);
+      esigi(simboli.has(cella!), `matrice ${riga}/${colonna}: simbolo "${cella}" sconosciuto`);
     }
-    // Due ruoli alternativi nella stessa casella devono stare sulla stessa
-    // linea e avere lo stesso stampo, altrimenti il conto dei cinque e cinque
-    // dipenderebbe da chi ci gioca, che non avrebbe senso.
-    const primo = c.ruoli[ruoli![0]!]!;
-    for (const r of ruoli!) {
-      esigi(
-        c.ruoli[r]!.linea === primo.linea && c.ruoli[r]!.stampo === primo.stampo,
-        `casella "${tipo}": i ruoli alternativi non condividono linea e stampo`,
-      );
-    }
+    // La diagonale e' il giocatore al proprio posto: deve costare zero.
+    esigi(voce![riga] === 'OK', `matrice ${riga}/${riga}: un ruolo nel proprio posto deve dare OK`);
   }
 
-  esigi(c.moduli.length > 0, 'serve almeno un modulo');
-  const nomi = new Set<string>();
-  for (const m of c.moduli) {
-    esigi(!nomi.has(m.nome), `modulo duplicato: ${m.nome}`);
-    nomi.add(m.nome);
-    esigi(m.slot.length === 11, `modulo ${m.nome}: ${m.slot.length} caselle invece di undici`);
+  /* --- moduli ------------------------------------------------------ */
+
+  const nomiModuli = Object.keys(c.moduli).filter(voceReale);
+  esigi(nomiModuli.length > 0, 'serve almeno un modulo');
+
+  for (const nome of nomiModuli) {
+    const caselle = c.moduli[nome] as string[];
+    esigi(Array.isArray(caselle), `modulo ${nome}: le caselle non sono un elenco`);
+    esigi(caselle.length === 11, `modulo ${nome}: ${caselle.length} caselle invece di undici`);
 
     let portieri = 0;
-    let difensivi = 0;
-    let offensivi = 0;
-    for (const tipo of m.slot) {
-      const ruoli = ruoliDelTipo(c, tipo);
-      esigi(ruoli != null, `modulo ${m.nome}: casella "${tipo}" non definita`);
-      const d = c.ruoli[ruoli![0]!]!;
-      if (d.linea === 'porta') portieri++;
-      else if (d.stampo === 'difensivo') difensivi++;
-      else offensivi++;
+    let difensiviPuri = 0;
+    let offensiviPuri = 0;
+    let misti = 0;
+
+    for (const casella of caselle) {
+      const parti = casella.split('/');
+      for (const p of parti) esigi(c.ruoli[p] != null, `modulo ${nome}: ruolo "${p}" sconosciuto`);
+
+      const stampi = new Set(parti.map((p) => c.ruoli[p]!.stampo));
+      const linee = new Set(parti.map((p) => c.ruoli[p]!.linea));
+
+      if (linee.has('porta')) {
+        esigi(parti.length === 1, `modulo ${nome}: la porta non ammette ruoli alternativi`);
+        portieri++;
+      } else if (stampi.size > 1) misti++;
+      else if (stampi.has('difensivo')) difensiviPuri++;
+      else offensiviPuri++;
     }
 
-    esigi(portieri === 1, `modulo ${m.nome}: ${portieri} portieri`);
-    // Il vincolo che tiene equilibrati fra loro tutti i moduli del gioco: ogni
-    // schema schiera cinque uomini di movimento di stampo difensivo e cinque di
-    // stampo offensivo. Se salta, il modulo non e' un modulo Mantra.
+    esigi(portieri === 1, `modulo ${nome}: ${portieri} portieri`);
+    // Ogni schema impiega cinque uomini di movimento di stampo difensivo e
+    // cinque di stampo offensivo. Le caselle con ruoli di stampo diverso in
+    // alternativa, come M/C, lasciano la scelta al fantallenatore: il vincolo
+    // deve restare raggiungibile, non essere gia' deciso.
     esigi(
-      difensivi === 5 && offensivi === 5,
-      `modulo ${m.nome}: ${difensivi} uomini di stampo difensivo e ${offensivi} di stampo ` +
-        'offensivo, attesi cinque e cinque',
+      difensiviPuri <= 5 && difensiviPuri + misti >= 5,
+      `modulo ${nome}: ${difensiviPuri} caselle di stampo difensivo e ${misti} miste, ` +
+        'impossibile arrivare ai cinque difensivi previsti',
     );
-  }
-
-  for (const e of c.eccezioni) {
-    esigi(nomi.has(e.modulo), `eccezione su un modulo inesistente: ${e.modulo}`);
-    esigi(ruoliDelTipo(c, e.tipoSlot) != null, `eccezione su una casella inesistente: ${e.tipoSlot}`);
-  }
-  for (const a of c.aggravati) {
     esigi(
-      ruoliDelTipo(c, a.tipoSlot) != null,
-      `aggravio su una casella inesistente: ${a.tipoSlot}`,
+      offensiviPuri <= 5 && offensiviPuri + misti >= 5,
+      `modulo ${nome}: ${offensiviPuri} caselle di stampo offensivo e ${misti} miste, ` +
+        'impossibile arrivare ai cinque offensivi previsti',
     );
   }
 
@@ -156,44 +161,67 @@ export function validaConfigurazioneMantra(c: ConfigurazioneMantra): Configurazi
   return c;
 }
 
+/* ------------------------------------------------------------------ */
+
 export function regoleMantra(configurazione: ConfigurazioneMantra): RegoleSchieramento {
   const c = validaConfigurazioneMantra(configurazione);
 
-  const linea = (ruolo: RuoloMantra): Linea => c.ruoli[ruolo]!.linea;
-  const ruoliDi = (tipo: string): RuoloMantra[] => ruoliDelTipo(c, tipo)!;
+  const aRuolo = (codice: string): RuoloMantra => c.codici[codice] as RuoloMantra;
+  const aCodice = new Map<RuoloMantra, string>(
+    Object.keys(c.codici).filter(voceReale).map((k) => [aRuolo(k), k]),
+  );
 
-  const moduli: Modulo[] = c.moduli.map((m) => {
-    // Gli identificativi numerano le caselle dello stesso tipo: DC1, DC2, DC3.
-    // Devono restare stabili, perche' la formazione e' persistente.
-    const conteggio = new Map<string, number>();
-    const slot: SlotMantra[] = m.slot.map((tipo) => {
-      const n = (conteggio.get(tipo) ?? 0) + 1;
-      conteggio.set(tipo, n);
-      const quanti = m.slot.filter((x) => x === tipo).length;
-      return {
-        id: quanti > 1 ? `${tipo}${n}` : tipo,
-        reparto: REPARTO_DI_LINEA[linea(ruoliDi(tipo)[0]!)],
-        tipo,
-      };
+  const moduli: Modulo[] = Object.keys(c.moduli)
+    .filter(voceReale)
+    .map((nome) => {
+      const caselle = c.moduli[nome] as string[];
+      // Gli identificativi numerano le caselle uguali: DC1, DC2, DC3. Devono
+      // restare stabili, perche' la formazione e' persistente.
+      const conteggio = new Map<string, number>();
+      const slot: SlotMantra[] = caselle.map((casella) => {
+        const n = (conteggio.get(casella) ?? 0) + 1;
+        conteggio.set(casella, n);
+        const quante = caselle.filter((x) => x === casella).length;
+        const codiciNativi = casella.split('/');
+        return {
+          id: (quante > 1 ? `${casella}${n}` : casella).replace(/\//g, ''),
+          reparto: REPARTO_DI_LINEA[c.ruoli[codiciNativi[0]!]!.linea],
+          nativi: codiciNativi.map(aRuolo),
+          codiciNativi,
+        };
+      });
+      return { nome, slot };
     });
-    return { nome: m.nome, slot };
-  });
 
   const perNome = new Map(moduli.map((m) => [m.nome, m]));
 
-  const vietatiPerEccezione = new Map<string, Set<RuoloMantra>>();
-  for (const e of c.eccezioni) {
-    const chiave = `${e.modulo}|${e.tipoSlot}`;
-    const insieme = vietatiPerEccezione.get(chiave) ?? new Set<RuoloMantra>();
-    for (const r of e.vietati ?? []) insieme.add(r);
-    vietatiPerEccezione.set(chiave, insieme);
-  }
-
-  const aggravatiPerSlot = new Map<string, Set<RuoloMantra>>();
-  for (const a of c.aggravati) {
-    const insieme = aggravatiPerSlot.get(a.tipoSlot) ?? new Set<RuoloMantra>();
-    for (const r of a.ruoli ?? []) insieme.add(r);
-    aggravatiPerSlot.set(a.tipoSlot, insieme);
+  /**
+   * Risolve una cella della tabella per una casella concreta di un modulo.
+   *
+   * I tre simboli con l'asterisco valgono `OK` quando i due ruoli compaiono
+   * **in alternativa** nella casella: e' il caso in cui il giocatore e' al suo
+   * posto, e infatti quel caso e' gia' stato deciso prima di arrivare qui.
+   * Quindi qui si applica sempre il ripiego.
+   */
+  function risolvi(simbolo: Simbolo, nomeModulo: string): EsitoSlot {
+    switch (simbolo) {
+      case 'OK':
+        return PERFETTO;
+      case '-1':
+        return { ammesso: true, costo: c.costi.adattamento };
+      case 'NO':
+        return NON_AMMESSO;
+      case '*':
+        // OK solo in alternativa, altrimenti niente da fare.
+        return NON_AMMESSO;
+      case '**':
+        return { ammesso: true, costo: c.costi.adattamento };
+      case '***':
+        // Come sopra, ma nel 4-1-4-1 il regolamento lo vieta del tutto.
+        return MODULI_CON_DIVIETO_TRIPLO.has(nomeModulo)
+          ? NON_AMMESSO
+          : { ammesso: true, costo: c.costi.adattamento };
+    }
   }
 
   return {
@@ -202,34 +230,27 @@ export function regoleMantra(configurazione: ConfigurazioneMantra): RegoleSchier
     modulo: (nome) => perNome.get(nome),
 
     valuta(giocatore: Schierabile, slot: Slot, modulo: Modulo): EsitoSlot {
-      const tipo = (slot as SlotMantra).tipo;
-      const nativi = ruoliDelTipo(c, tipo);
+      const { nativi, codiciNativi } = slot as SlotMantra;
       if (!nativi) return NON_AMMESSO;
 
-      const lineaSlot = linea(nativi[0]!);
-      const vietati = vietatiPerEccezione.get(`${modulo.nome}|${tipo}`);
-      const aggravati = aggravatiPerSlot.get(tipo);
-
-      // Si cerca il costo piu' basso fra tutti i ruoli del giocatore: chi ne ha
-      // due entra col migliore, non col primo dichiarato.
       let migliore = Number.POSITIVE_INFINITY;
 
       for (const ruolo of giocatore.ruoliMantra) {
-        if (vietati?.has(ruolo)) continue;
-
-        // Il portiere non esce dalla porta e nessuno ci entra al posto suo.
-        // Senza questa riga la regola delle linee lo lascerebbe giocare
-        // ovunque, perche' la porta e' la linea piu' arretrata di tutte.
-        const eePortiere = linea(ruolo) === 'porta';
-        if (eePortiere !== (lineaSlot === 'porta')) continue;
-
+        // Il giocatore e' al suo posto: la casella elenca il suo ruolo, da sola
+        // o in alternativa a un altro. Nessun malus, ed e' la scorciatoia che
+        // rende inutile il ramo "in alternativa" dei simboli con l'asterisco.
         if (nativi.includes(ruolo)) return PERFETTO;
 
-        // Adattamento: si gioca nella propria linea o in una piu' avanzata,
-        // mai in una piu' arretrata.
-        if (ORDINE_LINEA[linea(ruolo)] <= ORDINE_LINEA[lineaSlot]) {
-          const costo = aggravati?.has(ruolo) ? c.costi.aggravato : c.costi.adattamento;
-          migliore = Math.min(migliore, costo);
+        const colonna = aCodice.get(ruolo);
+        if (!colonna) continue;
+
+        // Una casella con ruoli alternativi offre piu' righe della tabella:
+        // vale la piu' generosa, perche' basta poter coprire uno dei due.
+        for (const riga of codiciNativi) {
+          const simbolo = (c.matrice[riga] as Record<string, Simbolo>)[colonna];
+          if (!simbolo) continue;
+          const esito = risolvi(simbolo, modulo.nome);
+          if (esito.ammesso) migliore = Math.min(migliore, esito.costo);
         }
       }
 
@@ -267,12 +288,16 @@ export function regoleMantra(configurazione: ConfigurazioneMantra): RegoleSchier
   };
 }
 
-/** Lo stampo di un ruolo, per chi deve contare i cinque e cinque. */
+/* ------------------------------------------------------------------ */
+
+/** Lo stampo di un ruolo: difensivo o offensivo. */
 export function stampoDi(c: ConfigurazioneMantra, ruolo: RuoloMantra): Stampo {
-  return c.ruoli[ruolo]!.stampo;
+  const codice = Object.keys(c.codici).filter(voceReale).find((k) => c.codici[k] === ruolo)!;
+  return c.ruoli[codice]!.stampo;
 }
 
-/** La linea di un ruolo, per chi deve ragionare sugli adattamenti. */
+/** La linea di gioco di un ruolo. */
 export function lineaDi(c: ConfigurazioneMantra, ruolo: RuoloMantra): Linea {
-  return c.ruoli[ruolo]!.linea;
+  const codice = Object.keys(c.codici).filter(voceReale).find((k) => c.codici[k] === ruolo)!;
+  return c.ruoli[codice]!.linea;
 }

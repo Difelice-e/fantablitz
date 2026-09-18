@@ -1,15 +1,13 @@
 /**
  * Test della modalita' Mantra.
  *
- * Le regole generali vengono dal regolamento ufficiale e sono verificate qui:
- * gli stampi, il vincolo dei cinque e cinque, la direzione degli adattamenti,
- * i ruoli alternativi nella stessa casella.
+ * Ora che la configurazione e' la trascrizione del materiale ufficiale, i test
+ * verificano due cose distinte: che la trascrizione sia coerente con se stessa
+ * e con gli invarianti dichiarati dal regolamento, e che il codice interpreti
+ * correttamente l'alfabeto della tabella delle sostituzioni.
  *
- * La sequenza esatta delle caselle di ogni modulo resta invece una nostra
- * costruzione, vincolata ma non verificata. I test sono scritti apposta per
- * non dipenderne: verificano il meccanismo e gli invarianti, non quale casella
- * stia in quale posizione. Quando la sequenza verra' confermata o corretta,
- * continueranno a valere.
+ * Le celle usate come esempi sono citate con riga e colonna, cosi' si
+ * ritrovano nella tabella ufficiale senza doverla ricostruire a memoria.
  */
 
 import { deepStrictEqual, ok, strictEqual, throws } from 'node:assert/strict';
@@ -28,34 +26,41 @@ const configurazione = JSON.parse(
 ) as ConfigurazioneMantra;
 
 const mantra = regoleMantra(configurazione);
+const MODULI = Object.keys(configurazione.moduli).filter((k) => !k.startsWith('_'));
 
 function m(id: string, ruoli: RuoloMantra[], ruoloClassico: RuoloClassico = 'C'): Schierabile {
   return { id, ruoliMantra: ruoli, ruoloClassico };
 }
 
-/** Trova nel modulo una casella del tipo indicato. */
-function casella(modulo: string, tipo: string) {
+/** La prima casella del modulo il cui identificativo comincia per `prefisso`. */
+function casella(modulo: string, prefisso: string) {
   const mod = mantra.modulo(modulo)!;
-  const slot = mod.slot.find((s) => s.id === tipo || s.id.replace(/\d+$/, '') === tipo);
-  if (!slot) throw new Error(`Casella ${tipo} non trovata nel modulo ${modulo}`);
+  const slot = mod.slot.find((s) => s.id === prefisso || s.id === `${prefisso}1`);
+  if (!slot) throw new Error(`Casella ${prefisso} non trovata in ${modulo}: ${mod.slot.map((s) => s.id).join(',')}`);
   return { modulo: mod, slot };
 }
 
-/** Il primo modulo che contiene una casella di quel tipo. */
-function moduloCon(tipo: string): string {
-  for (const mod of configurazione.moduli) if (mod.slot.includes(tipo)) return mod.nome;
-  throw new Error(`Nessun modulo contiene la casella ${tipo}`);
-}
-
 /* ------------------------------------------------------------------ */
-/* Regole verificate sul regolamento                                   */
+/* La trascrizione                                                     */
 /* ------------------------------------------------------------------ */
 
-describe('stampo difensivo e offensivo', () => {
-  it('i ruoli stanno nei gruppi del regolamento', () => {
-    // Testuale: cinque di stampo difensivo (Dd, Ds, Dc, B, E, M) e cinque
-    // offensivo (C, T, W, A, Pc). Da notare che E e M sono difensivi e C
-    // offensivo, pur essendo tutti e tre centrocampisti.
+describe('tabella dei ruoli', () => {
+  it('le linee di gioco sono quelle ufficiali', () => {
+    const attese: Record<string, string> = {
+      Por: 'porta',
+      Ds: 'difesa', Dc: 'difesa', Dd: 'difesa', B: 'difesa',
+      E: 'centrocampo', M: 'centrocampo', C: 'centrocampo',
+      W: 'trequarti', T: 'trequarti',
+      A: 'attacco', Pc: 'attacco',
+    };
+    for (const ruolo of RUOLI_MANTRA) {
+      strictEqual(lineaDi(configurazione, ruolo), attese[ruolo], ruolo);
+    }
+  });
+
+  it('gli stampi sono quelli ufficiali', () => {
+    // Cinque di movimento di stampo difensivo e cinque offensivo per schema.
+    // Nel centrocampo convivono entrambi: E e M difensivi, C offensivo.
     for (const r of ['Dd', 'Ds', 'Dc', 'B', 'E', 'M'] as RuoloMantra[]) {
       strictEqual(stampoDi(configurazione, r), 'difensivo', r);
     }
@@ -63,191 +68,241 @@ describe('stampo difensivo e offensivo', () => {
       strictEqual(stampoDi(configurazione, r), 'offensivo', r);
     }
   });
+});
 
-  it('ogni ruolo ha una linea di gioco dichiarata', () => {
-    for (const r of RUOLI_MANTRA) ok(lineaDi(configurazione, r), r);
-  });
-
-  it('ogni modulo schiera cinque uomini di stampo difensivo e cinque offensivo', () => {
-    // E' il vincolo che tiene equivalenti fra loro tutti i moduli del gioco.
-    for (const mod of configurazione.moduli) {
-      const stampi = mod.slot.map((tipo) => {
-        const ruoli = configurazione.tipiSlot[tipo] as RuoloMantra[];
-        return configurazione.ruoli[ruoli[0]!]!;
-      });
-      strictEqual(stampi.filter((s) => s.linea === 'porta').length, 1, mod.nome);
-      strictEqual(
-        stampi.filter((s) => s.linea !== 'porta' && s.stampo === 'difensivo').length,
-        5,
-        `${mod.nome}: uomini di stampo difensivo`,
-      );
-      strictEqual(
-        stampi.filter((s) => s.linea !== 'porta' && s.stampo === 'offensivo').length,
-        5,
-        `${mod.nome}: uomini di stampo offensivo`,
-      );
+describe('tabella delle sostituzioni', () => {
+  it('e’ completa: dodici righe per dodici colonne', () => {
+    const codici = Object.keys(configurazione.codici).filter((k) => !k.startsWith('_'));
+    strictEqual(codici.length, 12);
+    for (const riga of codici) {
+      const voce = configurazione.matrice[riga] as Record<string, string>;
+      for (const colonna of codici) ok(voce[colonna], `manca la cella ${riga}/${colonna}`);
     }
   });
 
-  it('rifiuta un modulo che non rispetta il cinque e cinque', () => {
-    const rotta: ConfigurazioneMantra = {
+  it('rifiuta una matrice incompleta', () => {
+    const rotta = {
       ...configurazione,
-      moduli: [{ nome: 'rotto', slot: ['POR', 'DD', 'DC', 'DC', 'DS', 'M', 'E', 'C', 'C', 'C', 'PC'] }],
-      eccezioni: [],
-    };
-    throws(() => validaConfigurazioneMantra(rotta), /stampo difensivo e .* offensivo/);
+      matrice: { ...configurazione.matrice, PC: { PC: 'OK' } },
+    } as ConfigurazioneMantra;
+    throws(() => validaConfigurazioneMantra(rotta), /manca la cella PC\//);
+  });
+
+  it('rifiuta una diagonale che non sia OK', () => {
+    const rotta = {
+      ...configurazione,
+      matrice: {
+        ...configurazione.matrice,
+        C: { ...(configurazione.matrice.C as object), C: '-1' },
+      },
+    } as ConfigurazioneMantra;
+    throws(() => validaConfigurazioneMantra(rotta), /nel proprio posto deve dare OK/);
   });
 });
 
-describe('direzione degli adattamenti', () => {
-  // Regola del regolamento: ci si adatta nella propria linea di gioco o in una
-  // piu' avanzata, mai in una piu' arretrata. Un difensore puo' fare la punta
-  // con un malus, una punta non puo' fare il difensore nemmeno con un malus.
-
-  it('un difensore puo’ giocare in attacco, col malus', () => {
-    const { modulo, slot } = casella(moduloCon('PC'), 'PC');
-    const esito = mantra.valuta(m('x', ['Dc'], 'D'), slot, modulo);
-    strictEqual(esito.ammesso, true);
-    strictEqual(esito.costo, configurazione.costi.adattamento);
-  });
-
-  it('una punta non puo’ giocare in difesa, nemmeno col malus', () => {
-    const { modulo, slot } = casella(moduloCon('DC'), 'DC');
-    strictEqual(mantra.valuta(m('x', ['Pc'], 'A'), slot, modulo).ammesso, false);
-  });
-
-  it('la direzione vale su ogni coppia di linee', () => {
-    const coppie: [RuoloMantra, string][] = [
-      ['Dc', 'M'], ['Dc', 'C'], ['Dc', 'T'], ['Dc', 'PC'],
-      ['M', 'C'], ['M', 'T'], ['M', 'PC'],
-      ['C', 'T'], ['C', 'PC'],
-      ['T', 'PC'],
-    ];
-    for (const [ruolo, tipo] of coppie) {
-      const avanti = casella(moduloCon(tipo), tipo);
-      ok(
-        mantra.valuta(m('x', [ruolo]), avanti.slot, avanti.modulo).ammesso,
-        `${ruolo} dovrebbe poter giocare in ${tipo}`,
-      );
-    }
-  });
-
-  it('nella stessa linea ci si adatta in entrambi i versi', () => {
-    // E e M sono entrambi centrocampisti: l'uno puo' fare il ruolo dell'altro.
-    const versoM = casella(moduloCon('M'), 'M');
-    ok(mantra.valuta(m('x', ['E']), versoM.slot, versoM.modulo).ammesso);
-    const versoE = casella(moduloCon('E'), 'E');
-    ok(mantra.valuta(m('y', ['M']), versoE.slot, versoE.modulo).ammesso);
-  });
-
-  it('il portiere non esce dalla porta e nessuno ci entra al posto suo', () => {
-    // Senza una regola esplicita la direzione lo lascerebbe giocare ovunque,
-    // perche' la porta e' la linea piu' arretrata di tutte.
-    const porta = casella('4-4-2', 'POR');
-    strictEqual(mantra.valuta(m('p', ['Por'], 'P'), porta.slot, porta.modulo).costo, 0);
-    for (const ruolo of ['Dc', 'C', 'Pc'] as RuoloMantra[]) {
-      strictEqual(mantra.valuta(m('x', [ruolo]), porta.slot, porta.modulo).ammesso, false, ruolo);
-    }
-
-    for (const tipo of ['DC', 'C', 'PC']) {
-      const altrove = casella(moduloCon(tipo), tipo);
-      strictEqual(
-        mantra.valuta(m('p', ['Por'], 'P'), altrove.slot, altrove.modulo).ammesso,
-        false,
-        `il portiere non deve poter giocare in ${tipo}`,
-      );
-    }
-  });
-});
-
-describe('costo di un accoppiamento', () => {
-  it('il ruolo titolare non costa nulla', () => {
-    const { modulo, slot } = casella(moduloCon('DC'), 'DC');
-    deepStrictEqual(mantra.valuta(m('x', ['Dc'], 'D'), slot, modulo), { ammesso: true, costo: 0 });
-  });
-
-  it('due ruoli nella stessa casella sono alternativi, entrambi senza malus', () => {
-    // Dal regolamento: dove sono indicati due ruoli in una posizione, essi sono
-    // alternativi, e lo restano anche in caso di sostituzione.
-    const tipo = 'APC';
-    const { modulo, slot } = casella(moduloCon(tipo), tipo);
-    strictEqual(mantra.valuta(m('x', ['A'], 'A'), slot, modulo).costo, 0);
-    strictEqual(mantra.valuta(m('y', ['Pc'], 'A'), slot, modulo).costo, 0);
-  });
-
-  it('chi ha due ruoli entra col migliore dei due, non col primo dichiarato', () => {
-    const { modulo, slot } = casella(moduloCon('T'), 'T');
-    strictEqual(mantra.valuta(m('x', ['W', 'T']), slot, modulo).costo, 0);
-    strictEqual(mantra.valuta(m('y', ['T', 'W']), slot, modulo).costo, 0);
-  });
-
-  it('un aggravio costa piu’ di un adattamento normale', () => {
-    const { modulo, slot } = casella('4-2-3-1', 'W');
-    const aggravato = mantra.valuta(m('x', ['T']), slot, modulo);
-    const normale = mantra.valuta(m('y', ['C']), slot, modulo);
-    ok(aggravato.ammesso && normale.ammesso);
-    ok(aggravato.costo > normale.costo, `aggravato ${aggravato.costo}, normale ${normale.costo}`);
-  });
-});
-
-describe('eccezioni che dipendono dal modulo', () => {
-  it('W e T sono intercambiabili con aggravio nei moduli normali', () => {
-    const { modulo, slot } = casella('4-2-3-1', 'W');
-    const esito = mantra.valuta(m('x', ['T']), slot, modulo);
-    strictEqual(esito.ammesso, true);
-    strictEqual(esito.costo, configurazione.costi.aggravato);
-  });
-
-  it('nel 4-1-4-1 non lo sono nemmeno con malus', () => {
-    // E' la ragione per cui `valuta` riceve anche il modulo e non solo la
-    // casella: senza, questa eccezione non sarebbe esprimibile.
-    const { modulo, slot } = casella('4-1-4-1', 'W');
-    strictEqual(mantra.valuta(m('x', ['T']), slot, modulo).ammesso, false);
-  });
-
-  it('l’eccezione non tocca gli altri ruoli della stessa casella', () => {
-    const { modulo, slot } = casella('4-1-4-1', 'W');
-    strictEqual(mantra.valuta(m('x', ['W']), slot, modulo).costo, 0);
-    ok(mantra.valuta(m('y', ['C']), slot, modulo).ammesso);
-  });
-
-  it('un giocatore con due ruoli aggira l’eccezione col ruolo buono', () => {
-    const { modulo, slot } = casella('4-1-4-1', 'W');
-    strictEqual(mantra.valuta(m('x', ['T', 'W']), slot, modulo).costo, 0);
-  });
-});
-
-describe('struttura dei moduli', () => {
-  it('espone gli undici moduli della specifica', () => {
+describe('gli undici schemi', () => {
+  it('ci sono tutti e hanno undici caselle', () => {
     deepStrictEqual(
-      mantra.moduli.map((x) => x.nome).sort(),
+      [...MODULI].sort(),
       ['3-4-1-2', '3-4-2-1', '3-4-3', '3-5-1-1', '3-5-2', '4-1-4-1', '4-2-3-1', '4-3-1-2', '4-3-3', '4-4-1-1', '4-4-2'],
     );
-  });
-
-  it('ogni modulo ha undici caselle con identificativi unici', () => {
     for (const mod of mantra.moduli) {
       strictEqual(mod.slot.length, 11, mod.nome);
       strictEqual(new Set(mod.slot.map((s) => s.id)).size, 11, `${mod.nome}: caselle duplicate`);
     }
   });
 
-  it('il numero di difensori del modulo corrisponde al nome', () => {
-    for (const mod of configurazione.moduli) {
-      const difensori = mod.slot.filter((tipo) => {
-        const ruoli = configurazione.tipiSlot[tipo] as RuoloMantra[];
-        return configurazione.ruoli[ruoli[0]!]!.linea === 'difesa';
-      }).length;
-      strictEqual(difensori, Number(mod.nome.split('-')[0]), `${mod.nome}: difensori`);
+  it('il numero di difensori corrisponde al nome dello schema', () => {
+    for (const nome of MODULI) {
+      const caselle = configurazione.moduli[nome] as string[];
+      const difensori = caselle.filter(
+        (x) => configurazione.ruoli[x.split('/')[0]!]!.linea === 'difesa',
+      ).length;
+      strictEqual(difensori, Number(nome.split('-')[0]), `${nome}: difensori`);
     }
   });
 
-  it('rifiuta ruoli alternativi con linea o stampo diversi', () => {
-    const rotta: ConfigurazioneMantra = {
+  it('ogni schema puo’ arrivare a cinque difensivi e cinque offensivi', () => {
+    // Le caselle con ruoli di stampo diverso in alternativa, come M/C, lasciano
+    // la scelta al fantallenatore: il vincolo dev'essere raggiungibile, non
+    // gia' deciso dallo schema.
+    for (const nome of MODULI) {
+      const caselle = (configurazione.moduli[nome] as string[]).filter(
+        (x) => configurazione.ruoli[x.split('/')[0]!]!.linea !== 'porta',
+      );
+      let difensivi = 0;
+      let offensivi = 0;
+      let misti = 0;
+      for (const x of caselle) {
+        const stampi = new Set(x.split('/').map((p) => configurazione.ruoli[p]!.stampo));
+        if (stampi.size > 1) misti++;
+        else if (stampi.has('difensivo')) difensivi++;
+        else offensivi++;
+      }
+      ok(difensivi <= 5 && difensivi + misti >= 5, `${nome}: difensivi ${difensivi}, misti ${misti}`);
+      ok(offensivi <= 5 && offensivi + misti >= 5, `${nome}: offensivi ${offensivi}, misti ${misti}`);
+    }
+  });
+
+  it('rifiuta uno schema con un numero di caselle sbagliato', () => {
+    const rotta = {
       ...configurazione,
-      tipiSlot: { ...configurazione.tipiSlot, APC: ['A', 'C'] },
-    };
-    throws(() => validaConfigurazioneMantra(rotta), /non condividono linea e stampo/);
+      moduli: { rotto: ['P', 'DC', 'DC'] },
+    } as unknown as ConfigurazioneMantra;
+    throws(() => validaConfigurazioneMantra(rotta), /3 caselle invece di undici/);
+  });
+});
+
+/* ------------------------------------------------------------------ */
+/* L'interpretazione dell'alfabeto                                     */
+/* ------------------------------------------------------------------ */
+
+describe('celle semplici della tabella', () => {
+  it('OK: il ruolo nella propria casella non costa nulla', () => {
+    const { modulo, slot } = casella('4-4-2', 'DC');
+    deepStrictEqual(mantra.valuta(m('x', ['Dc'], 'D'), slot, modulo), { ammesso: true, costo: 0 });
+  });
+
+  it('-1: un difensore copre la punta col malus (riga PC, colonna DC)', () => {
+    // E' il caso citato dal regolamento: il difensore che in estrema ratio
+    // sostituisce l'attaccante.
+    const { modulo, slot } = casella('4-4-2', 'APC');
+    const esito = mantra.valuta(m('x', ['Dc'], 'D'), slot, modulo);
+    strictEqual(esito.ammesso, true);
+    strictEqual(esito.costo, configurazione.costi.adattamento);
+  });
+
+  it('NO: una punta non copre il difensore (riga DC, colonna PC)', () => {
+    const { modulo, slot } = casella('4-4-2', 'DC');
+    strictEqual(mantra.valuta(m('x', ['Pc'], 'A'), slot, modulo).ammesso, false);
+  });
+
+  it('OK fuori dalla diagonale: un centrale copre il braccetto (riga B, colonna DC)', () => {
+    // Nella casella DC/B del 3-5-2 il centrale e' gia' nativo; la cella
+    // interessante e' che B e DC si coprono a vicenda senza malus.
+    strictEqual((configurazione.matrice.B as Record<string, string>).DC, 'OK');
+    const { modulo, slot } = casella('3-5-2', 'DCB');
+    strictEqual(mantra.valuta(m('x', ['Dc'], 'D'), slot, modulo).costo, 0);
+    strictEqual(mantra.valuta(m('y', ['B'], 'D'), slot, modulo).costo, 0);
+  });
+
+  it('il portiere non esce dalla porta e nessuno ci entra', () => {
+    const porta = casella('4-4-2', 'P');
+    strictEqual(mantra.valuta(m('p', ['Por'], 'P'), porta.slot, porta.modulo).costo, 0);
+    for (const ruolo of ['Dc', 'C', 'Pc'] as RuoloMantra[]) {
+      strictEqual(mantra.valuta(m('x', [ruolo]), porta.slot, porta.modulo).ammesso, false, ruolo);
+    }
+    for (const [modulo, prefisso] of [['4-4-2', 'DC'], ['4-4-2', 'C'], ['4-4-2', 'APC']] as const) {
+      const altrove = casella(modulo, prefisso);
+      strictEqual(
+        mantra.valuta(m('p', ['Por'], 'P'), altrove.slot, altrove.modulo).ammesso,
+        false,
+        `il portiere non deve poter giocare in ${prefisso}`,
+      );
+    }
+  });
+});
+
+describe('i simboli che dipendono dallo schema', () => {
+  it('ruoli in alternativa nella casella: entrambi senza malus', () => {
+    // Nel 4-4-2 la casella E/W accoglie sia l'esterno basso sia l'ala.
+    const { modulo, slot } = casella('4-4-2', 'EW');
+    strictEqual(mantra.valuta(m('e', ['E']), slot, modulo).costo, 0);
+    strictEqual(mantra.valuta(m('w', ['W']), slot, modulo).costo, 0);
+  });
+
+  it('* fuori alternativa e’ un divieto (riga C, colonna T)', () => {
+    strictEqual((configurazione.matrice.C as Record<string, string>).T, '*');
+    // Nel 4-1-4-1 esiste una casella C/T: li' il trequartista e' al suo posto.
+    const inAlternativa = casella('4-1-4-1', 'CT');
+    strictEqual(mantra.valuta(m('t', ['T']), inAlternativa.slot, inAlternativa.modulo).costo, 0);
+    // Nel 4-4-2 la casella C e' pura: li' il trequartista non entra.
+    const pura = casella('4-4-2', 'C');
+    strictEqual(mantra.valuta(m('t', ['T']), pura.slot, pura.modulo).ammesso, false);
+  });
+
+  it('** fuori alternativa e’ un malus (riga C, colonna M)', () => {
+    strictEqual((configurazione.matrice.C as Record<string, string>).M, '**');
+    const inAlternativa = casella('4-4-2', 'MC');
+    strictEqual(mantra.valuta(m('x', ['M']), inAlternativa.slot, inAlternativa.modulo).costo, 0);
+    const pura = casella('4-4-2', 'C');
+    const esito = mantra.valuta(m('x', ['M']), pura.slot, pura.modulo);
+    strictEqual(esito.ammesso, true);
+    strictEqual(esito.costo, configurazione.costi.adattamento);
+  });
+
+  it('*** vale come ** ma il 4-1-4-1 lo vieta (righe W e T)', () => {
+    strictEqual((configurazione.matrice.W as Record<string, string>).T, '***');
+    strictEqual((configurazione.matrice.T as Record<string, string>).W, '***');
+
+    // Nel 4-1-4-1 la casella W e' pura e il trequartista non entra.
+    const nel41 = casella('4-1-4-1', 'W');
+    strictEqual(mantra.valuta(m('t', ['T']), nel41.slot, nel41.modulo).ammesso, false);
+
+    // Nel 4-2-3-1 la casella T e' pura: l'ala entra col malus.
+    const altrove = casella('4-2-3-1', 'T');
+    const esito = mantra.valuta(m('w', ['W']), altrove.slot, altrove.modulo);
+    strictEqual(esito.ammesso, true);
+    strictEqual(esito.costo, configurazione.costi.adattamento);
+  });
+
+  it('la casella in alternativa vale la riga piu’ generosa', () => {
+    // W/T nel 4-2-3-1: chi non e' ne' ala ne' trequartista entra col migliore
+    // dei due trattamenti previsti dalla tabella.
+    const { modulo, slot } = casella('4-2-3-1', 'WT');
+    const conC = mantra.valuta(m('c', ['C']), slot, modulo);
+    // riga W colonna C = -1, riga T colonna C = ** -> fuori alternativa vale -1
+    strictEqual(conC.ammesso, true);
+    strictEqual(conC.costo, configurazione.costi.adattamento);
+  });
+
+  it('chi ha due ruoli entra col migliore dei suoi', () => {
+    const { modulo, slot } = casella('4-2-3-1', 'T');
+    strictEqual(mantra.valuta(m('x', ['W', 'T']), slot, modulo).costo, 0);
+    strictEqual(mantra.valuta(m('y', ['T', 'W']), slot, modulo).costo, 0);
+  });
+});
+
+describe('il verso della tabella', () => {
+  it('non e’ simmetrica: si copre in avanti, non all’indietro', () => {
+    const codici = ['PC', 'A', 'T', 'W', 'C', 'M', 'E', 'B', 'DC', 'DD', 'DS'];
+    let asimmetrie = 0;
+    for (const a of codici) {
+      for (const b of codici) {
+        const ab = (configurazione.matrice[a] as Record<string, string>)[b];
+        const ba = (configurazione.matrice[b] as Record<string, string>)[a];
+        if (ab !== ba) asimmetrie++;
+      }
+    }
+    ok(asimmetrie > 0, 'la tabella risulta simmetrica: la trascrizione e’ sospetta');
+  });
+
+  it('un difensore copre ogni linea piu’ avanzata, mai il contrario', () => {
+    const avanti: [RuoloMantra, string, string][] = [
+      ['Dc', '4-4-2', 'C'],
+      ['Dc', '4-4-2', 'APC'],
+      ['M', '4-4-2', 'C'],
+      ['M', '4-2-3-1', 'T'],
+    ];
+    for (const [ruolo, modulo, prefisso] of avanti) {
+      const { modulo: mod, slot } = casella(modulo, prefisso);
+      ok(mantra.valuta(m('x', [ruolo]), slot, mod).ammesso, `${ruolo} verso ${prefisso}`);
+    }
+
+    const indietro: [RuoloMantra, string, string][] = [
+      ['Pc', '4-4-2', 'DC'],
+      ['Pc', '4-4-2', 'C'],
+      ['C', '4-4-2', 'DC'],
+      ['T', '4-4-2', 'DC'],
+    ];
+    for (const [ruolo, modulo, prefisso] of indietro) {
+      const { modulo: mod, slot } = casella(modulo, prefisso);
+      strictEqual(
+        mantra.valuta(m('x', [ruolo]), slot, mod).ammesso,
+        false,
+        `${ruolo} non deve poter coprire ${prefisso}`,
+      );
+    }
   });
 });
 
@@ -255,7 +310,6 @@ describe('struttura dei moduli', () => {
 /* Schieramento                                                        */
 /* ------------------------------------------------------------------ */
 
-/** Una rosa Mantra plausibile da venticinque, con ruoli assortiti. */
 function rosaMantra(): Schierabile[] {
   const voci: [string, RuoloMantra[], RuoloClassico][] = [
     ['por1', ['Por'], 'P'], ['por2', ['Por'], 'P'], ['por3', ['Por'], 'P'],
@@ -274,24 +328,12 @@ function rosaMantra(): Schierabile[] {
 describe('schieramento con una rosa Mantra vera', () => {
   const rosa = rosaMantra();
 
-  it('copre almeno qualche modulo senza alcun adattamento', () => {
+  it('copre almeno qualche schema senza alcun adattamento', () => {
     const copertura = coperturaModuli(rosa, mantra);
     ok(
       copertura.some((c) => c.livello === 'perfetta'),
-      `nessun modulo perfetto: ${copertura.map((c) => `${c.modulo}=${c.livello}`).join(' ')}`,
+      `nessuno schema perfetto: ${copertura.map((c) => `${c.modulo}=${c.livello}`).join(' ')}`,
     );
-  });
-
-  it('la copertura e’ coerente con se stessa', () => {
-    // SPEC 6.1: la copertura va mostrata subito dopo l'import, ed e'
-    // l'informazione che l'utente vuole vedere per prima.
-    const copertura = coperturaModuli(rosa, mantra);
-    strictEqual(copertura.length, 11);
-    for (const c of copertura) {
-      if (c.livello === 'adattata') ok(c.adattamenti > 0, `${c.modulo}: adattata senza adattamenti`);
-      if (c.livello === 'perfetta') strictEqual(c.adattamenti, 0, c.modulo);
-      if (c.livello === 'impossibile') ok(c.slotScoperti.length > 0, c.modulo);
-    }
   });
 
   it('non mette mai nessuno in una casella vietata', () => {
@@ -308,15 +350,25 @@ describe('schieramento con una rosa Mantra vera', () => {
     }
   });
 
-  it('non manda mai un portiere in campo ne’ un giocatore di movimento in porta', () => {
+  it('non manda un portiere in campo ne’ un giocatore di movimento in porta', () => {
     for (const modulo of mantra.moduli) {
       const d = disponi(rosa, modulo, mantra);
       const perId = new Map(rosa.map((g) => [g.id, g]));
       for (const [slotId, id] of d.titolari) {
-        const eePortiere = perId.get(id)!.ruoliMantra.includes('Por');
-        const eeLaPorta = slotId.startsWith('POR');
-        strictEqual(eePortiere, eeLaPorta, `${modulo.nome}: ${id} in ${slotId}`);
+        strictEqual(
+          perId.get(id)!.ruoliMantra.includes('Por'),
+          slotId === 'P',
+          `${modulo.nome}: ${id} in ${slotId}`,
+        );
       }
+    }
+  });
+
+  it('la copertura e’ coerente con se stessa', () => {
+    for (const c of coperturaModuli(rosa, mantra)) {
+      if (c.livello === 'adattata') ok(c.adattamenti > 0, `${c.modulo}: adattata senza adattamenti`);
+      if (c.livello === 'perfetta') strictEqual(c.adattamenti, 0, c.modulo);
+      if (c.livello === 'impossibile') ok(c.slotScoperti.length > 0, c.modulo);
     }
   });
 });
@@ -353,7 +405,7 @@ describe('sostituzioni in Mantra', () => {
 
   it('senza portieri resta scoperta la porta e non altro', () => {
     const esito = schiera('4-4-2', ['por1', 'por2', 'por3']);
-    deepStrictEqual(esito.slotScoperti, ['POR']);
+    deepStrictEqual(esito.slotScoperti, ['P']);
   });
 
   it('non schiera mai un indisponibile, nemmeno adattando', () => {
