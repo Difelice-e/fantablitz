@@ -304,12 +304,20 @@ Così le due modalità e i tre livelli si combinano senza duplicare codice: 2 + 
 
 **Modalità `mantra`**
 - **11 moduli**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1. Ogni modulo prevede 5 slot di stampo difensivo e 5 offensivi
-- Matrice di compatibilità **ruolo × slot × modulo**, con le eccezioni del regolamento Mantra (es. W e T intercambiabili con aggravio di malus, tranne nel 4-1-4-1 dove non lo sono nemmeno con malus)
-- Malus di adattamento per ogni giocatore fuori posizione, su due livelli: adattamento normale e adattamento aggravato
-- Un giocatore con più ruoli entra col **migliore** dei suoi, non col primo dichiarato
-- Invariante strutturale: ogni modulo ha 1 portiere, 5 caselle di stampo difensivo e 5 offensive. La validazione lo impone e rifiuta una configurazione che non lo rispetti
+Il modello poggia su **due classificazioni diverse** dello stesso ruolo, che servono a due regole diverse. Confonderle è l'errore facile.
 
-> ⚠️ **La matrice in `fanta/config/mantra.json` è una ricostruzione, non una trascrizione del regolamento ufficiale.** Il meccanismo (costi, aggravi, eccezioni per modulo, doppio ruolo) è completo e testato; quali ruoli esattamente ogni casella accetti va confrontato col regolamento Mantra di Fantacalcio.it **prima che la lega parta**. Correggerla non richiede di toccare codice.
+**Stampo** — difensivo (`Dd, Ds, Dc, B, E, M`) oppure offensivo (`C, T, W, A, Pc`). Serve a un solo scopo: ogni modulo schiera **5 uomini di movimento di stampo difensivo e 5 di stampo offensivo**, ed è il vincolo che tiene tutti i moduli equivalenti fra loro. Da notare che `E` e `M` sono difensivi mentre `C` è offensivo, pur essendo tutti e tre centrocampisti.
+
+**Linea di gioco** — porta, difesa, centrocampo, trequarti, attacco. Decide gli adattamenti, con una regola **direzionale**: ci si adatta nella propria linea o in una **più avanzata**, mai in una più arretrata. Un difensore può fare la punta con un malus; una punta non può fare il difensore nemmeno con un malus. Ne segue che all'asta conviene valutare un giocatore nel suo **ruolo più arretrato**, perché è quello che gli apre più caselle.
+
+Altre regole:
+- Dove una casella elenca **due ruoli**, sono alternativi: entrambi senza malus, e lo restano anche in caso di sostituzione
+- Un giocatore con più ruoli entra col **migliore** dei suoi, non col primo dichiarato
+- Eccezioni che dipendono dal **modulo** e non solo dalla casella: W e T intercambiabili con aggravio, tranne nel 4-1-4-1 dove non lo sono nemmeno con malus
+- Il portiere non esce dalla porta e nessuno ci entra al posto suo: va detto esplicitamente, perché la regola delle linee da sola lo lascerebbe giocare ovunque
+- Invariante strutturale imposto in validazione: 1 portiere, 5 caselle di stampo difensivo, 5 offensive
+
+> ℹ️ **Stato della verifica.** Le regole qui sopra sono state confrontate col regolamento ufficiale di Fantacalcio.it ed è quello che il regolamento dice. Restano da confermare, e sono annotate in testa a `fanta/config/mantra.json`: la **sequenza esatta delle caselle** di ogni modulo (quelle presenti rispettano tutti i vincoli verificati, ma la scelta fra caselle equivalenti è nostra), la **linea del ruolo `W`** (qui fra i trequartisti), e se l'**aggravio** su W/T esista davvero. Correggerle non richiede di toccare codice.
 
 **Modalità `classic`**
 - Ruoli P, D, C, A. Lo schieramento è un **conteggio**, non una matrice: il modulo fissa quanti difensori, centrocampisti e attaccanti servono, e un giocatore è ammesso nello slot se il ruolo coincide
@@ -448,7 +456,9 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 - Condizione esatta di chiusura dell'asta nativa (proposta: fase obbligatoria fino a 23 giocatori, poi possibilità di dichiarare chiusa la rosa)
 - Destino dei giocatori estratti e non aggiudicati nell'asta nativa (proposta: tornano nel pool svincolati)
-- **Verifica della matrice ruolo × slot × modulo della modalità Mantra** contro il regolamento ufficiale (vedi l'avviso in §6.2). È l'unica cosa che separa la milestone 2 dall'essere davvero finita
+- **Valore del malus di adattamento Mantra**: §4 fissa il default a −0,5, ma il regolamento ufficiale di Fantacalcio.it parla di **−1**. Da decidere se allinearsi al regolamento o tenere la scelta attuale, che rende gli adattamenti meno punitivi
+- **Se l'aggravio di malus su W/T esista davvero**: §6.2 lo prevede, ma le fonti consultate parlano di un malus unico. Il meccanismo è già in configurazione: si toglie una riga se non serve
+- **Sequenza esatta delle caselle dei moduli Mantra e linea del ruolo `W`** (vedi l'avviso in §6.2). È quel che resta da confermare sulla milestone 2
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono
