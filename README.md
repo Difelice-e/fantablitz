@@ -12,7 +12,7 @@ privato, ad accesso su invito.
 | milestone | stato |
 |---|---|
 | 0 — seed dal listone | ✅ fatto, in [`seed/`](seed/) |
-| 1 — motore e calibrazione | da fare |
+| 1 — motore e calibrazione | ✅ fatto, in [`engine/`](engine/) |
 | 2 — schieramento: classic e Mantra | da fare |
 | 3 — import Fantalab | da fare (fixture reali verificate in [`fixtures/`](fixtures/)) |
 
@@ -25,4 +25,5 @@ npm install        # solo TypeScript e i tipi di Node, per i controlli
 npm test           # i test di tutti i pacchetti
 npm run typecheck  # il controllo dei tipi
 npm run seed       # rigenera il seed del mondo simulato
+npm run calibra    # simula centinaia di stagioni e riporta le metriche
 ```
