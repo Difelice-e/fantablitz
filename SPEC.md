@@ -58,7 +58,9 @@ Tutti i valori sono parametri, con i default indicati.
 **Struttura**
 - Squadre: 10 (umani + bot)
 - Crediti iniziali: 500
-- Rosa: minimo 23 giocatori, di cui almeno 2 portieri. **Nessun massimo**
+- Rosa: dipende dalla modalità
+  - `mantra`: **minimo 23** giocatori, di cui almeno 2 portieri. **Nessun massimo**
+  - `classic`: **esattamente 25**, con quote **fisse 3-8-8-6** (P-D-C-A). Non è un minimo: è una composizione esatta, e una rosa che non la rispetta non è valida
 - Modalità ruoli: **`mantra` o `classic`**, scelta **per lega** alla creazione e non più modificabile in corsa. Entrambe disponibili dalla prima versione. Il mondo simulato è identico nei due casi: la modalità vive interamente nel livello fanta, e più precisamente nelle regole di schieramento (§6.2)
 - Panchina: ordinata per priorità
 
@@ -282,7 +284,8 @@ Requisiti dell'importatore:
 - Import **atomico**: o passa tutto, o non passa niente
 - Gestione esplicita dell'unico caso di disallineamento possibile: id presente nella rosa ma assente dal listone (listone più recente della rosa) → riga segnalata all'admin, import bloccato finché non è risolta
 - Segnalare come avviso (non errore) le discrepanze tra i campi ridondanti del file e il listone
-- Validazioni: nessun id duplicato nell'intero file, minimo 23 giocatori con almeno 2 portieri per squadra, somma dei prezzi entro il budget, prezzi ≥ 1
+- Validazioni comuni: nessun id duplicato nell'intero file, somma dei prezzi entro il budget, prezzi ≥ 1
+- Validazione della composizione, **dipendente dalla modalità** (§4): in `mantra` minimo 23 giocatori con almeno 2 portieri; in `classic` esattamente 25 con quote 3-8-8-6. I file di esempio forniti rispettano la composizione classic esatta
 - I file di esempio forniti sono le **fixture dei test**. Riferimento del caso tipico: 10 squadre da 25 giocatori (3-8-8-6), spesa tra 482 e 500 crediti, prezzi da 1 a 222
 - Verifica già effettuata sui file reali: **tutti i 250 id delle rose di esempio trovano corrispondenza nel listone 2026/27**, nessun id duplicato, nessuno tra i ceduti. Il join è esatto
 
@@ -307,7 +310,8 @@ Così le due modalità e i tre livelli si combinano senza duplicare codice: 2 + 
 **Modalità `classic`**
 - Ruoli P, D, C, A. Lo schieramento è un **conteggio**, non una matrice: il modulo fissa quanti difensori, centrocampisti e attaccanti servono, e un giocatore è ammesso nello slot se il ruolo coincide
 - **Nessun malus di adattamento**: in classic un giocatore o può essere schierato o no
-- Moduli (da confermare, vedi §11): 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2, 5-4-1
+- **7 moduli**: 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2, 5-4-1. Sempre 1 portiere, e da 3 a 5 difensori, da 3 a 5 centrocampisti, da 1 a 3 attaccanti
+- La rosa è di **esattamente 25 giocatori con quote 3-8-8-6** (§4): la panchina è quindi sempre di 14, e ogni modulo è coperto per costruzione
 
 Il modello classic è un caso particolare di quello Mantra, con matrice di compatibilità diagonale e malus nullo: implementarlo per primo non costa quasi nulla e mette alla prova l'interfaccia.
 
@@ -436,8 +440,6 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 - Condizione esatta di chiusura dell'asta nativa (proposta: fase obbligatoria fino a 23 giocatori, poi possibilità di dichiarare chiusa la rosa)
 - Destino dei giocatori estratti e non aggiudicati nell'asta nativa (proposta: tornano nel pool svincolati)
-- **Elenco dei moduli della modalità `classic`** (proposta in §6.2: 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2, 5-4-1). Da confermare, insieme alla domanda se una lega classic possa schierare meno di 3 attaccanti o più di 5 difensori
-- Se la composizione minima della rosa cambi fra le due modalità (oggi: minimo 23 con almeno 2 portieri per entrambe; gli export reali mostrano rose classic da 25 con quote 3-8-8-6)
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono
