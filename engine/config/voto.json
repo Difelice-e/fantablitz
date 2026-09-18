@@ -14,12 +14,12 @@
 
   "standardizzazione": {
     "_nota": "Media e deviazione standard dell'indice di ruolo, per gruppo. Sono PARAMETRI FISSI determinati una volta in calibrazione e salvati qui, NON ricalcolati a ogni giornata: il voto deve misurare una prestazione in assoluto, non rispetto agli altri di quel turno. Rigenerarli con 'npm run calibra -- --standardizzazione'.",
-    "por": { "media": 2.236, "deviazione": 5.896 },
-    "centrale": { "media": 10.191, "deviazione": 6.915 },
-    "laterale": { "media": 4.674, "deviazione": 4.334 },
-    "mediano": { "media": 13.132, "deviazione": 7.75 },
-    "offensivo": { "media": 6.332, "deviazione": 5.056 },
-    "punta": { "media": 4.743, "deviazione": 4.221 }
+    "por": { "media": 2.235, "deviazione": 5.898 },
+    "centrale": { "media": 10.149, "deviazione": 6.938 },
+    "laterale": { "media": 4.653, "deviazione": 4.365 },
+    "mediano": { "media": 13.159, "deviazione": 7.764 },
+    "offensivo": { "media": 6.356, "deviazione": 5.069 },
+    "punta": { "media": 4.742, "deviazione": 4.215 }
   },
 
   "pesi": {

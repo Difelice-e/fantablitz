@@ -36,7 +36,17 @@ export type PrestazioneGiocatore = {
   clubId: string;
   minuti: number;
   voto: number | null;
+  /** Gol su azione. I rigori stanno a parte: valgono un bonus diverso. */
   gol: number;
+  rigoriSegnati: number;
+  /**
+   * Rigori sbagliati, **compresi quelli parati**: per il regolamento sono la
+   * stessa cosa e costano lo stesso malus al battitore. Che il portiere lo
+   * abbia parato si vede dal suo rigoriParati, non da qui.
+   */
+  rigoriSbagliati: number;
+  rigoriParati: number;
+  autogol: number;
   assist: number;
   ammonito: boolean;
   espulso: boolean;
@@ -150,10 +160,18 @@ export function simulaStagione(
           const giocatore = tuttiConvocati.find((g) => g.id === id);
           if (!giocatore) continue;
 
-          const gol = esito.eventi.filter(
-            (e) => e.giocatoreId === id && (e.tipo === 'gol' || e.tipo === 'rigoreSegnato'),
-          ).length;
-          const assist = esito.eventi.filter((e) => e.giocatoreId === id && e.tipo === 'assist').length;
+          // Gli eventi sono la fonte: contarli e' l'unico modo perche' il
+          // riepilogo di un giocatore e la cronaca della partita non possano
+          // raccontare due storie diverse.
+          const quanti = (tipo: Evento['tipo']): number =>
+            esito.eventi.filter((e) => e.giocatoreId === id && e.tipo === tipo).length;
+
+          const gol = quanti('gol');
+          const rigoriSegnati = quanti('rigoreSegnato');
+          const rigoriSbagliati = quanti('rigoreSbagliato');
+          const autogol = quanti('autogol');
+          const assist = quanti('assist');
+          const rigoriParati = statistiche.rigoriParati ?? 0;
 
           const voto = calcolaVoto(
             {
@@ -162,10 +180,10 @@ export function simulaStagione(
               esito: esitoDi(propri, altrui),
               gol,
               assist,
-              autogol: 0,
-              rigoriSegnati: 0,
-              rigoriSbagliati: 0,
-              rigoriParati: statistiche.rigoriParati ?? 0,
+              autogol,
+              rigoriSegnati,
+              rigoriSbagliati,
+              rigoriParati,
               ammonito: lato.ammoniti.has(id),
               espulso: lato.espulsi.has(id),
             },
@@ -178,6 +196,10 @@ export function simulaStagione(
             minuti: statistiche.minuti,
             voto,
             gol,
+            rigoriSegnati,
+            rigoriSbagliati,
+            rigoriParati,
+            autogol,
             assist,
             ammonito: lato.ammoniti.has(id),
             espulso: lato.espulsi.has(id),

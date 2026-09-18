@@ -1,0 +1,57 @@
+{
+  "_nota": "Punteggio della lega (SPEC 4): bonus, malus, modificatori e soglie gol. Sono parametri di lega, non regole del mondo simulato: due leghe sullo stesso mondo possono avere punteggi diversi.",
+  "versione": 2,
+
+  "bonus": {
+    "_nota": "I classici del fantacalcio. Il gol vale 3 a prescindere dal ruolo; alcune leghe assegnano 2.5 al gol su rigore, ed e' per questo che la voce e' separata anche quando vale quanto il gol su azione.",
+    "gol": 3,
+    "rigoreSegnato": 3,
+    "assist": 1,
+    "rigoreParato": 3,
+    "_imbattibilita": "Porta inviolata: vale solo per il portiere, e solo se ha preso voto.",
+    "imbattibilitaPortiere": 1
+  },
+
+  "malus": {
+    "_nota": "Positivi nel file, sottratti dal calcolo: si leggono meglio.",
+    "ammonizione": 0.5,
+    "espulsione": 1,
+    "rigoreSbagliato": 3,
+    "autogol": 2,
+    "golSubito": 1,
+    "_adattamento": "Malus per ogni giocatore schierato fuori posizione. In classic non si applica mai, perche' gli adattamenti non esistono. Il valore e' quello del regolamento Mantra ufficiale.",
+    "adattamento": 1
+  },
+
+  "modificatoreDifesa": {
+    "_nota": "Media dei voti, esclusi bonus e malus, del portiere piu' i 3 migliori difensori. Si applica solo con una difesa da almeno 4 uomini e solo se tutti i giocatori considerati portano un voto: niente media parziale, che sarebbe piu' generosa proprio con chi ha schierato meno gente.",
+    "_soglie": "Versione dinamica a sei fasce, un punto ogni quarto di voto da 6.00 a 7.25. E' la tabella scelta dalla lega.",
+    "_attivo": "Resta una impostazione di lega: spegnerlo e' una riga, e i fantavoti individuali non cambiano.",
+    "attivo": true,
+    "includiPortiere": true,
+    "difensoriRichiesti": 4,
+    "soglie": [
+      { "media": 6.0, "bonus": 1 },
+      { "media": 6.25, "bonus": 2 },
+      { "media": 6.5, "bonus": 3 },
+      { "media": 6.75, "bonus": 4 },
+      { "media": 7.0, "bonus": 5 },
+      { "media": 7.25, "bonus": 6 }
+    ]
+  },
+
+  "modificatorePortiere": {
+    "_nota": "Bonus legato al solo voto del portiere, esclusi bonus e malus. La lega ha deciso di usare per ora il solo modificatore di difesa: questo resta spento. Il meccanismo c'e' e ha i suoi test, cosi' accenderlo un domani e' una riga di configurazione e non una modifica al codice (regola 5).",
+    "attivo": false,
+    "soglie": [
+      { "media": 6.5, "bonus": 1 },
+      { "media": 7.0, "bonus": 2 }
+    ]
+  },
+
+  "soglieGol": {
+    "_nota": "Conversione dei fantapunti in gol (SPEC 4). Funzione parametrica: si parte dalla soglia base e si sommano gli scarti; l'ultimo scarto si ripete all'infinito. Con base 66 e scarti 6, 5, 4 si ottengono 66, 72, 77, 81, 85, 89, 93, 97, 101, 105 e poi ogni 4, che sono le soglie classiche. Sotto la soglia base: zero gol.",
+    "base": 66,
+    "scarti": [6, 5, 4]
+  }
+}

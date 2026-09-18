@@ -10,7 +10,7 @@
  *
  *   1. formazioni          (gia' fatte da `allenatore.ts`)
  *   2. risultato           Poisson sui gol attesi
- *   3. attribuzione        gol e assist ai giocatori in campo
+ *   3. attribuzione        rigori, autogol, gol e assist ai giocatori in campo
  *   4. statistiche         individuali, per gruppo di ruolo
  *   5. disciplina          cartellini e infortuni
  *   6. timeline            un minuto per ogni evento
@@ -25,7 +25,7 @@ import type { ParametriMotore, NomeStatistica } from './configurazione.ts';
 import { NOMI_STATISTICHE } from './configurazione.ts';
 import type { Generatore } from './casuale.ts';
 import { forzeDi, type Schieramento } from './allenatore.ts';
-import { gruppoDi } from './ruoli.ts';
+import { gruppoDi, type GruppoRuolo } from './ruoli.ts';
 
 export type Statistiche = Record<NomeStatistica, number> & { minuti: number };
 
@@ -113,6 +113,44 @@ export function golAttesi(
 }
 
 /* ------------------------------------------------------------------ */
+/* 2bis. Rigori                                                        */
+/* ------------------------------------------------------------------ */
+
+/** Come e’ finito un rigore. */
+export type EsitoRigore = 'segnato' | 'parato' | 'sbagliato';
+
+/**
+ * Gol su rigore attesi da una squadra in una partita.
+ *
+ * Servono a togliere altrettanto dai gol attesi su azione: i rigori non si
+ * sommano al risultato, ne fanno parte. Senza questa sottrazione i gol a
+ * partita salirebbero ogni volta che si tocca la frequenza dei rigori, che e’
+ * una manopola della disciplina e non del risultato.
+ */
+export function golAttesiDaRigore(p: ParametriMotore): number {
+  // `rigoriPerPartita` conta le due squadre insieme, qui se ne guarda una.
+  return (p.disciplina.rigoriPerPartita / 2) * p.disciplina.quotaRigoriSegnati;
+}
+
+/**
+ * I rigori che una squadra batte in una partita, e come vanno a finire.
+ *
+ * Parato o fuori, per il battitore e’ lo stesso rigore sbagliato: il
+ * regolamento non distingue. A cambiare e’ solo il portiere, che il bonus lo
+ * prende soltanto se lo para.
+ */
+export function battiRigori(p: ParametriMotore, rng: Generatore): EsitoRigore[] {
+  const d = p.disciplina;
+  const esiti: EsitoRigore[] = [];
+  const quanti = rng.poisson(d.rigoriPerPartita / 2);
+  for (let i = 0; i < quanti; i++) {
+    if (rng.bernoulli(d.quotaRigoriSegnati)) esiti.push('segnato');
+    else esiti.push(rng.bernoulli(d.quotaRigoriNonSegnatiParati) ? 'parato' : 'sbagliato');
+  }
+  return esiti;
+}
+
+/* ------------------------------------------------------------------ */
 /* 4. Statistiche individuali                                          */
 /* ------------------------------------------------------------------ */
 
@@ -145,7 +183,12 @@ function generaStatistiche(
   for (const nome of NOMI_STATISTICHE) {
     // Le statistiche derivate si calcolano dopo, dalle rispettive tentate.
     if (nome === 'passaggiRiusciti' || nome === 'crossRiusciti') continue;
+    // Queste tre non si estraggono: vengono dai fatti della partita. I gol
+    // subiti sono i gol degli avversari; i rigori parati e quelli concessi
+    // sono i rigori davvero assegnati. Estrarle a parte significherebbe
+    // ritrovarsi in tabella piu’ rigori concessi di quanti se ne sono battuti.
     if (nome === 'golSubiti' || nome === 'rigoriParati') continue;
+    if (nome === 'rigoriConcessi') continue;
     s[nome] = estrai(nome);
   }
 
@@ -179,8 +222,24 @@ export const simulaPartita: MotorePartita = ({ casa, ospite, parametri: p, rng }
   const forzeCasa = forzeDi(casa, p);
   const forzeOspite = forzeDi(ospite, p);
 
-  const golCasa = rng.poisson(golAttesi(forzeCasa.attacco, forzeOspite.difesa, true, p));
-  const golOspite = rng.poisson(golAttesi(forzeOspite.attacco, forzeCasa.difesa, false, p));
+  // I rigori si battono prima del risultato, perche’ i loro gol fanno parte
+  // del risultato e non si aggiungono ad esso.
+  const rigoriCasa = battiRigori(p, rng);
+  const rigoriOspite = battiRigori(p, rng);
+
+  const golDiSquadra = (
+    attacco: number,
+    difesa: number,
+    inCasa: boolean,
+    rigori: readonly EsitoRigore[],
+  ): number => {
+    const attesi = golAttesi(attacco, difesa, inCasa, p);
+    const suAzione = rng.poisson(Math.max(0, attesi - golAttesiDaRigore(p)));
+    return suAzione + rigori.filter((r) => r === 'segnato').length;
+  };
+
+  const golCasa = golDiSquadra(forzeCasa.attacco, forzeOspite.difesa, true, rigoriCasa);
+  const golOspite = golDiSquadra(forzeOspite.attacco, forzeCasa.difesa, false, rigoriOspite);
 
   const eventi: Evento[] = [];
 
@@ -267,13 +326,26 @@ export const simulaPartita: MotorePartita = ({ casa, ospite, parametri: p, rng }
   const esitoCasa = componi(casa, golCasa, golOspite);
   const esitoOspite = componi(ospite, golOspite, golCasa);
 
-  /* --- 3. attribuzione di gol e assist ----------------------------- */
+  /* --- 3. attribuzione: rigori, autogol, gol e assist -------------- */
 
-  const attribuisci = (esito: EsitoSquadra, schieramento: Schieramento): void => {
+  const attribuisci = (
+    esito: EsitoSquadra,
+    schieramento: Schieramento,
+    avversari: EsitoSquadra,
+    schieramentoAvversario: Schieramento,
+    rigori: readonly EsitoRigore[],
+  ): void => {
     const inCampo = [...schieramento.titolari, ...schieramento.panchina].filter((g) =>
       esito.minuti.has(g.id),
     );
     if (inCampo.length === 0) return;
+
+    // Autogol e rigori concessi appartengono agli avversari: sono gol di questa
+    // squadra che qualcun altro si e' fatto da solo, e falli commessi da loro.
+    const inCampoAvversari = [
+      ...schieramentoAvversario.titolari,
+      ...schieramentoAvversario.panchina,
+    ].filter((g) => avversari.minuti.has(g.id));
 
     const pesoGol = (g: Giocatore): number =>
       g.propensioni.gol *
@@ -285,14 +357,97 @@ export const simulaPartita: MotorePartita = ({ casa, ospite, parametri: p, rng }
       (schieramento.effettivi.get(g.id)!.tecnica / 50) ** p.attribuzione.esponenteRating *
       (esito.minuti.get(g.id)! / 90);
 
-    for (let i = 0; i < esito.gol; i++) {
+    // Chi sbaglia in area lo fa in proporzione a quanto ci sta: un centrale
+    // deviando nella propria porta, una punta quasi mai.
+    const pesoAvversario =
+      (pesi: Record<GruppoRuolo, number>) =>
+      (g: Giocatore): number =>
+        (pesi[gruppoDi(g)] ?? 0) * (avversari.minuti.get(g.id)! / 90);
+
+    /* --- rigori ----------------------------------------------------- */
+
+    // Il portiere e' il primo dei titolari, come per i gol subiti.
+    const portiereAvversario = schieramentoAvversario.titolari[0];
+
+    for (const finale of rigori) {
+      const battitore = rng.pesato(inCampo, pesoGol);
+      const minuto = rng.intero(1, 90);
+
+      // Ogni rigore lo ha concesso qualcuno. La statistica va a lui e non viene
+      // anche estratta a parte (vedi `generaStatistiche`): cosi' i rigori
+      // concessi in tabella sono esattamente i rigori battuti.
+      if (inCampoAvversari.length > 0) {
+        const colpevole = rng.pesato(
+          inCampoAvversari,
+          pesoAvversario(p.attribuzione.pesiRigoreConcesso),
+        );
+        const sua = avversari.statistiche.get(colpevole.id);
+        if (sua) sua.rigoriConcessi += 1;
+      }
+
+      const sue = esito.statistiche.get(battitore.id);
+
+      if (finale === 'segnato') {
+        eventi.push({ minuto, tipo: 'rigoreSegnato', giocatoreId: battitore.id, clubId: esito.clubId });
+        if (sue) {
+          sue.tiri = Math.max(1, sue.tiri);
+          sue.tiriInPorta = Math.max(1, sue.tiriInPorta);
+        }
+        continue;
+      }
+
+      // Parato o fuori, per il battitore e' lo stesso rigore sbagliato: il
+      // regolamento non distingue, il malus e' quello. A cambiare e' solo il
+      // portiere, che il bonus lo prende solo se lo para.
+      eventi.push({ minuto, tipo: 'rigoreSbagliato', giocatoreId: battitore.id, clubId: esito.clubId });
+      if (sue) {
+        sue.tiri = Math.max(1, sue.tiri);
+        if (finale === 'parato') sue.tiriInPorta = Math.max(1, sue.tiriInPorta);
+      }
+
+      if (finale === 'parato' && portiereAvversario) {
+        const delPortiere = avversari.statistiche.get(portiereAvversario.id);
+        if (delPortiere) {
+          delPortiere.rigoriParati += 1;
+          delPortiere.parate += 1;
+          delPortiere.tiriAffrontati += 1;
+        }
+        eventi.push({
+          minuto,
+          tipo: 'rigoreParato',
+          giocatoreId: portiereAvversario.id,
+          clubId: avversari.clubId,
+          associatoId: battitore.id,
+        });
+      }
+    }
+
+    /* --- gol su azione e autogol ------------------------------------ */
+
+    const suRigore = rigori.filter((r) => r === 'segnato').length;
+
+    for (let i = 0; i < esito.gol - suRigore; i++) {
+      // Un autogol e' un gol di questa squadra segnato da un avversario: non ha
+      // marcatore ne' assist, e il malus va a chi e' stato sfortunato.
+      if (inCampoAvversari.length > 0 && rng.bernoulli(p.attribuzione.quotaAutogol)) {
+        const sfortunato = rng.pesato(inCampoAvversari, pesoAvversario(p.attribuzione.pesiAutogol));
+        eventi.push({
+          minuto: rng.intero(1, 90),
+          tipo: 'autogol',
+          giocatoreId: sfortunato.id,
+          // Il club e' quello di chi lo ha segnato, cioe' quello che ha subito
+          // il gol: e' come lo si legge in una cronaca.
+          clubId: avversari.clubId,
+        });
+        continue;
+      }
+
       const marcatore = rng.pesato(inCampo, pesoGol);
       const s = esito.statistiche.get(marcatore.id)!;
-      const suRigore = rng.bernoulli(p.disciplina.rigoriPerPartita / Math.max(1, esito.gol) / 2);
 
       eventi.push({
         minuto: rng.intero(1, 90),
-        tipo: suRigore ? 'rigoreSegnato' : 'gol',
+        tipo: 'gol',
         giocatoreId: marcatore.id,
         clubId: esito.clubId,
       });
@@ -300,7 +455,7 @@ export const simulaPartita: MotorePartita = ({ casa, ospite, parametri: p, rng }
       s.tiri = Math.max(1, s.tiri);
       s.tiriInPorta = Math.max(1, s.tiriInPorta);
 
-      if (!suRigore && rng.bernoulli(p.attribuzione.quotaGolConAssist)) {
+      if (rng.bernoulli(p.attribuzione.quotaGolConAssist)) {
         const candidati = inCampo.filter((g) => g.id !== marcatore.id);
         if (candidati.length > 0) {
           const assistman = rng.pesato(candidati, pesoAssist);
@@ -317,8 +472,8 @@ export const simulaPartita: MotorePartita = ({ casa, ospite, parametri: p, rng }
     }
   };
 
-  attribuisci(esitoCasa, casa);
-  attribuisci(esitoOspite, ospite);
+  attribuisci(esitoCasa, casa, esitoOspite, ospite, rigoriCasa);
+  attribuisci(esitoOspite, ospite, esitoCasa, casa, rigoriOspite);
 
   /* --- 5. disciplina e infortuni ----------------------------------- */
 

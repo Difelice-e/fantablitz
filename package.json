@@ -8,13 +8,16 @@
   "workspaces": [
     "engine",
     "fanta",
+    "jobs",
     "seed"
   ],
   "scripts": {
     "seed": "npm run seed --workspace seed",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "calibra": "npm run calibra --workspace engine"
+    "calibra": "npm run calibra --workspace engine",
+    "importa": "npm run importa --workspace jobs",
+    "ciclo": "npm run ciclo --workspace jobs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

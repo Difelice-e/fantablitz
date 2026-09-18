@@ -11,7 +11,7 @@
  * `npm run calibra`, che gira su centinaia di stagioni.
  */
 
-import { ok } from 'node:assert/strict';
+import { ok, strictEqual } from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { simulaStagione } from '../src/stagione.ts';
 import { gruppoDi, GRUPPI_RUOLO, type GruppoRuolo } from '../src/ruoli.ts';
@@ -106,6 +106,91 @@ describe('disciplina e infortuni', () => {
   });
 });
 
+describe('rigori e autogol', () => {
+  // Sono i due eventi che il motore ha imparato a produrre per ultimi, e sono
+  // anche quelli che nel fantacalcio pesano di piu' a parita' di rarita': un
+  // rigore sbagliato vale -3, un autogol -2. Se la frequenza fosse sbagliata
+  // di un fattore due, nessuno se ne accorgerebbe guardando una giornata.
+  const eventi = partite.flatMap((p) => p.eventi);
+  const rigoriSegnati = eventi.filter((e) => e.tipo === 'rigoreSegnato').length;
+  const rigoriSbagliati = eventi.filter((e) => e.tipo === 'rigoreSbagliato').length;
+  const rigoriParati = eventi.filter((e) => e.tipo === 'rigoreParato').length;
+  const autogol = eventi.filter((e) => e.tipo === 'autogol').length;
+  const rigori = rigoriSegnati + rigoriSbagliati;
+
+  it('i rigori a partita sono quelli della configurazione', () => {
+    dentro((rigori / partite.length), 0.22, 0.35, 'rigori assegnati a partita');
+  });
+
+  it('la quota dei rigori segnati e’ quella della configurazione', () => {
+    // Il valore atteso e' motore.disciplina.quotaRigoriSegnati.
+    dentro(rigoriSegnati / rigori, 0.68, 0.86, 'quota dei rigori segnati');
+  });
+
+  it('un rigore non segnato e’ parato o fuori, mai altro', () => {
+    dentro(
+      rigoriParati / (rigori - rigoriSegnati),
+      0.5,
+      0.75,
+      'quota dei rigori sbagliati che il portiere para',
+    );
+  });
+
+  it('gli autogol sono rari ma ci sono', () => {
+    dentro(autogol / partite.length, 0.03, 0.13, 'autogol a partita');
+  });
+
+  it('i gol su rigore non gonfiano i gol a partita', () => {
+    // I rigori si tolgono dai gol attesi su azione: e' la ragione per cui la
+    // media dei gol non si muove quando si tocca la frequenza dei rigori. Se
+    // questo test e quello dei gol a partita cadessero insieme, il colpevole
+    // e' la sottrazione.
+    const gol = partite.reduce((a, p) => a + p.golCasa + p.golOspite, 0);
+    const suRigore = rigoriSegnati / gol;
+    dentro(suRigore, 0.05, 0.12, 'quota dei gol arrivata su rigore');
+  });
+
+  it('quello che dicono gli eventi e’ quello che portano le prestazioni', () => {
+    // E' il confine che conta: la lega non legge la cronaca, legge le
+    // prestazioni. Se i due conti divergessero, i bonus sarebbero sbagliati e
+    // la cronaca direbbe il contrario.
+    const somma = (campo: (p: (typeof prestazioni)[number]) => number): number =>
+      prestazioni.reduce((a, p) => a + campo(p), 0);
+    strictEqual(somma((p) => p.rigoriSegnati), rigoriSegnati);
+    strictEqual(somma((p) => p.rigoriSbagliati), rigoriSbagliati);
+    strictEqual(somma((p) => p.autogol), autogol);
+    strictEqual(somma((p) => p.rigoriParati), rigoriParati);
+    strictEqual(somma((p) => p.gol), eventi.filter((e) => e.tipo === 'gol').length);
+  });
+
+  it('i rigori li battono gli attaccanti piu’ dei difensori', () => {
+    // Non e’ una regola scritta da nessuna parte: e’ la conseguenza di pesare
+    // il battitore sulla propensione al gol. Se un giorno si volesse un
+    // rigorista designato, questo test e’ il primo a cadere.
+    const perGruppo = new Map<GruppoRuolo, number>(GRUPPI_RUOLO.map((g) => [g, 0]));
+    for (const p of prestazioni) {
+      if (p.rigoriSegnati + p.rigoriSbagliati === 0) continue;
+      const g = mondo.giocatorePerId.get(p.giocatoreId);
+      if (!g) continue;
+      perGruppo.set(gruppoDi(g), perGruppo.get(gruppoDi(g))! + p.rigoriSegnati + p.rigoriSbagliati);
+    }
+    ok(
+      perGruppo.get('punta')! > perGruppo.get('centrale')!,
+      `punte ${perGruppo.get('punta')}, centrali ${perGruppo.get('centrale')}`,
+    );
+  });
+
+  it('l’autogol lo fanno soprattutto i difensori', () => {
+    const difensivi = prestazioni
+      .filter((p) => p.autogol > 0)
+      .map((p) => mondo.giocatorePerId.get(p.giocatoreId))
+      .filter((g): g is NonNullable<typeof g> => g != null)
+      .filter((g) => ['por', 'centrale', 'laterale'].includes(gruppoDi(g))).length;
+    const tutti = prestazioni.filter((p) => p.autogol > 0).length;
+    dentro(difensivi / tutti, 0.6, 1, 'quota di autogol dei reparti arretrati');
+  });
+});
+
 describe('minuti e rotazioni', () => {
   it('ogni squadra manda in campo undici uomini per partita', () => {
     for (const p of partite.slice(0, 200)) {
@@ -129,42 +214,23 @@ describe('minuti e rotazioni', () => {
     dentro(media(usati), 18, 32, 'giocatori usati per squadra in una stagione');
   });
 
-  it('gli impegni europei fanno ruotare chi li ha', () => {
-    // Il confronto e' fra gli **stessi** club con e senza turni di coppa, non
-    // fra club europei e non europei: quelli europei sono anche i piu' forti, e
-    // le squadre forti concentrano i minuti perche' hanno un divario netto fra
-    // undici e panchina. Confrontandoli con gli altri si misurerebbe la forza
-    // delle rose, non l'effetto delle coppe.
-    const concentrazione = (stagione: (typeof stagioni)[number], clubId: string): number => {
-      const rosa = mondo.rosaPerClub.get(clubId) ?? [];
-      const minuti = rosa
-        .map((g) => stagione.stati.giocatori.get(g.id)?.minutiStagione ?? 0)
-        .sort((a, b) => b - a);
-      const totale = minuti.reduce((a, b) => a + b, 0);
-      // Quota dei minuti giocata dagli undici piu' impiegati: piu' e' bassa,
-      // piu' la squadra ha ruotato.
-      return totale === 0 ? 1 : minuti.slice(0, 11).reduce((a, b) => a + b, 0) / totale;
-    };
-
-    const europei = mondo.club.filter((c) => c.coppa !== null).map((c) => c.id);
-    ok(europei.length > 0, 'premessa del test: nessun club con impegni europei');
-
-    let conCoppe = 0;
-    let senzaCoppe = 0;
-    for (let i = 0; i < 3; i++) {
-      const seme = `coppe-${i}`;
-      const con = simulaStagione(mondo, motore, voto, { seme });
-      const senza = simulaStagione(mondo, motore, voto, { seme, turniDiCoppa: 0 });
-      conCoppe += media(europei.map((id) => concentrazione(con, id)));
-      senzaCoppe += media(europei.map((id) => concentrazione(senza, id)));
-    }
-
-    ok(
-      conCoppe < senzaCoppe,
-      'gli stessi club ruotano di piu’ senza coppe che con le coppe: ' +
-        `${(conCoppe / 3).toFixed(4)} con, ${(senzaCoppe / 3).toFixed(4)} senza`,
-    );
-  });
+  /*
+   * Qui c’era un test che pretendeva di misurare la rotazione indotta dagli
+   * impegni europei, confrontando gli stessi club con e senza turni di coppa.
+   * Passava su tre semi, ma su dodici la differenza cambia segno: misurava
+   * rumore. Rimisurato con cura, l’effetto a fine stagione non c’e’, e con un
+   * costo di coppa triplicato va addirittura nella direzione opposta.
+   *
+   * Il meccanismo e’ implementato e resta coperto da un test esatto in
+   * partita.test.ts ("un turno di coppa costa condizione ai club europei e non
+   * agli altri"): la coppa toglie condizione ai migliori, come chiede
+   * SPEC 5.3. Quello che non regge e’ il salto da li’ alla rotazione di una
+   * stagione intera, ai parametri attuali.
+   *
+   * E’ una domanda di calibrazione aperta, non un test da riscrivere a
+   * tentativi: chi la riprende parta dai parametri (costoImpegnoEuropeo
+   * contro recuperoPerGiornata), non da qui.
+   */
 });
 
 describe('classifica', () => {
