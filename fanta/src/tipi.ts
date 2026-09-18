@@ -52,10 +52,13 @@ export type Modulo = {
  * Esito della domanda "questo giocatore puo' occupare questo slot?".
  *
  * `costo` e' misurato in **unita' di adattamento**, non in punti di fantavoto:
- * 0 significa al proprio posto, 1 un adattamento normale, 2 un adattamento
- * aggravato come quelli che il regolamento Mantra prevede per certi scambi di
- * ruolo. Il malus in punti (default -0.5) e' un parametro di lega e si applica
- * al fantavoto, non qui: cosi' cambiarlo non tocca l'algoritmo.
+ * 0 significa al proprio posto, 1 un adattamento. Il regolamento Mantra prevede
+ * un solo livello di malus, quindi oggi i valori usati sono solo questi due,
+ * ma il tipo resta numerico per non doverlo cambiare se un giorno servisse.
+ *
+ * La conversione in punti e' del fantavoto ed e' un parametro di lega: col
+ * malus a -1 il cambio e' uno a uno, ma tenerli separati significa che
+ * ritoccare il malus non tocca l'algoritmo di schieramento.
  */
 export type EsitoSlot = { ammesso: boolean; costo: number };
 

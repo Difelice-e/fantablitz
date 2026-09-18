@@ -128,8 +128,7 @@ La tabella ufficiale ha solo tre esiti: `OK`, `-1` e `NO`. Non c'è nessun
 secondo livello di malus. Il `***` — che avevamo letto come «aggravio» — non è
 un malus più pesante: è la nota che vieta lo scambio W/T **nel solo 4-1-4-1**.
 
-`SPEC.md` §4 fissa il malus a −0,5 mentre il regolamento dice −1: è una
-decisione del proprietario, non è stata cambiata in autonomia.
+`SPEC.md` §4 è allineata al regolamento: −1, un solo livello.
 
 ### Linea e stampo sono due cose diverse
 
@@ -167,6 +166,7 @@ src/sostituzione.ts  il contratto StrategiaSostituzione e la strategia Basic
 - Easy e Master, che arriveranno dietro il flag `sostituzioni_easy_master`. La
   strategia Basic è già sostituibile: sono due implementazioni in più, non una
   riscrittura.
-- Il malus in punti (default −0.5) non si applica qui: questo pacchetto conta
-  gli adattamenti in unità astratte, e la conversione in punti è del fantavoto,
-  che arriva con la milestone 4.
+- Il malus in punti non si applica qui: questo pacchetto conta gli adattamenti
+  in unità astratte, e la conversione è del fantavoto, che arriva con la
+  milestone 4. Col malus a −1 il cambio è uno a uno, ma tenerli separati
+  significa che ritoccare il malus non tocca l'algoritmo di schieramento.

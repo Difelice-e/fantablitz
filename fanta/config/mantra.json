@@ -12,7 +12,7 @@
   },
 
   "costi": {
-    "_nota": "Il regolamento prevede un malus unico di -1 per il giocatore fuori posizione: non esistono livelli di aggravio, la tabella delle sostituzioni ha solo OK, -1 e NO. Qui il costo e' in unita' di adattamento; la conversione in punti e' del fantavoto ed e' un parametro di lega. NOTA: SPEC 4 fissa il default a -0.5, il regolamento dice -1.",
+    "_nota": "Il regolamento prevede un malus unico di -1 per il giocatore fuori posizione: non esistono livelli di aggravio, la tabella delle sostituzioni ha solo OK, -1 e NO. Qui il costo e' in unita' di adattamento e la conversione in punti e' del fantavoto, che e' un parametro di lega: col malus a -1 il cambio e' uno a uno, ma tenerli separati significa che ritoccare il malus non tocca l'algoritmo di schieramento.",
     "adattamento": 1
   },
 

@@ -78,7 +78,7 @@ Tutti i valori sono parametri, con i default indicati.
 - Soglie gol: 66, 72, 77, 81, 85, 89, 93, 97, 101, 105, poi ogni 4. Implementata come funzione parametrica: `soglia_base` (66) e scarti (6, 5, 4 ricorrente). Sotto la soglia base: 0 gol
 - Bonus/malus: configurabili (gol, assist, ammonizione, espulsione, rigore segnato/sbagliato/parato, autogol, gol subito), con default classici
 - Modificatore di difesa e modificatore portiere: attivabili, con soglie configurabili
-- Malus di adattamento Mantra: default −0.5, configurabile. **Il regolamento ufficiale prevede −1 e un solo livello di malus**: la differenza è deliberata e resta fra le decisioni aperte (§11)
+- Malus di adattamento Mantra: **−1**, configurabile. È il valore del regolamento ufficiale, che prevede un **solo livello** di malus: non esistono aggravi (§6.2)
 
 ---
 
@@ -456,7 +456,6 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 - Condizione esatta di chiusura dell'asta nativa (proposta: fase obbligatoria fino a 23 giocatori, poi possibilità di dichiarare chiusa la rosa)
 - Destino dei giocatori estratti e non aggiudicati nell'asta nativa (proposta: tornano nel pool svincolati)
-- **Valore del malus di adattamento Mantra**: §4 fissa il default a −0,5, ma il regolamento ufficiale parla di **−1**. È l'unica differenza rimasta fra la specifica e il regolamento, ed è una scelta di prodotto: −0,5 rende gli adattamenti meno punitivi
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono

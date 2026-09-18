@@ -56,6 +56,7 @@ Segui la roadmap di `SPEC.md`. In particolare: **il motore e la sua calibrazione
 ## Come lavorare
 
 - Fai domande quando la specifica è ambigua, invece di scegliere in silenzio. Le decisioni di prodotto le prende il proprietario
+- **Il regolamento ufficiale vince sempre.** Dove una regola del fantacalcio è fissata da Fantacalcio.it, quella è la verità: non si ricostruisce a intuito e non si tiene una variante nostra perché sembra più sensata. Se la specifica diverge dal regolamento, si allinea la specifica. Trascrivi le regole ufficiali in configurazione nella loro notazione originale, così restano confrontabili con la fonte
 - Proponi le alternative con i loro compromessi, poi consiglia
 - Commit piccoli e messaggi chiari
 - Aggiorna `SPEC.md` quando una decisione cambia: la specifica è la fonte di verità, non la cronologia della chat
