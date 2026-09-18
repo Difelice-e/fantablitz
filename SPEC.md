@@ -439,9 +439,16 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 /jobs       job serale (ciclo), importatore, generatori AI
 /seed       dati iniziali del mondo simulato
 /fixtures   file reali per i test
+/dati       stato delle leghe, quando l'archivio e' su file (fuori da git)
 ```
 
 `/engine` e `/fanta` stanno sui due lati del confine della **regola 7**: voti e statistiche appartengono al mondo e sono uguali per tutti, schieramenti e malus appartengono alla lega. Il motore non conosce la modalità di gioco né i crediti; il livello fanta non conosce i rating né le statistiche. Separarli in due pacchetti rende il confine una proprietà della struttura, non una buona intenzione.
+
+**La persistenza è dietro un contratto.** `Archivio` (`/jobs/src/archivio.ts`) ha tre metodi: leggi, scrivi, elenca. Oggi c'è l'implementazione su file JSON, che serve a far girare tutto in locale senza un database; quella su Supabase è la seconda implementazione dello stesso contratto e non cambia nient'altro.
+
+**Si salva solo quello che ha deciso una persona**: configurazione, rose, formazioni schierate e quante giornate si sono giocate. Voti, risultati e classifica **non si salvano**: sono una funzione pura del seme del mondo e delle formazioni, e si ricalcolano. Non è un risparmio di spazio, è la regola 6 vista da un'altra parte — uno stato che si può solo ricalcolare non può andare fuori sincrono con quello che è successo, e non esiste il caso in cui la classifica salvata dice una cosa e i risultati un'altra. Il job serale, di suo, scrive un numero.
+
+**Si schiera sempre per la prossima giornata.** Una formazione è salvata per una giornata precisa, e una giornata già giocata non si tocca. È anche quello che tiene in piedi l'idempotenza ora che le formazioni cambiano nel tempo: l'esito della giornata N resta funzione del solo stato salvato per la giornata N.
 
 **Principi:**
 - Il motore è un **pacchetto isolato e deterministico**: dato lo stesso seed e lo stesso input, produce lo stesso output. Serve per i test, per la calibrazione e per dirimere le contestazioni
@@ -472,7 +479,7 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 2. **Schieramento** — ✅ *fatto*, in `/fanta`. I due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
 3. **Import Fantalab** — ✅ *fatto*, in `/jobs`. Parser, riconciliazione, validazioni, sui file di esempio reali. Un solo importatore per le due modalità, import atomico, copertura dei moduli in uscita
 4. **Ciclo di gioco** — ✅ *fatto*. Fantavoto, modificatori e soglie gol in `/fanta`; job serale, scontri diretti e classifica in `/jobs`. L'idempotenza è per costruzione: l'esito di una giornata è funzione pura dello stato iniziale e del numero di giornata
-5. **Interfaccia** — schermata formazione, risultati, classifica, rosa
+5. **Interfaccia** — ✅ *fatto*, in `/web`. Next.js senza altre dipendenze, quasi tutto calcolato sul server. Classifica, giornate con tabellini, rosa e schieramento. Manca l'autenticazione, che dipende da Supabase
 6. **Bot** — valutazione e scambi
 7. **Strato AI** — cronache, editoriale, chat
 8. **Fine stagione** — sequenza completa con i flag di fase 1
@@ -488,3 +495,4 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono
 - **Le coppe non producono rotazione misurabile su una stagione.** Il meccanismo di §5.3 funziona ed è coperto da un test esatto: un turno di coppa toglie condizione ai migliori di un club europeo e a nessun altro. Ma l'effetto non sopravvive fino a fine stagione — rimisurato su dodici semi, la differenza di rotazione fra gli stessi club con e senza coppe cambia segno, e triplicando `costoImpegnoEuropeo` va addirittura nella direzione opposta. Il sospetto è il rapporto fra `costoImpegnoEuropeo` (0.2) e `recuperoPerGiornata` (0.34): la coppa si recupera in una giornata. Da decidere se le coppe devono pesare davvero sulle rotazioni o restare un dettaglio di colore
+- **L'autenticazione non c'è ancora, e il sito senza autenticazione non può stare online.** §9 prevede il link magico via email, che richiede Supabase Auth: oggi chiunque apra il sito può schierare per chiunque. In locale va bene, in rete no. È il primo pezzo da fare prima di qualunque deploy, e richiede che il proprietario crei il progetto Supabase

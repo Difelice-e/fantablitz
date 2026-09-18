@@ -1,0 +1,217 @@
+/*
+ * Un solo foglio di stile, scritto a mano.
+ *
+ * Niente framework CSS: le schermate sono quattro e il proprietario conosce il
+ * CSS, quindi una dipendenza in piu' e un passo di build in piu' non si
+ * ripagherebbero. Niente immagini, loghi o maglie (regola 2): i club si
+ * distinguono per nome e per un colore generico che arriva dal seed.
+ */
+
+:root {
+  --sfondo: #f7f7f5;
+  --superficie: #ffffff;
+  --bordo: #e2e2dd;
+  --testo: #1c1c1a;
+  --tenue: #6b6b66;
+  --accento: #2f5d8f;
+  --positivo: #2d7d46;
+  --negativo: #b03636;
+  --raggio: 8px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --sfondo: #15161a;
+    --superficie: #1e2026;
+    --bordo: #2e3138;
+    --testo: #e8e8e4;
+    --tenue: #9a9a94;
+    --accento: #7aa7d9;
+    --positivo: #6fcf8f;
+    --negativo: #e08080;
+  }
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--sfondo);
+  color: var(--testo);
+  font: 15px/1.55 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+a { color: var(--accento); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+.guscio { max-width: 60rem; margin: 0 auto; padding: 0 1rem 4rem; }
+
+/* --- intestazione ------------------------------------------------- */
+
+header.principale {
+  border-bottom: 1px solid var(--bordo);
+  background: var(--superficie);
+  margin-bottom: 1.5rem;
+}
+
+header.principale .guscio { padding-top: 1rem; padding-bottom: 0; }
+
+.marchio {
+  font-weight: 700;
+  font-size: 1.15rem;
+  letter-spacing: -0.01em;
+  color: var(--testo);
+}
+
+.marchio span { color: var(--accento); }
+
+.sottotitolo { color: var(--tenue); font-size: 0.85rem; margin: 0.1rem 0 0.75rem; }
+
+nav.principale { display: flex; gap: 0.25rem; flex-wrap: wrap; }
+
+nav.principale a {
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--raggio) var(--raggio) 0 0;
+  color: var(--tenue);
+  font-size: 0.9rem;
+}
+
+nav.principale a.attiva {
+  color: var(--testo);
+  background: var(--sfondo);
+  border: 1px solid var(--bordo);
+  border-bottom-color: var(--sfondo);
+  margin-bottom: -1px;
+  font-weight: 600;
+}
+
+/* --- blocchi ------------------------------------------------------- */
+
+section.riquadro {
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+h1 { font-size: 1.4rem; margin: 0 0 0.25rem; letter-spacing: -0.01em; }
+h2 { font-size: 1.05rem; margin: 0 0 0.75rem; }
+h3 { font-size: 0.9rem; margin: 1.25rem 0 0.5rem; color: var(--tenue); text-transform: uppercase; letter-spacing: 0.04em; }
+
+p.spiega { color: var(--tenue); font-size: 0.88rem; margin: 0 0 1rem; }
+
+/* --- tabelle ------------------------------------------------------- */
+
+table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+th, td { padding: 0.45rem 0.5rem; text-align: left; border-bottom: 1px solid var(--bordo); }
+th { color: var(--tenue); font-weight: 600; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; }
+td.numero, th.numero { text-align: right; font-variant-numeric: tabular-nums; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* --- pastiglia del club -------------------------------------------- */
+
+.club {
+  display: inline-block;
+  min-width: 2.6rem;
+  text-align: center;
+  padding: 0.05rem 0.35rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+
+.ruolo {
+  display: inline-block;
+  min-width: 1.2rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--tenue);
+}
+
+/* --- scontri ------------------------------------------------------- */
+
+.scontro {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--bordo);
+}
+.scontro:last-child { border-bottom: none; }
+.scontro .casa { text-align: right; }
+.scontro .punteggio { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.scontro .fanta { display: block; font-size: 0.75rem; color: var(--tenue); font-weight: 400; }
+.scontro a { color: var(--testo); }
+
+/* --- formazione ---------------------------------------------------- */
+
+.caselle { display: grid; gap: 0.4rem; }
+
+.casella {
+  display: grid;
+  grid-template-columns: 3rem 1fr;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.casella .etichetta {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--tenue);
+  text-align: right;
+}
+
+select, button, input {
+  font: inherit;
+  color: var(--testo);
+  background: var(--superficie);
+  border: 1px solid var(--bordo);
+  border-radius: var(--raggio);
+  padding: 0.4rem 0.5rem;
+}
+
+select { width: 100%; }
+select.adattato { border-color: #c98a2e; background: color-mix(in srgb, #c98a2e 12%, var(--superficie)); }
+select.scoperto { border-color: var(--negativo); }
+
+button.principale {
+  background: var(--accento);
+  border-color: var(--accento);
+  color: #fff;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.5rem 1rem;
+}
+button.principale:hover { filter: brightness(1.08); }
+button.principale:disabled { opacity: 0.5; cursor: default; filter: none; }
+
+button.secondario { cursor: pointer; }
+button.secondario:hover { border-color: var(--accento); }
+
+.azioni { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; margin-top: 1rem; }
+
+/* --- avvisi -------------------------------------------------------- */
+
+.avviso {
+  border-left: 3px solid #c98a2e;
+  background: color-mix(in srgb, #c98a2e 10%, transparent);
+  padding: 0.5rem 0.75rem;
+  border-radius: 0 var(--raggio) var(--raggio) 0;
+  font-size: 0.85rem;
+  margin: 0.75rem 0;
+}
+.avviso.errore { border-left-color: var(--negativo); background: color-mix(in srgb, var(--negativo) 10%, transparent); }
+.avviso.ok { border-left-color: var(--positivo); background: color-mix(in srgb, var(--positivo) 10%, transparent); }
+
+.vuoto { color: var(--tenue); font-size: 0.9rem; padding: 1.5rem 0; text-align: center; }
+
+.griglia-due { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; }
+@media (max-width: 40rem) {
+  .griglia-due { grid-template-columns: 1fr; }
+  .casella { grid-template-columns: 2.5rem 1fr; }
+}
