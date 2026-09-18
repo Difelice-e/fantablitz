@@ -6,6 +6,8 @@
     "importa": "node --experimental-strip-types src/cli.ts",
     "test": "node --experimental-strip-types --test test/*.test.ts",
     "typecheck": "tsc --noEmit",
-    "ciclo": "node --experimental-strip-types src/cliCiclo.ts"
+    "ciclo": "node --experimental-strip-types src/cliCiclo.ts",
+    "crea-lega": "node --experimental-strip-types src/cliCreaLega.ts",
+    "gioca": "node --experimental-strip-types src/cliGioca.ts"
   }
 }

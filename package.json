@@ -9,7 +9,8 @@
     "engine",
     "fanta",
     "jobs",
-    "seed"
+    "seed",
+    "web"
   ],
   "scripts": {
     "seed": "npm run seed --workspace seed",
@@ -17,7 +18,11 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "calibra": "npm run calibra --workspace engine",
     "importa": "npm run importa --workspace jobs",
-    "ciclo": "npm run ciclo --workspace jobs"
+    "ciclo": "npm run ciclo --workspace jobs",
+    "dev": "npm run dev --workspace web",
+    "build": "npm run build --workspace web",
+    "crea-lega": "npm run crea-lega --workspace jobs",
+    "gioca": "npm run gioca --workspace jobs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

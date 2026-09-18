@@ -218,6 +218,57 @@ describe('una stagione intera', () => {
   });
 });
 
+describe('nessuno scende in campo a zero', () => {
+  // Il bug che ha reso necessario questo test: quando a una squadra restavano
+  // meno di undici giocatori col voto, la disposizione si arrendeva in blocco e
+  // mandava in campo ZERO uomini invece di dieci. Una squadra faceva 0.0
+  // fantapunti e perdeva 4-0 senza che nessuno capisse perche'.
+  //
+  // Non era un caso di laboratorio: e' successo alla terza giornata della prima
+  // lega creata. Con le giornate infrasettimanali e la sostituzione di chi non
+  // prende voto, avere meno di undici disponibili e' normale.
+  const esito = eseguiCiclo(mondo, motore, voto, lega, { seme: 'zero' });
+
+  it('chi ha anche un solo giocatore col voto non fa zero', () => {
+    for (const g of esito.giornate) {
+      for (const s of g.squadre) {
+        const conVoto = s.punteggio.prestazioni.filter((p) => p.voto !== null).length;
+        if (conVoto === 0) continue;
+        ok(
+          s.punteggio.fantapunti > 0,
+          `${s.squadraId}, giornata ${g.numero}: ${conVoto} giocatori col voto ma zero fantapunti`,
+        );
+      }
+    }
+  });
+
+  it('si schiera sempre il massimo dei disponibili', () => {
+    for (const g of esito.giornate) {
+      for (const s of g.squadre) {
+        const schierati = s.formazione.titolari.size;
+        // Una casella scoperta ci puo' stare: non c'era nessuno che potesse
+        // occuparla. Undici scoperte su undici no, quello e' arrendersi.
+        ok(
+          schierati + s.slotScoperti.length === 11,
+          `${s.squadraId}, giornata ${g.numero}: ${schierati} titolari e ${s.slotScoperti.length} scoperti`,
+        );
+        ok(
+          s.slotScoperti.length < 11,
+          `${s.squadraId}, giornata ${g.numero}: nessuno in campo`,
+        );
+      }
+    }
+  });
+
+  it('una giornata storta costa punti, non tutti i punti', () => {
+    // Il minimo su una stagione intera dice se la coda e' plausibile: con dieci
+    // in campo si fa meno, non si azzera.
+    const punteggi = esito.giornate.flatMap((g) => g.squadre.map((s) => s.punteggio.fantapunti));
+    const minimo = Math.min(...punteggi);
+    ok(minimo > 20, `il punteggio piu' basso della stagione e' ${minimo}`);
+  });
+});
+
 describe('dal mondo simulato ai bonus di lega', () => {
   // E' il punto in cui si attraversa il confine della regola 7, e l'unico in cui
   // un bonus puo' sparire senza che nessun test del motore se ne accorga: il

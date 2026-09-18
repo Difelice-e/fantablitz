@@ -185,6 +185,19 @@ export type OpzioniCiclo = {
   da?: number;
   /** Quante giornate giocare. Default: tutte quelle che restano. */
   quante?: number;
+  /**
+   * La formazione che una squadra aveva salvato per una certa giornata.
+   *
+   * Serve al sito, dove ognuno cambia modulo quando vuole: la giornata 12 va
+   * giocata con quello che era salvato alla giornata 12, non con l’ultimo
+   * scelto. Restituendo `null` si ricade sulla formazione persistente della
+   * squadra, che e’ il caso della riga di comando.
+   *
+   * E’ anche quello che tiene in piedi l’idempotenza ora che le formazioni
+   * cambiano nel tempo: l’esito della giornata N resta funzione del solo
+   * stato salvato per la giornata N.
+   */
+  formazioneDi?: (squadraId: string, giornata: number) => Formazione | null;
 };
 
 /**
@@ -226,7 +239,17 @@ export function eseguiCiclo(
       for (const p of partita.prestazioni) prestazioni.set(p.giocatoreId, p);
     }
 
-    giornate.push(giocaGiornata(n, lega, prestazioni, calendario.giornate[n - 1]!));
+    const diQuestaGiornata: Lega = opzioni.formazioneDi
+      ? {
+          ...lega,
+          squadre: lega.squadre.map((s) => {
+            const salvata = opzioni.formazioneDi!(s.id, n);
+            return salvata ? { ...s, formazione: salvata } : s;
+          }),
+        }
+      : lega;
+
+    giornate.push(giocaGiornata(n, diQuestaGiornata, prestazioni, calendario.giornate[n - 1]!));
   }
 
   return {
