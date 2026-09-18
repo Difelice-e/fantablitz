@@ -443,7 +443,7 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 1. **Motore + calibrazione** — ✅ *fatto*, in `/engine`. simulazione di una stagione senza interfaccia, con script che gira centinaia di stagioni e riporta media gol, distribuzione dei voti, infortuni e cartellini per squadra
 2. **Schieramento** — ✅ *fatto*, in `/fanta`. I due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
 3. **Import Fantalab** — ✅ *fatto*, in `/jobs`. Parser, riconciliazione, validazioni, sui file di esempio reali. Un solo importatore per le due modalità, import atomico, copertura dei moduli in uscita
-4. **Ciclo di gioco** — job serale, calcolo fantavoti, scontri diretti, classifica
+4. **Ciclo di gioco** — ✅ *fatto*. Fantavoto, modificatori e soglie gol in `/fanta`; job serale, scontri diretti e classifica in `/jobs`. L'idempotenza è per costruzione: l'esito di una giornata è funzione pura dello stato iniziale e del numero di giornata
 5. **Interfaccia** — schermata formazione, risultati, classifica, rosa
 6. **Bot** — valutazione e scambi
 7. **Strato AI** — cronache, editoriale, chat

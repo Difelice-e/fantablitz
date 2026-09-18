@@ -1,0 +1,53 @@
+{
+  "_nota": "Punteggio della lega (SPEC 4): bonus, malus, modificatori e soglie gol. Sono parametri di lega, non regole del mondo simulato: due leghe sullo stesso mondo possono avere punteggi diversi.",
+  "versione": 1,
+
+  "bonus": {
+    "_nota": "Valori standard del fantacalcio italiano. Il gol vale 3 a prescindere dal ruolo; alcune leghe assegnano 2.5 al gol su rigore, ed e' per questo che la voce e' separata.",
+    "gol": 3,
+    "rigoreSegnato": 3,
+    "assist": 1,
+    "rigoreParato": 3,
+    "_imbattibilita": "Non compare fra i bonus elencati in SPEC 4: e' qui a zero per poterla accendere senza toccare codice, se un giorno la lega la volesse.",
+    "imbattibilitaPortiere": 0
+  },
+
+  "malus": {
+    "_nota": "Positivi nel file, sottratti dal calcolo: si leggono meglio.",
+    "ammonizione": 0.5,
+    "espulsione": 1,
+    "rigoreSbagliato": 3,
+    "autogol": 2,
+    "golSubito": 1,
+    "_adattamento": "Malus per ogni giocatore schierato fuori posizione. In classic non si applica mai, perche' gli adattamenti non esistono. Il valore e' quello del regolamento Mantra ufficiale.",
+    "adattamento": 1
+  },
+
+  "modificatoreDifesa": {
+    "_nota": "Media dei voti, esclusi bonus e malus, del portiere piu' i 3 migliori difensori; senza portiere, dei 4 migliori difensori. Si applica solo se tutti i giocatori considerati portano un voto. La tabella e' quella piu' diffusa: 6.00 vale +1, 6.50 vale +3, 7.00 o piu' vale +6.",
+    "_attivo": "SPEC 4 dice 'attivabile': il default e' spento, e accenderlo e' una decisione di lega.",
+    "attivo": false,
+    "includiPortiere": true,
+    "difensoriRichiesti": 4,
+    "soglie": [
+      { "media": 6.0, "bonus": 1 },
+      { "media": 6.5, "bonus": 3 },
+      { "media": 7.0, "bonus": 6 }
+    ]
+  },
+
+  "modificatorePortiere": {
+    "_nota": "Bonus legato al solo voto del portiere, esclusi bonus e malus. Meno diffuso del modificatore di difesa, e per questo spento di default.",
+    "attivo": false,
+    "soglie": [
+      { "media": 6.5, "bonus": 1 },
+      { "media": 7.0, "bonus": 2 }
+    ]
+  },
+
+  "soglieGol": {
+    "_nota": "Conversione dei fantapunti in gol (SPEC 4). Funzione parametrica: si parte dalla soglia base e si sommano gli scarti; l'ultimo scarto si ripete all'infinito. Con base 66 e scarti 6, 5, 4 si ottengono 66, 72, 77, 81, 85, 89, 93, 97, 101, 105 e poi ogni 4, che sono le soglie classiche. Sotto la soglia base: zero gol.",
+    "base": 66,
+    "scarti": [6, 5, 4]
+  }
+}

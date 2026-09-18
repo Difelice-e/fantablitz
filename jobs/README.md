@@ -1,12 +1,13 @@
-# jobs — importatore e job del ciclo
+# jobs — importatore e ciclo di gioco
 
-Milestone 3. Per ora contiene l'**importatore delle rose da Fantalab**; più
-avanti ci vivranno il job serale e i generatori AI (`SPEC.md` §9).
+Milestone 3 e 4: l'**importatore delle rose da Fantalab** e il **ciclo serale**.
+Più avanti ci vivranno anche i generatori AI (`SPEC.md` §9).
 
 ```bash
-npm run importa -- fixtures/rose.csv
-npm run importa -- fixtures/rose.csv --modalita mantra
-npm run importa -- rose.csv --scrivi out/rose.json
+npm run importa -- fixtures/rose.csv          # importa le rose
+npm run importa -- rose.csv --scrivi out.json
+npm run ciclo   -- fixtures/rose.csv          # gioca una stagione di lega
+npm run ciclo   -- fixtures/rose.csv --giornate 5
 npm test
 ```
 
@@ -103,16 +104,55 @@ adattamenti, un'altra tutti e 11.
 src/csv.ts        lettore CSV minimale, con i numeri di riga per i messaggi
 src/fantalab.ts   i due formati di export verso una forma sola
 src/importa.ts    riconciliazione, validazioni, atomicità
-src/cli.ts        riga di comando
+src/ciclo.ts      il ciclo serale: mondo, schieramenti, scontri, classifica
+src/cli.ts        riga di comando dell'import
+src/cliCiclo.ts   riga di comando del ciclo
 ```
 
 `/jobs` dipende da `/fanta` per le regole della modalità: la composizione della
 rosa e la copertura dei moduli le decide la modalità, non l'importatore, ed è
 per questo che ce n'è uno solo per entrambe.
 
+## Il ciclo di gioco
+
+`npm run ciclo` mette in fila le tre cose che succedono ogni sera: il mondo
+simula una o più giornate, ogni squadra fanta schiera e prende i voti, gli
+scontri diretti si risolvono e la classifica si aggiorna.
+
+### Si sostituisce anche chi non prende voto
+
+È il passaggio meno ovvio. Nel fantacalcio non si sostituisce solo
+l'infortunato o lo squalificato: si sostituisce anche chi **non ha preso voto**,
+perché non ha giocato abbastanza — ed è il caso di gran lunga più frequente.
+
+I due casi si trattano allo stesso modo, con lo stesso algoritmo della milestone
+2: si passano come indisponibili tutti quelli che non portano un voto, e le
+regole della modalità fanno il resto. Non è servita una riga di codice dedicata.
+
+### L'idempotenza è per costruzione
+
+`SPEC.md` §9 chiede che rieseguire il job sulla stessa giornata non duplichi
+niente. Qui non c'è nessuna guardia che controlla se la giornata è già stata
+fatta — quella verrebbe aggirata al primo bug. L'esito di una giornata è una
+**funzione pura** dello stato iniziale e del numero di giornata: rigiocarla
+produce lo stesso identico risultato, e riscriverlo sovrascrive con gli stessi
+valori.
+
+È lo stesso motivo per cui il motore semina il generatore su
+`(lega, stagione, giornata, partita)` invece di far scorrere uno stato casuale.
+Due test lo verificano: rieseguire la stessa giornata dà lo stesso esito, e il
+risultato della giornata 5 è identico sia partendo dalla 1 sia partendo dalla 5.
+
+Per lo stesso motivo la classifica si **ricalcola** dai risultati, mai per
+accumulo incrementale: una classifica accumulata si sporca al primo doppio
+salvataggio, una ricalcolata è sempre la somma esatta di quello che è successo.
+
 ## Cosa manca
 
-- Il job serale del ciclo e i generatori AI, che vivranno qui (milestone 4 e 7).
+- I generatori AI, che vivranno qui (milestone 7).
 - La scrittura su Supabase: oggi l'esito riuscito si può salvare come JSON con
   `--scrivi`, e basta. Le tabelle `imports` e `import_rows` di `SPEC.md` §9
   arriveranno col database.
+- Il motore non distingue ancora i gol su rigore dai gol su azione e non produce
+  autogol: i bonus relativi esistono e sono testati, ma restano a zero finché il
+  motore non li genera. Quando lo farà, cambia solo `eventiDaPrestazione`.

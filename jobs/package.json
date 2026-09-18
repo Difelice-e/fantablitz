@@ -5,6 +5,7 @@
   "scripts": {
     "importa": "node --experimental-strip-types src/cli.ts",
     "test": "node --experimental-strip-types --test test/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "ciclo": "node --experimental-strip-types src/cliCiclo.ts"
   }
 }

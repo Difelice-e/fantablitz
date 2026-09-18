@@ -15,7 +15,8 @@ privato, ad accesso su invito.
 | 1 — motore e calibrazione | ✅ fatto, in [`engine/`](engine/) |
 | 2 — schieramento: classic e Mantra | ✅ fatto, in [`fanta/`](fanta/) |
 | 3 — import Fantalab | ✅ fatto, in [`jobs/`](jobs/) |
-| 4 — ciclo di gioco e fantavoto | da fare |
+| 4 — ciclo di gioco e fantavoto | ✅ fatto, in [`fanta/`](fanta/) e [`jobs/`](jobs/) |
+| 5 — interfaccia | da fare |
 
 ## Come si lavora
 
@@ -28,4 +29,5 @@ npm run typecheck  # il controllo dei tipi
 npm run seed       # rigenera il seed del mondo simulato
 npm run calibra    # simula centinaia di stagioni e riporta le metriche
 npm run importa -- fixtures/rose.csv   # importa le rose da un export Fantalab
+npm run ciclo   -- fixtures/rose.csv   # gioca una stagione di lega
 ```
