@@ -6,12 +6,14 @@
     "node": ">=22.18"
   },
   "workspaces": [
+    "engine",
     "seed"
   ],
   "scripts": {
     "seed": "npm run seed --workspace seed",
     "test": "npm run test --workspaces --if-present",
-    "typecheck": "npm run typecheck --workspaces --if-present"
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "calibra": "npm run calibra --workspace engine"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",
