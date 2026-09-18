@@ -14,12 +14,18 @@ export type ProfiloRuolo = { aree: Aree; propensioni: Propensioni };
 export type Competizione = 'champions' | 'europa' | 'conference';
 export const COMPETIZIONI = ['champions', 'europa', 'conference'] as const;
 
+/** Da quale coppia di colonne del listone nasce il segnale di mercato. */
+export const FONTI_SEGNALE = ['classic', 'mantra', 'media'] as const;
+export type FonteSegnale = (typeof FONTI_SEGNALE)[number];
+
 export type Parametri = {
   versione: number;
   semeGlobale: string;
   rating: {
-    pesoValoreMercatoMantra: number;
-    pesoQuotazioneAstaMantra: number;
+    /** Quale delle due quotazioni del listone alimenta il segnale. */
+    fonteSegnale: FonteSegnale;
+    pesoValoreMercato: number;
+    pesoQuotazioneAsta: number;
     mixRango: number;
     livelloNeutro: number;
     minimo: number;
@@ -101,8 +107,13 @@ function validaParametri(p: Parametri): void {
   const { rating, profiliRuolo, anagrafica, coppe } = p;
 
   esigi(
-    Math.abs(rating.pesoValoreMercatoMantra + rating.pesoQuotazioneAstaMantra - 1) < 1e-9,
-    'i pesi di FVM M e Qt.A M devono sommare a 1',
+    (FONTI_SEGNALE as readonly string[]).includes(rating.fonteSegnale),
+    `rating.fonteSegnale sconosciuta: "${rating.fonteSegnale}" ` +
+      `(ammesse: ${FONTI_SEGNALE.join(', ')})`,
+  );
+  esigi(
+    Math.abs(rating.pesoValoreMercato + rating.pesoQuotazioneAsta - 1) < 1e-9,
+    'i pesi del valore di mercato e della quotazione devono sommare a 1',
   );
   esigi(rating.mixRango >= 0 && rating.mixRango <= 1, 'rating.mixRango deve stare fra 0 e 1');
   esigi(rating.minimo < rating.massimo, 'rating.minimo deve essere minore di rating.massimo');

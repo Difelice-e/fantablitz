@@ -1,7 +1,8 @@
 # FantaBlitz
 
-Fantacalcio Mantra su un campionato di Serie A interamente simulato, giocato a
-ritmo accelerato. Progetto privato, ad accesso su invito.
+Fantacalcio su un campionato di Serie A interamente simulato, giocato a ritmo
+accelerato. Modalità **classic** o **Mantra**, a scelta per lega. Progetto
+privato, ad accesso su invito.
 
 - `CLAUDE.md` — regole di lavoro
 - `SPEC.md` — la specifica: è la fonte di verità delle decisioni di prodotto
@@ -12,8 +13,8 @@ ritmo accelerato. Progetto privato, ad accesso su invito.
 |---|---|
 | 0 — seed dal listone | ✅ fatto, in [`seed/`](seed/) |
 | 1 — motore e calibrazione | da fare |
-| 2 — Mantra: ruoli, moduli, sostituzioni | da fare |
-| 3 — import Fantalab | da fare (mancano le fixture, vedi [`fixtures/`](fixtures/)) |
+| 2 — schieramento: classic e Mantra | da fare |
+| 3 — import Fantalab | da fare (fixture reali verificate in [`fixtures/`](fixtures/)) |
 
 ## Come si lavora
 

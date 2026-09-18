@@ -59,7 +59,7 @@ Tutti i valori sono parametri, con i default indicati.
 - Squadre: 10 (umani + bot)
 - Crediti iniziali: 500
 - Rosa: minimo 23 giocatori, di cui almeno 2 portieri. **Nessun massimo**
-- Modalità ruoli: **Mantra**
+- Modalità ruoli: **`mantra` o `classic`**, scelta **per lega** alla creazione e non più modificabile in corsa. Entrambe disponibili dalla prima versione. Il mondo simulato è identico nei due casi: la modalità vive interamente nel livello fanta, e più precisamente nelle regole di schieramento (§6.2)
 - Panchina: ordinata per priorità
 
 **Ritmo**
@@ -109,7 +109,8 @@ Età, potenziale e curva di crescita non sono nel listone: vanno forniti come da
 
 **Derivazione implementata** (milestone 0, `/seed`). Dettagli e motivazioni in `seed/README.md`, numeri in `seed/config/parametri.json`:
 
-1. **Segnale**: `0.7 × ln(1 + FVM M) + 0.3 × ln(1 + Qt.A M)`. La scala logaritmica è necessaria perché `FVM M` è molto storto (mediana 14, massimo 450)
+1. **Segnale**: `0.7 × ln(1 + FVM) + 0.3 × ln(1 + Qt.A)`. La scala logaritmica è necessaria perché il valore di mercato è molto storto (mediana 14, massimo 450).
+   La **fonte** è configurabile (`rating.fonteSegnale`) fra `classic` (`FVM`, `Qt.A`), `mantra` (`FVM M`, `Qt.A M`) e `media`, con **default `media`**. Le due quotazioni divergono su 142 giocatori su 533, con scarto mediano del 15%, e chi si muove di più sono i mediani `M;C`, che in Mantra valgono di più perché lo slot M va riempito comunque. È una differenza di **prezzo, non di bravura**: siccome i rating del mondo descrivono la bravura e sono gli stessi per tutti, la media annulla la distorsione di entrambe le modalità
 2. **Qualità 0–1**, normalizzata **dentro il ruolo classico**, non sull'intero listone: metà dei portieri ha `FVM M = 1` e una normalizzazione globale li schiaccerebbe tutti sul fondo della scala. È un misto fra rango (con rango medio sui pari merito) e magnitudine
 3. **Overall** nella fascia configurata per ruolo. I portieri hanno forbice più stretta e pavimento più alto degli attaccanti
 4. **Aree**: `area = livello_neutro + (overall − livello_neutro) × peso_di_ruolo`, con il primo ruolo Mantra che pesa il doppio dei successivi. Partire dal livello neutro evita che il miglior attaccante risulti il peggior difensore del campionato
@@ -255,7 +256,11 @@ Sequenza, l'ordine conta. Le voci marcate `[flag]` sono spente in fase 1.
 
 L'asta live nativa è rinviata. In fase 1 l'asta si svolge su Fantalab e il risultato si importa.
 
-**La chiave di join è `Fantacalcio_Id`**, presente in entrambi i formati di export. Il listone interno è quello ufficiale Mantra di Fantacalcio.it, quindi l'abbinamento è esatto e non serve alcun matching per somiglianza sui nomi. I nomi restano solo un dato di visualizzazione.
+**La chiave di join è `Fantacalcio_Id`**, presente in entrambi i formati di export. Il listone interno è quello ufficiale di Fantacalcio.it, quindi l'abbinamento è esatto e non serve alcun matching per somiglianza sui nomi. I nomi restano solo un dato di visualizzazione.
+
+**Un solo importatore per entrambe le modalità.** `rose.csv` porta sia `Ruolo` (classico) sia `Ruoli_Mantra`, sia `Quotazione` sia `Quotazione_Mantra`: il parser è lo stesso, cambia solo quale coppia di campi si usa per la validazione. `file_per_fantaleghe.csv` è indifferente alla modalità, perché contiene solo id e prezzo.
+
+*Verificato sui file reali* (vedi `/fixtures`): Fantalab riordina i ruoli Mantra in ordine canonico mentre il listone li elenca col principale per primo, e su 16 righe su 250 i due ordini differiscono pur descrivendo gli stessi ruoli. La validazione deve quindi confrontare **insiemi di ruoli, mai sequenze**.
 
 Due formati da supportare, entrambi CRLF:
 
@@ -285,8 +290,27 @@ Requisiti dell'importatore:
 
 ### 6.2 Formazione
 
-- **11 moduli Mantra**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1. Ogni modulo prevede 5 slot di stampo difensivo e 5 offensivi
+Lo schieramento è l'**unico punto** in cui le due modalità divergono davvero. Tutto il resto del livello fanta — budget, crediti, scontri diretti, soglie gol, bonus e malus, scambi, bot — è identico.
+
+**Due contratti ortogonali**, non una matrice di casi:
+
+- `RegoleSchieramento` dipende dalla **modalità**: quali moduli esistono, quale giocatore può occupare quale slot, con quale malus. Due implementazioni, `classic` e `mantra`
+- `StrategiaSostituzione` dipende dal **livello** (Basic ora, Easy e Master dietro flag): come si cerca il rimpiazzo. Interroga le regole senza conoscerle
+
+Così le due modalità e i tre livelli si combinano senza duplicare codice: 2 + 3 implementazioni, non 2 × 3. Basic funziona su entrambe le modalità senza sapere quale sta usando.
+
+**Modalità `mantra`**
+- **11 moduli**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1. Ogni modulo prevede 5 slot di stampo difensivo e 5 offensivi
 - Matrice di compatibilità **ruolo × slot × modulo**, con le eccezioni del regolamento Mantra (es. W e T intercambiabili con aggravio di malus, tranne nel 4-1-4-1 dove non lo sono nemmeno con malus)
+- Malus di adattamento per ogni giocatore fuori posizione
+
+**Modalità `classic`**
+- Ruoli P, D, C, A. Lo schieramento è un **conteggio**, non una matrice: il modulo fissa quanti difensori, centrocampisti e attaccanti servono, e un giocatore è ammesso nello slot se il ruolo coincide
+- **Nessun malus di adattamento**: in classic un giocatore o può essere schierato o no
+- Moduli (da confermare, vedi §11): 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2, 5-4-1
+
+Il modello classic è un caso particolare di quello Mantra, con matrice di compatibilità diagonale e malus nullo: implementarlo per primo non costa quasi nulla e mette alla prova l'interfaccia.
+
 - La formazione è **persistente**: resta quella dell'ultima volta finché l'utente non la cambia
 - Con `giornate_per_ciclo > 1`: **una sola formazione per il ciclo, con auto-adattamento tra una giornata e l'altra** (infortunati e squalificati vengono sostituiti automaticamente dalla panchina secondo le regole di sostituzione)
 
@@ -298,6 +322,8 @@ Ordine di ricerca:
 3. Soluzione **adattata**, con malus per ogni giocatore fuori posizione
 
 Le sostituzioni seguono l'ordine di priorità della panchina. Easy e Master arriveranno dietro flag: l'algoritmo va scritto come strategia sostituibile.
+
+L'ordine di ricerca vale per entrambe le modalità: la strategia chiede alle `RegoleSchieramento` (§6.2) se una soluzione è valida e quanto malus costa, senza sapere se sta giocando in classic o in Mantra. In `classic` il passo 3 non produce mai risultati, perché il malus di adattamento non esiste: la ricerca si ferma naturalmente al passo 2.
 
 ### 6.4 Calendario fanta
 
@@ -395,8 +421,8 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 0. **Seed** — ✅ *fatto*, in `/seed`. Script che converte il listone `.xlsx` in un seed JSON: esclusione dei ceduti, parsing dei ruoli Mantra, derivazione dei rating da FVM M e Qt.A M, tabella di corrispondenza sigle/nomi dei club. Piccolo e verificabile a occhio (`out/RAPPORTO.md`), è il primo pezzo da scrivere
 1. **Motore + calibrazione** — simulazione di una stagione senza interfaccia, con script che gira centinaia di stagioni e riporta media gol, distribuzione dei voti, infortuni e cartellini per squadra
-2. **Mantra** — matrice ruoli/moduli, validazione formazione, sostituzioni Basic
-3. **Import Fantalab** — parser, riconciliazione, validazioni, sui file di esempio reali
+2. **Schieramento** — i due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
+3. **Import Fantalab** — parser, riconciliazione, validazioni, sui file di esempio reali. Un solo parser per le due modalità
 4. **Ciclo di gioco** — job serale, calcolo fantavoti, scontri diretti, classifica
 5. **Interfaccia** — schermata formazione, risultati, classifica, rosa
 6. **Bot** — valutazione e scambi
@@ -410,6 +436,8 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 - Condizione esatta di chiusura dell'asta nativa (proposta: fase obbligatoria fino a 23 giocatori, poi possibilità di dichiarare chiusa la rosa)
 - Destino dei giocatori estratti e non aggiudicati nell'asta nativa (proposta: tornano nel pool svincolati)
+- **Elenco dei moduli della modalità `classic`** (proposta in §6.2: 3-4-3, 3-5-2, 4-3-3, 4-4-2, 4-5-1, 5-3-2, 5-4-1). Da confermare, insieme alla domanda se una lega classic possa schierare meno di 3 attaccanti o più di 5 difensori
+- Se la composizione minima della rosa cambi fra le due modalità (oggi: minimo 23 con almeno 2 portieri per entrambe; gli export reali mostrano rose classic da 25 con quote 3-8-8-6)
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono

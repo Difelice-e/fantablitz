@@ -5,9 +5,11 @@
   "semeGlobale": "fantablitz-2026-27",
 
   "rating": {
-    "_nota": "FVM M e Qt.A M sono distribuzioni molto storte (mediana 14, massimo 450): si passa al logaritmo prima di combinarle. La normalizzazione e' interna al ruolo classico, altrimenti i portieri di riserva - meta' dei quali ha FVM M = 1 - finirebbero tutti sul fondo della scala insieme ai giocatori peggiori del campionato.",
-    "pesoValoreMercatoMantra": 0.7,
-    "pesoQuotazioneAstaMantra": 0.3,
+    "_nota": "Il valore di mercato e la quotazione sono distribuzioni molto storte (mediana 14, massimo 450): si passa al logaritmo prima di combinarle. La normalizzazione e' interna al ruolo classico, altrimenti i portieri di riserva - meta' dei quali e' quotata al minimo - finirebbero tutti sul fondo della scala insieme ai giocatori peggiori del campionato.",
+    "_fonteSegnale": "Da quale coppia di colonne del listone nasce il segnale: 'classic' usa FVM e Qt.A, 'mantra' usa FVM M e Qt.A M, 'media' la media delle due. Le due quotazioni divergono su 142 giocatori su 533 (scarto mediano 15%) e chi si muove di piu' sono i mediani M;C, che in Mantra valgono di piu' perche' lo slot M va riempito comunque. E' una differenza di prezzo, non di bravura: i rating del mondo descrivono la bravura e sono gli stessi per tutti, quindi il default e' la media, che annulla la distorsione di entrambe le modalita'.",
+    "fonteSegnale": "media",
+    "pesoValoreMercato": 0.7,
+    "pesoQuotazioneAsta": 0.3,
     "mixRango": 0.5,
     "livelloNeutro": 50,
     "minimo": 30,
