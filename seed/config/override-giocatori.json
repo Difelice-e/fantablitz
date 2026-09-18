@@ -1,0 +1,10 @@
+{
+  "_nota": "Correzioni manuali, applicate dopo la derivazione automatica. Servono per i giocatori che contano, dove un'eta' inventata male si nota subito.",
+  "_chiave": "L'identificativo esterno (colonna Id del listone). E' l'unico posto del progetto in cui si scrive un Id di Fantacalcio.it a mano: e' un file di dati di seed, non codice di dominio.",
+  "_campiAmmessi": "eta, etaPicco, potenziale, overall, e i singoli rating di area (attacco, difesa, tecnica, fisico). Ogni campo e' facoltativo.",
+  "_esempio": {
+    "5841": { "eta": 27, "_chi": "Svilar, Roma - esempio disattivato, spostare fuori da _esempio per usarlo" }
+  },
+
+  "override": {}
+}

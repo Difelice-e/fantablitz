@@ -1,0 +1,74 @@
+{
+  "_nota": "Tutti i pesi e le soglie della derivazione del seed. Cambiarli qui e rigenerare: nessun valore di taratura vive nel codice.",
+  "versione": 1,
+
+  "semeGlobale": "fantablitz-2026-27",
+
+  "rating": {
+    "_nota": "FVM M e Qt.A M sono distribuzioni molto storte (mediana 14, massimo 450): si passa al logaritmo prima di combinarle. La normalizzazione e' interna al ruolo classico, altrimenti i portieri di riserva - meta' dei quali ha FVM M = 1 - finirebbero tutti sul fondo della scala insieme ai giocatori peggiori del campionato.",
+    "pesoValoreMercatoMantra": 0.7,
+    "pesoQuotazioneAstaMantra": 0.3,
+    "mixRango": 0.5,
+    "livelloNeutro": 50,
+    "minimo": 30,
+    "massimo": 99,
+    "rumore": 0.6,
+    "pesoRuoloPrincipale": 1,
+    "pesoRuoliSecondari": 0.5,
+    "fasciaPerRuoloClassico": {
+      "_nota": "base = livello del peggiore del ruolo, ampiezza = distanza dal migliore. I portieri hanno una forbice piu' stretta: fra il miglior portiere e uno qualsiasi dei titolari la differenza reale e' molto minore che fra il miglior attaccante e una punta di meta' classifica.",
+      "P": { "base": 48, "ampiezza": 34 },
+      "D": { "base": 42, "ampiezza": 48 },
+      "C": { "base": 42, "ampiezza": 50 },
+      "A": { "base": 42, "ampiezza": 52 }
+    }
+  },
+
+  "profiliRuolo": {
+    "_nota": "aree: quanto della qualita' complessiva finisce in ciascuna area (area = livelloNeutro + (overall - livelloNeutro) * peso). Per il portiere l'area 'difesa' rappresenta la capacita' fra i pali. propensioni: valori 0-1 usati dal motore partita come probabilita' relative di base.",
+    "Por": { "aree": { "attacco": 0.05, "difesa": 1.00, "tecnica": 0.35, "fisico": 0.60 }, "propensioni": { "gol": 0.00, "assist": 0.01, "cartellino": 0.06, "infortunio": 0.35 } },
+    "Dc":  { "aree": { "attacco": 0.15, "difesa": 1.00, "tecnica": 0.45, "fisico": 0.95 }, "propensioni": { "gol": 0.06, "assist": 0.04, "cartellino": 0.55, "infortunio": 0.70 } },
+    "B":   { "aree": { "attacco": 0.30, "difesa": 0.90, "tecnica": 0.65, "fisico": 0.85 }, "propensioni": { "gol": 0.08, "assist": 0.10, "cartellino": 0.50, "infortunio": 0.70 } },
+    "Dd":  { "aree": { "attacco": 0.45, "difesa": 0.80, "tecnica": 0.70, "fisico": 0.85 }, "propensioni": { "gol": 0.07, "assist": 0.20, "cartellino": 0.45, "infortunio": 0.75 } },
+    "Ds":  { "aree": { "attacco": 0.45, "difesa": 0.80, "tecnica": 0.70, "fisico": 0.85 }, "propensioni": { "gol": 0.07, "assist": 0.20, "cartellino": 0.45, "infortunio": 0.75 } },
+    "E":   { "aree": { "attacco": 0.60, "difesa": 0.65, "tecnica": 0.75, "fisico": 0.90 }, "propensioni": { "gol": 0.14, "assist": 0.30, "cartellino": 0.45, "infortunio": 0.80 } },
+    "M":   { "aree": { "attacco": 0.25, "difesa": 0.85, "tecnica": 0.75, "fisico": 0.90 }, "propensioni": { "gol": 0.10, "assist": 0.18, "cartellino": 0.60, "infortunio": 0.75 } },
+    "C":   { "aree": { "attacco": 0.45, "difesa": 0.60, "tecnica": 0.95, "fisico": 0.75 }, "propensioni": { "gol": 0.18, "assist": 0.30, "cartellino": 0.50, "infortunio": 0.70 } },
+    "W":   { "aree": { "attacco": 0.80, "difesa": 0.30, "tecnica": 0.90, "fisico": 0.75 }, "propensioni": { "gol": 0.35, "assist": 0.40, "cartellino": 0.30, "infortunio": 0.75 } },
+    "T":   { "aree": { "attacco": 0.80, "difesa": 0.25, "tecnica": 1.00, "fisico": 0.60 }, "propensioni": { "gol": 0.40, "assist": 0.50, "cartellino": 0.30, "infortunio": 0.70 } },
+    "A":   { "aree": { "attacco": 0.90, "difesa": 0.20, "tecnica": 0.85, "fisico": 0.75 }, "propensioni": { "gol": 0.60, "assist": 0.35, "cartellino": 0.28, "infortunio": 0.75 } },
+    "Pc":  { "aree": { "attacco": 1.00, "difesa": 0.15, "tecnica": 0.70, "fisico": 0.95 }, "propensioni": { "gol": 0.80, "assist": 0.22, "cartellino": 0.25, "infortunio": 0.80 } }
+  },
+
+  "propensioni": {
+    "_nota": "Quanto la qualita' del giocatore corregge la propensione di ruolo. Un fattore 0.8 significa che il migliore del ruolo arriva a 1.4 volte la propensione base e il peggiore a 0.6 volte.",
+    "influenzaQualitaGol": 0.8,
+    "influenzaQualitaAssist": 0.6,
+    "influenzaQualitaCartellino": -0.2,
+    "influenzaQualitaInfortunio": 0.0,
+    "rumore": 0.12
+  },
+
+  "anagrafica": {
+    "_nota": "Eta' e potenziale non sono nel listone: si generano con una distribuzione plausibile, deterministica, e si correggono a mano in override-giocatori.json per i giocatori che contano.",
+    "etaMinima": 17,
+    "etaMassima": 39,
+    "etaMedia": 26,
+    "deviazioneEta": 3.8,
+    "attrazioneVersoIlPicco": 2.5,
+    "riduzioneDeviazionePerQualita": 0.45,
+    "etaPiccoMedia": 27,
+    "etaPiccoPortieri": 30,
+    "deviazioneEtaPicco": 1.5,
+    "crescitaMassima": 16,
+    "curvaCrescita": 1.4,
+    "quotaCrescitaCasuale": 0.6
+  },
+
+  "coppe": {
+    "_nota": "Quali club hanno impegni europei (SPEC 5.3). 'automatica' li ricava dalla forza della rosa nel listone, cosi' il dato nasce dal mondo simulato e non da fatti del campionato reale. 'elenco' usa le assegnazioni manuali in club.json.",
+    "modalita": "automatica",
+    "giocatoriConsideratiPerForza": 13,
+    "posti": { "champions": 4, "europa": 2, "conference": 1 }
+  }
+}

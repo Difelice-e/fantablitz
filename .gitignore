@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.local
+*.log
+
+# Seed anonimo: si rigenera con "npm run seed:anonimo", non va versionato.
+seed/out-anonimo/

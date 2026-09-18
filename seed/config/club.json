@@ -1,0 +1,29 @@
+{
+  "_nota": "Tabella di corrispondenza fra il nome esteso usato dal listone .xlsx e la sigla a tre lettere usata dagli export Fantalab. Serve al seed e, piu' avanti, all'importatore delle rose.",
+  "_comeAggiornarla": "Se il listone della prossima stagione porta un club assente da questo elenco, la generazione si ferma con un errore che ne stampa il nome: basta aggiungere qui la voce con la sigla che compare negli export Fantalab. Non indovinare la sigla, leggila da un export reale.",
+  "_colori": "I colori non sono quelli dei club reali: sono una tavolozza generica assegnata per rendere le squadre distinguibili nell'interfaccia. Il vincolo di progetto vieta loghi, maglie e segni distintivi reali.",
+  "_coppe": "Con coppe.modalita = 'elenco' nei parametri, il campo 'coppa' di ogni club vale come assegnazione manuale: 'champions', 'europa', 'conference' oppure null.",
+
+  "club": [
+    { "nome": "Atalanta",    "sigla": "ATA", "colore": "#2f5d8f", "coppa": null },
+    { "nome": "Bologna",     "sigla": "BOL", "colore": "#7d3b4a", "coppa": null },
+    { "nome": "Cagliari",    "sigla": "CAG", "colore": "#8a5b2e", "coppa": null },
+    { "nome": "Como",        "sigla": "COM", "colore": "#3d7f8c", "coppa": null },
+    { "nome": "Fiorentina",  "sigla": "FIO", "colore": "#6b4f9e", "coppa": null },
+    { "nome": "Frosinone",   "sigla": "FRO", "colore": "#9a7b2f", "coppa": null },
+    { "nome": "Genoa",       "sigla": "GEN", "colore": "#4a6b3d", "coppa": null },
+    { "nome": "Inter",       "sigla": "INT", "colore": "#39567f", "coppa": null },
+    { "nome": "Juventus",    "sigla": "JUV", "colore": "#5a5f66", "coppa": null },
+    { "nome": "Lazio",       "sigla": "LAZ", "colore": "#3f8079", "coppa": null },
+    { "nome": "Lecce",       "sigla": "LEC", "colore": "#8f6a3f", "coppa": null },
+    { "nome": "Milan",       "sigla": "MIL", "colore": "#8c4340", "coppa": null },
+    { "nome": "Monza",       "sigla": "MON", "colore": "#6d5a8a", "coppa": null },
+    { "nome": "Napoli",      "sigla": "NAP", "colore": "#3c7aa6", "coppa": null },
+    { "nome": "Parma",       "sigla": "PAR", "colore": "#7f8a3f", "coppa": null },
+    { "nome": "Roma",        "sigla": "ROM", "colore": "#8a4f5e", "coppa": null },
+    { "nome": "Sassuolo",    "sigla": "SAS", "colore": "#4d8a5c", "coppa": null },
+    { "nome": "Torino",      "sigla": "TOR", "colore": "#6b4030", "coppa": null },
+    { "nome": "Udinese",     "sigla": "UDI", "colore": "#5c6b7f", "coppa": null },
+    { "nome": "Venezia",     "sigla": "VEN", "colore": "#7a5f4d", "coppa": null }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@fantablitz/seed",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "seed": "node --experimental-strip-types src/cli.ts",
+    "seed:anonimo": "node --experimental-strip-types src/cli.ts --anonimizza --out out-anonimo",
+    "seed:controlla": "node --experimental-strip-types src/cli.ts --controlla",
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}
