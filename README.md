@@ -13,7 +13,7 @@ privato, ad accesso su invito.
 |---|---|
 | 0 — seed dal listone | ✅ fatto, in [`seed/`](seed/) |
 | 1 — motore e calibrazione | ✅ fatto, in [`engine/`](engine/) |
-| 2 — schieramento: classic e Mantra | da fare |
+| 2 — schieramento: classic e Mantra | ✅ fatto, in [`fanta/`](fanta/) |
 | 3 — import Fantalab | da fare (fixture reali verificate in [`fixtures/`](fixtures/)) |
 
 ## Come si lavora

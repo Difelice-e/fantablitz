@@ -1,0 +1,59 @@
+{
+  "_nota": "Regole di schieramento della modalita' Mantra: gli undici moduli, i tipi di casella e la matrice ruolo x casella.",
+
+  "_DA_VERIFICARE": "La matrice qui sotto e' una RICOSTRUZIONE, non una trascrizione del regolamento ufficiale. La struttura dei moduli e la meccanica (adattamenti, aggravi, eccezioni per modulo) sono corrette e testate; quali ruoli esattamente ogni casella accetti va confrontato col regolamento Mantra di Fantacalcio.it PRIMA che la lega parta. Cambiare questi elenchi non richiede toccare una riga di codice: e' esattamente perche' stanno qui.",
+
+  "versione": 1,
+
+  "costi": {
+    "_nota": "Costi in unita' di adattamento, non in punti. Il malus in punti (default -0.5) e' un parametro di lega e si applica al fantavoto: cosi' cambiarlo non tocca l'algoritmo di schieramento.",
+    "adattamento": 1,
+    "aggravato": 2
+  },
+
+  "tipiSlot": {
+    "_nota": "'stampo' serve al controllo strutturale: ogni modulo deve avere cinque caselle di stampo difensivo e cinque offensive, oltre al portiere (SPEC 6.2).",
+    "POR": { "reparto": "P", "stampo": "difensivo", "ruoli": ["Por"], "adattati": [] },
+    "DD":  { "reparto": "D", "stampo": "difensivo", "ruoli": ["Dd"], "adattati": ["Ds", "B", "Dc", "E"] },
+    "DS":  { "reparto": "D", "stampo": "difensivo", "ruoli": ["Ds"], "adattati": ["Dd", "B", "Dc", "E"] },
+    "DC":  { "reparto": "D", "stampo": "difensivo", "ruoli": ["Dc"], "adattati": ["B"] },
+    "B":   { "reparto": "D", "stampo": "difensivo", "ruoli": ["B"],  "adattati": ["Dc", "Dd", "Ds"] },
+    "E":   { "reparto": "C", "stampo": "offensivo", "ruoli": ["E"],  "adattati": ["Dd", "Ds", "W", "M", "C"] },
+    "ED":  { "reparto": "C", "stampo": "difensivo", "ruoli": ["E"],  "adattati": ["Dd", "Ds", "W", "M", "C"] },
+    "M":   { "reparto": "C", "stampo": "difensivo", "ruoli": ["M"],  "adattati": ["C"] },
+    "C":   { "reparto": "C", "stampo": "offensivo", "ruoli": ["C"],  "adattati": ["M", "T"] },
+    "W":   { "reparto": "C", "stampo": "offensivo", "ruoli": ["W"],  "adattati": ["E", "A"], "aggravati": ["T"] },
+    "T":   { "reparto": "C", "stampo": "offensivo", "ruoli": ["T"],  "adattati": ["C", "A"], "aggravati": ["W"] },
+    "A":   { "reparto": "A", "stampo": "offensivo", "ruoli": ["A"],  "adattati": ["Pc", "W", "T"] },
+    "PC":  { "reparto": "A", "stampo": "offensivo", "ruoli": ["Pc"], "adattati": ["A"] }
+  },
+
+  "moduli": [
+    { "nome": "4-4-2",   "slot": ["POR", "DD", "DC", "DC", "DS", "M", "E", "C", "E", "A", "PC"] },
+    { "nome": "4-1-4-1", "slot": ["POR", "DD", "DC", "DC", "DS", "M", "W", "C", "C", "W", "PC"] },
+    { "nome": "4-4-1-1", "slot": ["POR", "DD", "DC", "DC", "DS", "M", "E", "C", "E", "T", "PC"] },
+    { "nome": "4-2-3-1", "slot": ["POR", "DD", "DC", "DC", "DS", "M", "C", "W", "T", "W", "PC"] },
+    { "nome": "3-5-2",   "slot": ["POR", "DC", "DC", "DC", "ED", "M", "C", "C", "E", "A", "PC"] },
+    { "nome": "3-5-1-1", "slot": ["POR", "DC", "DC", "DC", "ED", "M", "C", "C", "E", "T", "PC"] },
+    { "nome": "4-3-3",   "slot": ["POR", "DD", "DC", "DC", "DS", "M", "C", "C", "W", "PC", "W"] },
+    { "nome": "4-3-1-2", "slot": ["POR", "DD", "DC", "DC", "DS", "M", "C", "C", "T", "A", "PC"] },
+    { "nome": "3-4-3",   "slot": ["POR", "DC", "DC", "DC", "ED", "M", "C", "E", "W", "PC", "W"] },
+    { "nome": "3-4-1-2", "slot": ["POR", "DC", "DC", "DC", "ED", "M", "C", "E", "T", "A", "PC"] },
+    { "nome": "3-4-2-1", "slot": ["POR", "DC", "DC", "DC", "ED", "M", "C", "E", "T", "T", "PC"] }
+  ],
+
+  "eccezioni": [
+    {
+      "_nota": "L'unica eccezione che la specifica nomina esplicitamente: W e T sono intercambiabili con aggravio di malus, tranne nel 4-1-4-1 dove non lo sono nemmeno con malus.",
+      "modulo": "4-1-4-1",
+      "tipoSlot": "W",
+      "vietati": ["T"]
+    }
+  ],
+
+  "rosa": {
+    "_nota": "In Mantra la rosa ha un minimo ma non un massimo (SPEC 4).",
+    "minimo": 23,
+    "minimoPortieri": 2
+  }
+}

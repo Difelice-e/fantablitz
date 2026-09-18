@@ -305,7 +305,11 @@ Così le due modalità e i tre livelli si combinano senza duplicare codice: 2 + 
 **Modalità `mantra`**
 - **11 moduli**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1. Ogni modulo prevede 5 slot di stampo difensivo e 5 offensivi
 - Matrice di compatibilità **ruolo × slot × modulo**, con le eccezioni del regolamento Mantra (es. W e T intercambiabili con aggravio di malus, tranne nel 4-1-4-1 dove non lo sono nemmeno con malus)
-- Malus di adattamento per ogni giocatore fuori posizione
+- Malus di adattamento per ogni giocatore fuori posizione, su due livelli: adattamento normale e adattamento aggravato
+- Un giocatore con più ruoli entra col **migliore** dei suoi, non col primo dichiarato
+- Invariante strutturale: ogni modulo ha 1 portiere, 5 caselle di stampo difensivo e 5 offensive. La validazione lo impone e rifiuta una configurazione che non lo rispetti
+
+> ⚠️ **La matrice in `fanta/config/mantra.json` è una ricostruzione, non una trascrizione del regolamento ufficiale.** Il meccanismo (costi, aggravi, eccezioni per modulo, doppio ruolo) è completo e testato; quali ruoli esattamente ogni casella accetti va confrontato col regolamento Mantra di Fantacalcio.it **prima che la lega parta**. Correggerla non richiede di toccare codice.
 
 **Modalità `classic`**
 - Ruoli P, D, C, A. Lo schieramento è un **conteggio**, non una matrice: il modulo fissa quanti difensori, centrocampisti e attaccanti servono, e un giocatore è ammesso nello slot se il ruolo coincide
@@ -394,10 +398,14 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 ```
 /engine     motore di simulazione, TypeScript puro, zero dipendenze dal framework
+/fanta      livello di lega: moduli, schieramento, sostituzioni. Puro come il motore
 /web        app Next.js
 /jobs       job serale (ciclo), importatore, generatori AI
 /seed       dati iniziali del mondo simulato
+/fixtures   file reali per i test
 ```
+
+`/engine` e `/fanta` stanno sui due lati del confine della **regola 7**: voti e statistiche appartengono al mondo e sono uguali per tutti, schieramenti e malus appartengono alla lega. Il motore non conosce la modalità di gioco né i crediti; il livello fanta non conosce i rating né le statistiche. Separarli in due pacchetti rende il confine una proprietà della struttura, non una buona intenzione.
 
 **Principi:**
 - Il motore è un **pacchetto isolato e deterministico**: dato lo stesso seed e lo stesso input, produce lo stesso output. Serve per i test, per la calibrazione e per dirimere le contestazioni
@@ -424,8 +432,8 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 ## 10. Roadmap
 
 0. **Seed** — ✅ *fatto*, in `/seed`. Script che converte il listone `.xlsx` in un seed JSON: esclusione dei ceduti, parsing dei ruoli Mantra, derivazione dei rating da FVM M e Qt.A M, tabella di corrispondenza sigle/nomi dei club. Piccolo e verificabile a occhio (`out/RAPPORTO.md`), è il primo pezzo da scrivere
-1. **Motore + calibrazione** — simulazione di una stagione senza interfaccia, con script che gira centinaia di stagioni e riporta media gol, distribuzione dei voti, infortuni e cartellini per squadra
-2. **Schieramento** — i due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
+1. **Motore + calibrazione** — ✅ *fatto*, in `/engine`. simulazione di una stagione senza interfaccia, con script che gira centinaia di stagioni e riporta media gol, distribuzione dei voti, infortuni e cartellini per squadra
+2. **Schieramento** — ✅ *fatto*, in `/fanta`. I due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
 3. **Import Fantalab** — parser, riconciliazione, validazioni, sui file di esempio reali. Un solo parser per le due modalità
 4. **Ciclo di gioco** — job serale, calcolo fantavoti, scontri diretti, classifica
 5. **Interfaccia** — schermata formazione, risultati, classifica, rosa
@@ -440,6 +448,7 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 - Condizione esatta di chiusura dell'asta nativa (proposta: fase obbligatoria fino a 23 giocatori, poi possibilità di dichiarare chiusa la rosa)
 - Destino dei giocatori estratti e non aggiudicati nell'asta nativa (proposta: tornano nel pool svincolati)
+- **Verifica della matrice ruolo × slot × modulo della modalità Mantra** contro il regolamento ufficiale (vedi l'avviso in §6.2). È l'unica cosa che separa la milestone 2 dall'essere davvero finita
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono
