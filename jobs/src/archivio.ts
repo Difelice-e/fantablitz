@@ -84,8 +84,29 @@ export const VERSIONE_STATO = 1;
 export type Archivio = {
   /** `null` se la lega non esiste. */
   leggi(legaId: string): Promise<StatoLega | null>;
-  /** Sovrascrive per intero. Deve essere atomico: o tutto, o niente. */
+  /**
+   * Sovrascrive per intero. Deve essere atomico: o tutto, o niente.
+   *
+   * Serve a creare una lega, non a modificarla: per le due cose che
+   * cambiano davvero durante la stagione ci sono i due metodi qui sotto.
+   */
   scrivi(stato: StatoLega): Promise<void>;
+  /**
+   * Salva la formazione di **una** squadra per **una** giornata.
+   *
+   * Non e’ una comodita’: riscrivere tutto lo stato per salvare una
+   * formazione perderebbe il lavoro di chi ha schierato nello stesso
+   * momento, e la sera prima di una giornata schierano tutti insieme.
+   * Qui due persone che salvano contemporaneamente toccano due righe
+   * diverse e non si vedono nemmeno.
+   */
+  salvaFormazione(legaId: string, formazione: FormazioneSalvata): Promise<void>;
+  /**
+   * Porta le giornate giocate a `fino`. E’ l’unica cosa che scrive il job
+   * serale, ed e’ il motivo per cui e’ idempotente: scriverci due volte lo
+   * stesso numero non cambia niente.
+   */
+  segnaGiornateGiocate(legaId: string, fino: number): Promise<void>;
   elenca(): Promise<{ id: string; nome: string }[]>;
 };
 
@@ -185,6 +206,24 @@ export function archivioSuFile(cartella: string): Archivio {
       await rename(temporaneo, destinazione);
     },
 
+    async salvaFormazione(legaId, formazione) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      // Su file si rilegge e si riscrive tutto: e’ un processo solo, e il
+      // rename atomico basta. La differenza col database si vede con dieci
+      // persone che schierano insieme, non qui.
+      const altre = stato.formazioni.filter(
+        (f) => !(f.squadraId === formazione.squadraId && f.giornata === formazione.giornata),
+      );
+      await this.scrivi({ ...stato, formazioni: [...altre, formazione] });
+    },
+
+    async segnaGiornateGiocate(legaId, fino) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      await this.scrivi({ ...stato, giornateGiocate: fino });
+    },
+
     async elenca() {
       let file: string[];
       try {
@@ -223,6 +262,22 @@ export function archivioInMemoria(iniziale: StatoLega[] = []): Archivio {
     async scrivi(stato) {
       validaStatoLega(stato);
       leghe.set(stato.id, structuredClone(stato));
+    },
+    async salvaFormazione(legaId, formazione) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.formazioni = [
+        ...stato.formazioni.filter(
+          (f) => !(f.squadraId === formazione.squadraId && f.giornata === formazione.giornata),
+        ),
+        structuredClone(formazione),
+      ];
+      validaStatoLega(stato);
+    },
+    async segnaGiornateGiocate(legaId, fino) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.giornateGiocate = fino;
     },
     async elenca() {
       return [...leghe.values()]

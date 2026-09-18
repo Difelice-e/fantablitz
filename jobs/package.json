@@ -9,5 +9,8 @@
     "ciclo": "node --experimental-strip-types src/cliCiclo.ts",
     "crea-lega": "node --experimental-strip-types src/cliCreaLega.ts",
     "gioca": "node --experimental-strip-types src/cliGioca.ts"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0"
   }
 }

@@ -254,3 +254,92 @@ describe('creazione da un import', () => {
     strictEqual(stato.squadre[0]!.giocatori[0]!.prezzo, 30, 'il prezzo pagato si conserva');
   });
 });
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * Le due implementazioni locali devono comportarsi allo stesso modo.
+ *
+ * Un contratto con due implementazioni che divergono e' peggio di nessun
+ * contratto: il codice funziona in sviluppo e sbaglia in produzione. Qui si
+ * prova la stessa suite su entrambe. La terza implementazione, quella su
+ * Supabase, non si puo' provare senza un database e resta scoperta: e' il
+ * motivo per cui le tre scrivono meno codice possibile ciascuna.
+ */
+for (const [nome, costruisci] of [
+  ['in memoria', async () => archivioInMemoria([statoDiProva()])],
+  [
+    'su file',
+    async () => {
+      const cartella = await mkdtemp(join(tmpdir(), 'fantablitz-'));
+      const a = archivioSuFile(cartella);
+      await a.scrivi(statoDiProva());
+      return a;
+    },
+  ],
+] as const) {
+  describe(`contratto dell'archivio, ${nome}`, () => {
+    it('salva una formazione senza toccare le altre', async () => {
+      const archivio = await costruisci();
+      await archivio.salvaFormazione('prova', {
+        squadraId: 'Uno', giornata: 1, modulo: '4-4-2', titolari: [['P1', 'a']], panchina: [],
+      });
+      await archivio.salvaFormazione('prova', {
+        squadraId: 'Due', giornata: 1, modulo: '3-4-3', titolari: [['P1', 'b']], panchina: [],
+      });
+
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.formazioni.length, 2, 'la seconda non deve cancellare la prima');
+      strictEqual(stato!.formazioni.find((f) => f.squadraId === 'Uno')!.modulo, '4-4-2');
+      strictEqual(stato!.formazioni.find((f) => f.squadraId === 'Due')!.modulo, '3-4-3');
+    });
+
+    it('rischierare la stessa giornata sostituisce, non aggiunge', async () => {
+      const archivio = await costruisci();
+      for (const modulo of ['4-4-2', '3-5-2', '4-3-3']) {
+        await archivio.salvaFormazione('prova', {
+          squadraId: 'Uno', giornata: 3, modulo, titolari: [['P1', 'a']], panchina: [],
+        });
+      }
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.formazioni.length, 1, 'tre salvataggi, una formazione');
+      strictEqual(stato!.formazioni[0]!.modulo, '4-3-3', 'vale l’ultima');
+    });
+
+    it('giornate diverse convivono', async () => {
+      const archivio = await costruisci();
+      await archivio.salvaFormazione('prova', {
+        squadraId: 'Uno', giornata: 1, modulo: '4-4-2', titolari: [], panchina: [],
+      });
+      await archivio.salvaFormazione('prova', {
+        squadraId: 'Uno', giornata: 2, modulo: '3-4-3', titolari: [], panchina: [],
+      });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.formazioni.length, 2);
+    });
+
+    it('segna le giornate giocate', async () => {
+      const archivio = await costruisci();
+      await archivio.segnaGiornateGiocate('prova', 5);
+      strictEqual((await archivio.leggi('prova'))!.giornateGiocate, 5);
+    });
+
+    it('segnare due volte lo stesso numero non cambia niente', async () => {
+      // E' l'idempotenza del job serale, ridotta all'osso: l'unica cosa che
+      // scrive e' questo numero.
+      const archivio = await costruisci();
+      await archivio.segnaGiornateGiocate('prova', 7);
+      const prima = await archivio.leggi('prova');
+      await archivio.segnaGiornateGiocate('prova', 7);
+      deepStrictEqual(await archivio.leggi('prova'), prima);
+    });
+
+    it('scrivere su una lega che non esiste e’ un errore, non un silenzio', async () => {
+      const archivio = await costruisci();
+      await rejects(
+        () => archivio.segnaGiornateGiocate('inesistente', 1),
+        /inesistente/i,
+      );
+    });
+  });
+}

@@ -15,6 +15,7 @@
 
 import { join } from 'node:path';
 import { archivioSuFile, type Archivio, type StatoLega } from '../../jobs/src/archivio.ts';
+import { archivioDallAmbiente } from '../../jobs/src/archivioSupabase.ts';
 import {
   caricaContesto, formazionePerGiornata, legaDaStato, rosaDi, vistaStagione,
   type ContestoMondo,
@@ -25,7 +26,18 @@ import type { Formazione, Schierabile } from '../../fanta/src/tipi.ts';
 export const RADICE = join(process.cwd(), '..');
 const CARTELLA_LEGHE = process.env['FANTABLITZ_ARCHIVIO'] ?? join(RADICE, 'dati', 'leghe');
 
-export const archivio: Archivio = archivioSuFile(CARTELLA_LEGHE);
+/**
+ * L’archivio: il database se e' configurato, il file altrimenti.
+ *
+ * Non e' una scorciatoia per lo sviluppo. E' quello che permette di far
+ * girare il sito e i test senza un database, e di non avere due strade
+ * diverse fra sviluppo e produzione se non nell'ultimo metro: sopra questa
+ * riga, nessuno sa da dove arrivano i dati.
+ */
+export const archivio: Archivio = archivioDallAmbiente(
+  process.env,
+  archivioSuFile(CARTELLA_LEGHE),
+);
 
 /* ------------------------------------------------------------------ */
 /* Contesto, caricato una volta sola                                   */
