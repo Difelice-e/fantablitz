@@ -49,6 +49,30 @@ describe('segnale di mercato', () => {
     ok(basso < alto && alto < altissimo);
   });
 
+  it('la fonte decide quali colonne del listone legge', () => {
+    // Un mediano M;C e' il caso in cui le due quotazioni divergono di piu'.
+    const mediano = finto({
+      valoreMercato: 237, quotazioneAsta: 25,
+      valoreMercatoMantra: 267, quotazioneAstaMantra: 28,
+    });
+    const con = (fonte: 'classic' | 'mantra' | 'media'): number =>
+      segnale(mediano, { ...p, rating: { ...p.rating, fonteSegnale: fonte } });
+
+    ok(con('classic') < con('mantra'), 'in Mantra il mediano e’ quotato di piu’');
+    ok(con('classic') < con('media') && con('media') < con('mantra'), 'la media sta in mezzo');
+  });
+
+  it('su chi ha le due quotazioni uguali la fonte non cambia nulla', () => {
+    const uguale = finto({
+      valoreMercato: 90, quotazioneAsta: 19,
+      valoreMercatoMantra: 90, quotazioneAstaMantra: 19,
+    });
+    const con = (fonte: 'classic' | 'mantra' | 'media'): number =>
+      segnale(uguale, { ...p, rating: { ...p.rating, fonteSegnale: fonte } });
+    strictEqual(con('classic'), con('mantra'));
+    strictEqual(con('classic'), con('media'));
+  });
+
   it('comprime la coda alta: il salto 1 -> 14 pesa piu’ del salto 400 -> 450', () => {
     // E' il motivo per cui si passa ai logaritmi: in scala lineare la mediana
     // del listone (14) e il fondo (1) sarebbero indistinguibili.

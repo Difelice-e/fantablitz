@@ -1,0 +1,84 @@
+{
+  "_nota": "Regole di schieramento della modalita' Mantra, trascritte dal materiale ufficiale 'Mantra Experience — Edizione 2026/2027' di Fantacalcio.it: gli schemi dei moduli, la tabella delle sostituzioni e la tabella dei ruoli con le linee di gioco.",
+
+  "_verifica": "Le sigle e la notazione sono quelle degli schemi ufficiali, apposta: questo file si confronta a occhio con le immagini del regolamento, riga per riga. La matrice e' trascritta col suo alfabeto originale (OK, -1, NO, *, **, ***) invece che gia' interpretata, cosi' la trascrizione resta verificabile e l'interpretazione sta nel codice.",
+
+  "versione": 4,
+
+  "codici": {
+    "_nota": "Dalle sigle degli schemi ufficiali ai ruoli del listone.",
+    "P": "Por", "DD": "Dd", "DC": "Dc", "DS": "Ds", "B": "B",
+    "E": "E", "M": "M", "C": "C", "W": "W", "T": "T", "A": "A", "PC": "Pc"
+  },
+
+  "costi": {
+    "_nota": "Il regolamento prevede un malus unico di -1 per il giocatore fuori posizione: non esistono livelli di aggravio, la tabella delle sostituzioni ha solo OK, -1 e NO. Qui il costo e' in unita' di adattamento e la conversione in punti e' del fantavoto, che e' un parametro di lega: col malus a -1 il cambio e' uno a uno, ma tenerli separati significa che ritoccare il malus non tocca l'algoritmo di schieramento.",
+    "adattamento": 1
+  },
+
+  "ruoli": {
+    "_nota": "Linea di gioco e stampo, dalla tabella ufficiale dei ruoli. Sono due classificazioni diverse: la linea raggruppa i ruoli sul campo, lo stampo divide i cinque difensivi dai cinque offensivi di ogni schema. Nel centrocampo convivono entrambi: E e M sono difensivi, C e' offensivo.",
+    "P":  { "nome": "Portiere",                  "linea": "porta",       "stampo": "difensivo" },
+    "DS": { "nome": "Terzino sinistro",          "linea": "difesa",      "stampo": "difensivo" },
+    "DC": { "nome": "Difensore centrale",        "linea": "difesa",      "stampo": "difensivo" },
+    "DD": { "nome": "Terzino destro",            "linea": "difesa",      "stampo": "difensivo" },
+    "B":  { "nome": "Braccetto difensivo",       "linea": "difesa",      "stampo": "difensivo" },
+    "E":  { "nome": "Esterno basso",             "linea": "centrocampo", "stampo": "difensivo" },
+    "M":  { "nome": "Centrocampista difensivo",  "linea": "centrocampo", "stampo": "difensivo" },
+    "C":  { "nome": "Centrocampista centrale",   "linea": "centrocampo", "stampo": "offensivo" },
+    "W":  { "nome": "Ala",                       "linea": "trequarti",   "stampo": "offensivo" },
+    "T":  { "nome": "Trequartista",              "linea": "trequarti",   "stampo": "offensivo" },
+    "A":  { "nome": "Attaccante di raccordo",    "linea": "attacco",     "stampo": "offensivo" },
+    "PC": { "nome": "Punta centrale",            "linea": "attacco",     "stampo": "offensivo" }
+  },
+
+  "legenda": {
+    "_nota": "I simboli della tabella delle sostituzioni, con le note a pie' di pagina del regolamento. 'In alternativa' significa che la casella dello schema elenca entrambi i ruoli, come E/W o M/C: in quel caso il giocatore e' al suo posto e non prende malus.",
+    "OK":  { "esito": "ammesso", "costo": 0 },
+    "-1":  { "esito": "ammesso", "costo": 1 },
+    "NO":  { "esito": "vietato" },
+    "*":   { "esito": "soloSeInAlternativa", "altrimenti": "vietato" },
+    "**":  { "esito": "soloSeInAlternativa", "altrimenti": "adattamento" },
+    "***": { "esito": "soloSeInAlternativa", "altrimenti": "adattamento", "vietatoNeiModuli": ["4-1-4-1"] }
+  },
+
+  "matrice": {
+    "_nota": "TABELLA DELLE SOSTITUZIONI. La riga e' il ruolo della CASELLA da coprire, la colonna e' il ruolo di CHI la copre. Si legge: 'nella casella di riga X puo' giocare un Y con questo esito'. Il verso conta: un difensore puo' coprire una punta con -1, una punta non puo' coprire un difensore.",
+    "_colonne": ["PC", "A", "T", "W", "C", "M", "E", "B", "DC", "DD", "DS", "P"],
+
+    "PC": { "PC": "OK", "A": "OK", "T": "-1",  "W": "-1",  "C": "-1", "M": "-1", "E": "-1", "B": "-1", "DC": "-1", "DD": "-1", "DS": "-1", "P": "NO" },
+    "A":  { "PC": "*",  "A": "OK", "T": "**",  "W": "**",  "C": "-1", "M": "-1", "E": "-1", "B": "-1", "DC": "-1", "DD": "-1", "DS": "-1", "P": "NO" },
+    "T":  { "PC": "*",  "A": "*",  "T": "OK",  "W": "***", "C": "**", "M": "-1", "E": "-1", "B": "-1", "DC": "-1", "DD": "-1", "DS": "-1", "P": "NO" },
+    "W":  { "PC": "NO", "A": "*",  "T": "***", "W": "OK",  "C": "-1", "M": "-1", "E": "**", "B": "-1", "DC": "-1", "DD": "-1", "DS": "-1", "P": "NO" },
+    "C":  { "PC": "NO", "A": "NO", "T": "*",   "W": "NO",  "C": "OK", "M": "**", "E": "-1", "B": "-1", "DC": "-1", "DD": "-1", "DS": "-1", "P": "NO" },
+    "M":  { "PC": "NO", "A": "NO", "T": "NO",  "W": "NO",  "C": "*",  "M": "OK", "E": "-1", "B": "-1", "DC": "-1", "DD": "-1", "DS": "-1", "P": "NO" },
+    "E":  { "PC": "NO", "A": "NO", "T": "NO",  "W": "*",   "C": "NO", "M": "-1", "E": "OK", "B": "-1", "DC": "-1", "DD": "-1", "DS": "-1", "P": "NO" },
+    "B":  { "PC": "NO", "A": "NO", "T": "NO",  "W": "NO",  "C": "NO", "M": "NO", "E": "NO", "B": "OK", "DC": "OK", "DD": "-1", "DS": "-1", "P": "NO" },
+    "DC": { "PC": "NO", "A": "NO", "T": "NO",  "W": "NO",  "C": "NO", "M": "NO", "E": "NO", "B": "**", "DC": "OK", "DD": "-1", "DS": "-1", "P": "NO" },
+    "DD": { "PC": "NO", "A": "NO", "T": "NO",  "W": "NO",  "C": "NO", "M": "NO", "E": "NO", "B": "-1", "DC": "-1", "DD": "OK", "DS": "-1", "P": "NO" },
+    "DS": { "PC": "NO", "A": "NO", "T": "NO",  "W": "NO",  "C": "NO", "M": "NO", "E": "NO", "B": "-1", "DC": "-1", "DD": "-1", "DS": "OK", "P": "NO" },
+    "P":  { "PC": "NO", "A": "NO", "T": "NO",  "W": "NO",  "C": "NO", "M": "NO", "E": "NO", "B": "NO", "DC": "NO", "DD": "NO", "DS": "NO", "P": "OK" }
+  },
+
+  "moduli": {
+    "_nota": "Gli undici schemi, trascritti dalle figure ufficiali. Ogni casella e' scritta come negli schemi: una sola sigla, oppure piu' sigle separate da '/' quando i ruoli sono alternativi fra loro. L'ordine e' dal portiere in avanti, reparto per reparto.",
+
+    "3-4-3":   ["P", "DC", "DC", "DC/B", "E", "M/C", "C", "E", "W/A", "W/A", "A/PC"],
+    "3-4-1-2": ["P", "DC", "DC", "DC/B", "E", "M/C", "C", "E", "T", "A/PC", "A/PC"],
+    "3-4-2-1": ["P", "DC", "DC", "DC/B", "M", "M/C", "E", "E/W", "T", "T/A", "A/PC"],
+    "3-5-2":   ["P", "DC", "DC", "DC/B", "M", "M/C", "E", "C", "E/W", "A/PC", "A/PC"],
+    "3-5-1-1": ["P", "DC", "DC", "DC/B", "M", "M", "C", "E/W", "E/W", "T/A", "A/PC"],
+    "4-3-3":   ["P", "DD", "DC", "DC", "DS", "M/C", "M", "C", "W/A", "W/A", "A/PC"],
+    "4-3-1-2": ["P", "DD", "DC", "DC", "DS", "M/C", "M", "C", "T", "T/A/PC", "A/PC"],
+    "4-4-2":   ["P", "DD", "DC", "DC", "DS", "M/C", "E", "C", "E/W", "A/PC", "A/PC"],
+    "4-1-4-1": ["P", "DD", "DC", "DC", "DS", "M", "C/T", "T", "E/W", "W", "A/PC"],
+    "4-4-1-1": ["P", "DD", "DC", "DC", "DS", "M", "C", "E/W", "E/W", "T/A", "A/PC"],
+    "4-2-3-1": ["P", "DD", "DC", "DC", "DS", "M", "M/C", "W/T", "T", "W/A", "A/PC"]
+  },
+
+  "rosa": {
+    "_nota": "In Mantra la rosa ha un minimo ma non un massimo (SPEC 4).",
+    "minimo": 23,
+    "minimoPortieri": 2
+  }
+}

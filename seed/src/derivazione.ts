@@ -3,22 +3,26 @@
  *
  * Il listone non contiene rating: contiene prezzi. La catena e' questa.
  *
- *   FVM M + Qt.A M  ->  segnale (logaritmico)
+ *   FVM + Qt.A      ->  segnale (logaritmico)
  *   segnale         ->  qualita' 0-1, normalizzata dentro il ruolo classico
  *   qualita'        ->  overall 30-99, nella fascia prevista per il ruolo
  *   overall + RM    ->  quattro rating di area e quattro propensioni
  *
- * Due scelte meritano una spiegazione.
+ * Tre scelte meritano una spiegazione.
  *
- * 1. Si passa ai logaritmi perche' FVM M e' violentemente storto: mediana 14,
- *    massimo 450. In scala lineare il novanta per cento del listone si
- *    schiaccerebbe nel primo decimo della scala.
+ * 1. Si passa ai logaritmi perche' il valore di mercato e' violentemente
+ *    storto: mediana 14, massimo 450. In scala lineare il novanta per cento
+ *    del listone si schiaccerebbe nel primo decimo della scala.
  *
  * 2. La normalizzazione avviene dentro il ruolo classico, non sull'intero
- *    listone. Meta' dei portieri ha FVM M = 1, perche' il mercato non paga le
- *    riserve: normalizzando su tutti, ogni portiere di scorta finirebbe al
- *    livello del peggior giocatore del campionato. Dentro il proprio ruolo,
+ *    listone. Meta' dei portieri e' quotata al minimo, perche' il mercato non
+ *    paga le riserve: normalizzando su tutti, ogni portiere di scorta finirebbe
+ *    al livello del peggior giocatore del campionato. Dentro il proprio ruolo,
  *    invece, la scala si riapre e la gerarchia fra portieri torna leggibile.
+ *
+ * 3. La fonte del segnale e' configurabile fra classic, Mantra e la loro media,
+ *    perche' il listone quota gli stessi giocatori in due modi. Vedi
+ *    `valoriDiMercato` per il motivo per cui il default e' la media.
  *
  * La qualita' mescola due letture dello stesso segnale: la posizione in
  * classifica (rango) e la distanza in valore (magnitudine). Il solo rango
@@ -53,19 +57,53 @@ const arrotonda = (v: number, decimali: number): number => {
 /* Qualita'                                                            */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Valore di mercato e quotazione secondo la fonte scelta.
+ *
+ * Il listone porta due letture dello stesso giocatore: quella classic (`FVM`,
+ * `Qt.A`) e quella Mantra (`FVM M`, `Qt.A M`). Divergono su 142 giocatori su
+ * 533, con uno scarto mediano del 15%, e chi si muove di piu' sono i mediani
+ * `M;C`: in Mantra valgono di piu' perche' lo slot M va riempito comunque.
+ *
+ * E' una differenza di **prezzo, non di bravura**: Calhanoglu non gioca meglio
+ * in Mantra. Siccome i rating del mondo simulato descrivono la bravura e sono
+ * gli stessi per tutti (regola 7), la fonte di default e' la media delle due,
+ * che annulla la distorsione di entrambe le modalita'.
+ */
+function valoriDiMercato(riga: RigaListone, fonte: Parametri['rating']['fonteSegnale']): {
+  valoreMercato: number;
+  quotazioneAsta: number;
+} {
+  switch (fonte) {
+    case 'classic':
+      return { valoreMercato: riga.valoreMercato, quotazioneAsta: riga.quotazioneAsta };
+    case 'mantra':
+      return {
+        valoreMercato: riga.valoreMercatoMantra,
+        quotazioneAsta: riga.quotazioneAstaMantra,
+      };
+    case 'media':
+      return {
+        valoreMercato: (riga.valoreMercato + riga.valoreMercatoMantra) / 2,
+        quotazioneAsta: (riga.quotazioneAsta + riga.quotazioneAstaMantra) / 2,
+      };
+  }
+}
+
 /** Combinazione logaritmica dei due segnali di mercato. */
 export function segnale(riga: RigaListone, p: Parametri): number {
-  const { pesoValoreMercatoMantra, pesoQuotazioneAstaMantra } = p.rating;
+  const { fonteSegnale, pesoValoreMercato, pesoQuotazioneAsta } = p.rating;
+  const valori = valoriDiMercato(riga, fonteSegnale);
   return (
-    pesoValoreMercatoMantra * Math.log1p(Math.max(0, riga.valoreMercatoMantra)) +
-    pesoQuotazioneAstaMantra * Math.log1p(Math.max(0, riga.quotazioneAstaMantra))
+    pesoValoreMercato * Math.log1p(Math.max(0, valori.valoreMercato)) +
+    pesoQuotazioneAsta * Math.log1p(Math.max(0, valori.quotazioneAsta))
   );
 }
 
 /**
  * Percentile di ogni valore dentro il proprio insieme, con rango medio sui
- * pari merito: i trentadue portieri a FVM M = 1 ricevono tutti lo stesso
- * numero, e quindi lo stesso rating. E' voluto: sono intercambiabili davvero.
+ * pari merito: le decine di portieri di riserva quotati al minimo ricevono tutti
+ * lo stesso numero, e quindi lo stesso rating. E' voluto: sono intercambiabili.
  */
 function percentili(valori: number[]): number[] {
   const n = valori.length;

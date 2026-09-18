@@ -1,0 +1,108 @@
+{
+  "_nota": "Formula del voto statistico, SPEC 5.6. voto_grezzo = 6.0 + C_prestazione + C_decisiva + C_risultato, poi arrotondato a 0.5 e limitato fra 3 e 10.",
+  "versione": 1,
+
+  "base": 5.95,
+  "minimo": 3.0,
+  "massimo": 10.0,
+
+  "prestazione": {
+    "_nota": "C_prestazione = coefficiente * z(indice_ruolo), limitato a +/- 'limite'. Il coefficiente e' la manopola principale per allargare o stringere la forbice dei voti.",
+    "coefficiente": 0.58,
+    "limite": 1.85
+  },
+
+  "standardizzazione": {
+    "_nota": "Media e deviazione standard dell'indice di ruolo, per gruppo. Sono PARAMETRI FISSI determinati una volta in calibrazione e salvati qui, NON ricalcolati a ogni giornata: il voto deve misurare una prestazione in assoluto, non rispetto agli altri di quel turno. Rigenerarli con 'npm run calibra -- --standardizzazione'.",
+    "por": { "media": 2.236, "deviazione": 5.896 },
+    "centrale": { "media": 10.191, "deviazione": 6.915 },
+    "laterale": { "media": 4.674, "deviazione": 4.334 },
+    "mediano": { "media": 13.132, "deviazione": 7.75 },
+    "offensivo": { "media": 6.332, "deviazione": 5.056 },
+    "punta": { "media": 4.743, "deviazione": 4.221 }
+  },
+
+  "pesi": {
+    "_nota": "Pesi dell'indice di ruolo, uno per gruppo. Valori di partenza da SPEC 5.6, da rifinire in calibrazione. Una statistica assente da un gruppo semplicemente non entra nel suo indice.",
+    "por": {
+      "parate": 1.0, "parateDecisive": 2.5, "usciteRiuscite": 0.8, "rinviPrecisi": 0.2,
+      "golSubiti": -1.2, "usciteSbagliate": -2.0, "errori": -3.0
+    },
+    "centrale": {
+      "duelliVinti": 1.0, "contrasti": 1.2, "intercetti": 1.2, "respinte": 0.6,
+      "passaggiRiusciti": 0.05,
+      "dribblingSubiti": -1.2, "errori": -3.0, "falliCommessi": -0.4
+    },
+    "laterale": {
+      "duelliVinti": 0.8, "intercetti": 0.9, "crossRiusciti": 1.2, "passaggiChiave": 1.5,
+      "dribblingRiusciti": 0.8,
+      "dribblingSubiti": -1.0, "pallePerse": -0.3, "errori": -3.0
+    },
+    "mediano": {
+      "palleRecuperate": 1.0, "duelliVinti": 0.8, "passaggiRiusciti": 0.08,
+      "passaggiChiave": 1.5, "dribblingRiusciti": 0.8,
+      "pallePerse": -0.4, "errori": -2.5, "falliCommessi": -0.3
+    },
+    "offensivo": {
+      "passaggiChiave": 1.5, "dribblingRiusciti": 1.2, "tiriInPorta": 1.5,
+      "occasioniCreate": 2.0,
+      "pallePerse": -0.3, "grandiOccasioniFallite": -2.0
+    },
+    "punta": {
+      "tiriInPorta": 1.8, "occasioniCreate": 1.5, "duelliAereiVinti": 0.8,
+      "spondeRiuscite": 0.6,
+      "grandiOccasioniFallite": -2.5, "fuorigioco": -0.3
+    }
+  },
+
+  "attenuazioneGolSubiti": {
+    "_nota": "I gol subiti pesano meno se il portiere ha affrontato molti tiri: prenderne tre su dodici tiri non e' come prenderne tre su quattro.",
+    "tiriDiRiferimento": 4.5,
+    "esponente": 0.6
+  },
+
+  "decisiva": {
+    "_nota": "C_decisiva, contributo ATTENUATO delle azioni decisive: il bonus pieno resta al fantavoto, che e' cosa della lega. Qui entrano solo per non pagarle due volte.",
+    "golPunta": 0.5,
+    "golOffensivo": 0.5,
+    "golMediano": 0.7,
+    "golLaterale": 0.9,
+    "golCentrale": 0.9,
+    "golPortiere": 0.9,
+    "assist": 0.3,
+    "rigoreParato": 0.8,
+    "rigoreSbagliato": -0.8,
+    "autogol": -1.0,
+    "erroreDaGol": -1.2,
+    "rigoreConcesso": -0.8,
+    "espulsione": -1.0,
+    "ammonizione": 0.0
+  },
+
+  "risultato": {
+    "_nota": "C_risultato: il riflesso del risultato che hanno le pagelle reali. Azzerandolo si ottiene un voto puramente oggettivo.",
+    "vittoria": 0.1,
+    "pareggio": 0.0,
+    "sconfitta": -0.1
+  },
+
+  "minuti": {
+    "_nota": "Sotto la soglia minima e' senza voto. Fra le due soglie C_prestazione e' attenuato in proporzione: su pochi palloni non si giudica.",
+    "sogliaSenzaVoto": 10,
+    "sogliaGiudizioPieno": 25,
+    "sogliaPortiere": 25
+  },
+
+  "obiettiviCalibrazione": {
+    "_nota": "Bersagli di SPEC 5.6, verificati dallo script di calibrazione.",
+    "mediaVoti": 6.0,
+    "deviazioneMinima": 0.6,
+    "deviazioneMassima": 0.7,
+    "quotaVotiAltiMin": 0.01,
+    "quotaVotiAltiMax": 0.02,
+    "sogliaVotoAlto": 8.0,
+    "quotaVotiBassiMin": 0.02,
+    "quotaVotiBassiMax": 0.03,
+    "sogliaVotoBasso": 4.5
+  }
+}

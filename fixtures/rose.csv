@@ -1,0 +1,251 @@
+Squadra,Nome,Squadra_Appartenenza,Ruolo,Ruoli_Mantra,Prezzo,Quotazione,Quotazione_Mantra,Fantacalcio_Id
+"Fonzie","Butez","COM","P","Por",38,15,15,6966
+"Fonzie","De Gea","FIO","P","Por",5,10,10,2521
+"Fonzie","Sanchez Ro.","COM","P","Por",4,8,8,6344
+"Fonzie","Gila","MIL","D","Dc",19,12,12,5833
+"Fonzie","Kalulu","JUV","D","Dc,Dd",26,13,14,4976
+"Fonzie","Doekhi","LAZ","D","Dc",5,8,8,6320
+"Fonzie","Ismajli","TOR","D","Dc",2,7,7,5010
+"Fonzie","Ostigard","GEN","D","Dc",20,10,10,5750
+"Fonzie","Mangas","MON","D","Ds,E",2,9,9,7485
+"Fonzie","Marin R.","NAP","D","Dc",2,2,2,6638
+"Fonzie","Balerdi","ROM","D","Dc",1,7,7,4705
+"Fonzie","Alajbegovic","JUV","C","W,T",20,11,11,7436
+"Fonzie","Calò","FRO","C","M,C",7,9,10,7472
+"Fonzie","Mora","ROM","C","T",50,20,19,7556
+"Fonzie","Da Cunha","COM","C","C,T",38,18,18,5559
+"Fonzie","Frattesi","LAZ","C","C,T",32,11,11,2848
+"Fonzie","Thorstvedt","SAS","C","C,T",1,10,10,5844
+"Fonzie","El Shaarawy","GEN","C","W",1,7,6,795
+"Fonzie","Fini","FRO","C","W",1,5,5,6506
+"Fonzie","Martinez L.","INT","A","Pc",212,34,34,2764
+"Fonzie","Kevin Carlos","CAG","A","Pc",4,11,10,7547
+"Fonzie","Kvernadze","FRO","A","W,A",6,9,10,6204
+"Fonzie","Gnonto","FIO","A","W,A",1,7,8,7623
+"Fonzie","Lontani","PAR","A","A",1,5,5,7561
+"Fonzie","Cutrone","MON","A","Pc",1,9,8,2155
+"Lele","Vicario","JUV","P","Por",43,16,16,4964
+"Lele","Grabara","JUV","P","Por",1,1,1,7603
+"Lele","Pinsoglio","JUV","P","Por",1,1,1,1930
+"Lele","Bremer","JUV","D","Dc",28,16,16,2788
+"Lele","Kristensen T.","ATA","D","Dc,Dd",4,6,7,6485
+"Lele","Comuzzo","TOR","D","Dc",3,8,8,6495
+"Lele","Theate","BOL","D","Dc,Ds",5,8,9,5675
+"Lele","Hermoso","ROM","D","Dc",15,11,11,4807
+"Lele","Pavard","INT","D","Dc,Dd",2,6,6,4177
+"Lele","Valeri","PAR","D","Ds,E",2,9,9,5862
+"Lele","Kaiki","COM","D","Ds,E",1,8,8,7414
+"Lele","Zaccagni","LAZ","C","W,A",32,16,16,632
+"Lele","Zielinski","INT","C","C",25,13,13,152
+"Lele","Kessiè","ATA","C","C",16,11,11,1850
+"Lele","Rowe","ATA","C","W,T",16,10,10,6844
+"Lele","Goncalves P.","FIO","C","W,T",10,11,11,7625
+"Lele","Adzic","SAS","C","C,T",2,9,9,6677
+"Lele","Mbangula","BOL","C","W,A",1,7,7,6833
+"Lele","Sarr P.","JUV","C","M,C",1,7,7,5680
+"Lele","Kolo Muani","JUV","A","Pc",60,24,24,5951
+"Lele","Berardi","SAS","A","A",94,18,19,531
+"Lele","Pinamonti","LAZ","A","Pc",42,11,11,2038
+"Lele","Simeone","TOR","A","Pc",53,14,14,2061
+"Lele","Soulè","ROM","A","A",20,15,16,5734
+"Lele","Neres","NAP","A","W,A",5,5,6,6831
+"Christian","Martinez Jo.","INT","P","Por",55,16,16,5116
+"Christian","Stankovic F.","VEN","P","Por",3,5,5,6248
+"Christian","Provedel","INT","P","Por",3,1,1,2814
+"Christian","Bastoni","INT","D","Dc",30,14,14,2120
+"Christian","Dragusin","FIO","D","Dc",4,8,8,5365
+"Christian","N'Dicka","ROM","D","Dc",23,12,12,4317
+"Christian","Bartesaghi","MIL","D","Ds,E",7,8,8,6496
+"Christian","Beukema","NAP","D","Dc",1,5,5,6202
+"Christian","Di Lorenzo","NAP","D","Dd,E",21,12,12,2816
+"Christian","Mina","CAG","D","Dc",3,7,7,4210
+"Christian","Belghali","TOR","D","Dd,E",3,8,8,7220
+"Christian","Konè M.","ROM","C","M,C",27,10,11,5589
+"Christian","Taylor K.","LAZ","C","C,T",15,13,13,7314
+"Christian","Conceicao","JUV","C","W,A",34,13,12,6884
+"Christian","Barella","INT","C","C",34,18,18,1870
+"Christian","Lobotka","NAP","C","M,C",2,10,11,4287
+"Christian","Konè I.","SAS","C","C",1,8,8,6717
+"Christian","Locatelli","JUV","C","M,C",2,8,9,827
+"Christian","Cristante","ROM","C","M,C",3,9,10,779
+"Christian","Varela G.","MON","A","Pc",6,7,7,7523
+"Christian","Ramos G.","MIL","A","Pc",215,26,26,6397
+"Christian","Lucca","NAP","A","Pc",2,3,3,6215
+"Christian","Vitinha O.","GEN","A","A",2,8,8,6164
+"Christian","Sulemana K.","ATA","A","A",1,5,5,5918
+"Christian","Rrahmani Al.","VEN","A","Pc",1,7,6,7449
+"Pulpone & Loris","Falcone","LEC","P","Por",7,8,8,2134
+"Pulpone & Loris","Perri","TOR","P","Por",3,9,9,6534
+"Pulpone & Loris","Caprile","CAG","P","Por",6,11,11,4360
+"Pulpone & Loris","Chalobah T.","COM","D","Dc,Dd",18,10,11,5641
+"Pulpone & Loris","Molina N.","ROM","D","E",37,18,18,4998
+"Pulpone & Loris","Kelly L.","JUV","D","Dc,Ds",2,5,6,6766
+"Pulpone & Loris","Miranda J.","BOL","D","Ds,E",4,8,8,4734
+"Pulpone & Loris","Haps","VEN","D","Ds,E",5,5,5,5695
+"Pulpone & Loris","Tiago Gabriel","LEC","D","Dc",5,9,9,6989
+"Pulpone & Loris","Kempf","COM","D","Dc",3,6,6,6893
+"Pulpone & Loris","Birindelli","MON","D","Ds,Dd,E",1,6,6,5838
+"Pulpone & Loris","Paz N.","COM","C","T,A",79,30,28,6875
+"Pulpone & Loris","Baturina","COM","C","T",67,20,20,7126
+"Pulpone & Loris","Diouf","INT","C","E,C",22,10,10,6274
+"Pulpone & Loris","Busio","VEN","C","M,C",3,7,8,5507
+"Pulpone & Loris","Politano","NAP","C","W",10,10,9,536
+"Pulpone & Loris","Casadei","TOR","C","C,T",1,9,9,5888
+"Pulpone & Loris","Bernabè","PAR","C","C",4,7,7,6666
+"Pulpone & Loris","Cancellieri","LAZ","C","W,A",1,10,9,5500
+"Pulpone & Loris","De Ketelaere","ATA","A","A",47,16,17,5995
+"Pulpone & Loris","Raimondo","FRO","A","Pc",17,11,11,5436
+"Pulpone & Loris","Santos A.","NAP","A","W,A",34,14,15,7351
+"Pulpone & Loris","Castro S.","ROM","A","Pc",24,14,13,6572
+"Pulpone & Loris","Douvikas","COM","A","Pc",95,21,21,7017
+"Pulpone & Loris","Maldini","CAG","A","T,A",3,9,9,4896
+"Pier","Skorupski","BOL","P","Por",16,10,10,133
+"Pier","Okoye","UDI","P","Por",8,8,8,6462
+"Pier","Thiam","MON","P","Por",2,4,4,4485
+"Pier","Valle","COM","D","Ds,E",12,7,7,6867
+"Pier","Celik","JUV","D","B,Dd,E",11,7,8,4657
+"Pier","Floriani Mussolini","LAZ","D","Dd,E",1,4,4,7131
+"Pier","Mancini","ROM","D","Dc",28,15,15,2296
+"Pier","Gabbia","MIL","D","Dc",3,6,6,4401
+"Pier","Spinazzola","NAP","D","Ds,E",16,8,8,1852
+"Pier","Spence","INT","D","E",13,11,10,5982
+"Pier","Koulierakis","ROM","D","Dc",1,7,7,7529
+"Pier","McTominay","NAP","C","C,T",61,26,26,4777
+"Pier","Rabiot","MIL","C","C,T",43,23,23,2379
+"Pier","Zaniolo","UDI","C","T,A",28,17,16,2766
+"Pier","Saelemaekers","MIL","C","E,W",12,10,11,4892
+"Pier","Hutchinson","MIL","C","W,A",1,7,6,7618
+"Pier","Rodriguez Je.","COM","C","W,A",1,11,10,7129
+"Pier","Fazzini","CAG","C","C,T",1,7,8,6010
+"Pier","Frendrup","GEN","C","M,C",1,7,8,5791
+"Pier","Kean","COM","A","Pc",71,24,24,2097
+"Pier","Woltemade","JUV","A","A",111,22,22,6752
+"Pier","Krstovic","ATA","A","Pc",45,17,16,6435
+"Pier","Adams A.","VEN","A","Pc",5,12,11,7484
+"Pier","Geubbels","LEC","A","Pc",1,8,7,5029
+"Pier","Zeballos","MON","A","A",1,7,7,7620
+"Martinelli","Mandas","LAZ","P","Por",14,11,11,6482
+"Martinelli","Bijlow","GEN","P","Por",2,7,7,7332
+"Martinelli","Motta","LAZ","P","Por",1,1,1,7337
+"Martinelli","Wesley","ROM","D","E",35,18,16,7181
+"Martinelli","Couto","COM","D","Dd,E",17,9,9,6727
+"Martinelli","Rrahmani","NAP","D","Dc",24,14,14,4409
+"Martinelli","Scalvini","ATA","D","Dc",12,10,10,5526
+"Martinelli","Lulli","ROM","D","E",4,3,3,7599
+"Martinelli","Idzes","SAS","D","Dc",1,7,7,6672
+"Martinelli","Kossounou","ATA","D","Dc,Dd",1,3,3,5578
+"Martinelli","De Winter","MIL","D","Dc,Dd",1,5,6,5739
+"Martinelli","De Bruyne","NAP","C","T",45,17,16,2517
+"Martinelli","Cambiaghi","BOL","C","W,A",16,8,7,4436
+"Martinelli","Moreira","MIL","C","E,W",26,13,13,6372
+"Martinelli","Pellegrini Lo.","ROM","C","C,T",1,9,9,530
+"Martinelli","Unai Gomez","UDI","C","T",4,7,6,6783
+"Martinelli","Pasalic","ATA","C","C,T",1,8,8,2077
+"Martinelli","Cacciamani","TOR","C","E,W",1,7,7,7060
+"Martinelli","Isaksen","LAZ","C","W,A",1,9,8,6398
+"Martinelli","Hojlund","NAP","A","Pc",204,28,28,6052
+"Martinelli","Colombo","GEN","A","Pc",12,10,9,4923
+"Martinelli","Dovbyk","BOL","A","Pc",23,16,16,6675
+"Martinelli","Beto","FIO","A","Pc",18,14,14,5694
+"Martinelli","Adams C.","TOR","A","A",9,11,12,6646
+"Martinelli","Raspadori","ATA","A","A",24,13,14,4371
+"Sirbu","Carnesecchi","ATA","P","Por",47,16,16,4431
+"Sirbu","Muric","SAS","P","Por",3,6,6,4236
+"Sirbu","Sportiello","ATA","P","Por",1,1,1,4
+"Sirbu","Akanji","INT","D","Dc",29,15,15,4159
+"Sirbu","Marcandalli","GEN","D","Dc",2,6,6,6660
+"Sirbu","Fortini","TOR","D","E",3,7,6,7069
+"Sirbu","Delprato","PAR","D","B,Dd,E",6,8,8,6664
+"Sirbu","Ramon","COM","D","Dc",20,12,12,6869
+"Sirbu","Valdepenas","FIO","D","Dc,Ds",6,5,6,7294
+"Sirbu","Correia T.","VEN","D","Ds,Dd,E",1,5,5,4845
+"Sirbu","Patterson","TOR","D","Dd,E",1,5,5,5751
+"Sirbu","Calhanoglu","INT","C","M,C",73,27,28,2194
+"Sirbu","Pisilli","ROM","C","C",4,8,8,6190
+"Sirbu","Atta","FIO","C","C,T",20,16,16,6908
+"Sirbu","Bakola","SAS","C","C,T",1,6,6,7036
+"Sirbu","Gudmundsson A.","LAZ","C","T,A",15,13,12,5800
+"Sirbu","Chukwueze","MIL","C","E,W",8,8,8,4856
+"Sirbu","Romano","CAG","C","M,C",1,8,9,7311
+"Sirbu","Douglas Luiz","JUV","C","C",2,4,4,4911
+"Sirbu","Piccoli","BOL","A","Pc",20,9,8,4359
+"Sirbu","Bowie","SAS","A","Pc",5,11,10,7347
+"Sirbu","Tourè E.","PAR","A","Pc",9,10,10,6229
+"Sirbu","Esposito F.P.","INT","A","Pc",88,18,18,7071
+"Sirbu","Yildiz","JUV","A","A",42,21,22,6434
+"Sirbu","Davis K.","UDI","A","Pc",86,19,19,5637
+"Penio & Mirsel","Meret","NAP","P","Por",34,10,10,572
+"Penio & Mirsel","Milinkovic-Savic V.","NAP","P","Por",4,5,5,2170
+"Penio & Mirsel","Palmisani","FRO","P","Por",3,6,6,6415
+"Penio & Mirsel","Bracaglia","FRO","D","Dc,Ds",5,7,7,7469
+"Penio & Mirsel","Stones","INT","D","Dc",7,12,12,2514
+"Penio & Mirsel","Vasquez","GEN","D","Dc,Ds",5,9,10,5514
+"Penio & Mirsel","Gallo","LEC","D","Ds,E",2,6,6,4502
+"Penio & Mirsel","Lucumì","JUV","D","Dc",9,8,8,6042
+"Penio & Mirsel","Jimenez A.","FIO","D","Ds,Dd,E",5,8,8,6531
+"Penio & Mirsel","Bernasconi","ATA","D","Ds,E",9,6,6,7219
+"Penio & Mirsel","Vojvoda","UDI","D","Dd,E",10,8,8,4994
+"Penio & Mirsel","Ekkelenkamp","UDI","C","C,T",20,13,13,6684
+"Penio & Mirsel","Fitz-Jim","TOR","C","M,C",7,6,6,7535
+"Penio & Mirsel","Zambo Anguissa","NAP","C","C",7,10,10,4220
+"Penio & Mirsel","Ferguson","BOL","C","M,C",4,8,9,5858
+"Penio & Mirsel","Mandragora","TOR","C","C",12,10,10,1933
+"Penio & Mirsel","Ederson D.S.","ATA","C","M,C",21,12,13,5792
+"Penio & Mirsel","Bernardeschi","BOL","C","W,T",26,10,10,184
+"Penio & Mirsel","Gonzalez N.","JUV","C","W,A",10,13,12,4179
+"Penio & Mirsel","Malen","ROM","A","Pc",222,37,37,5585
+"Penio & Mirsel","Camarda","MIL","A","Pc",1,4,3,6519
+"Penio & Mirsel","Diao","COM","A","W,A",70,14,15,6967
+"Penio & Mirsel","Lang","NAP","A","A",1,4,4,7120
+"Penio & Mirsel","Osmajic","GEN","A","Pc",5,9,8,7600
+"Penio & Mirsel","Mendy P.","CAG","A","Pc",1,7,6,7374
+"Potty","Maignan","MIL","P","Por",56,14,14,4312
+"Potty","Corvi","PAR","P","Por",1,3,3,6662
+"Potty","Torriani","MIL","P","Por",1,1,1,6813
+"Potty","Dimarco","INT","D","E,W",61,30,29,254
+"Potty","Tavares N.","LAZ","D","Ds,E",6,7,7,5620
+"Potty","Gatti","JUV","D","Dc",1,5,5,5831
+"Potty","Zortea","BOL","D","Dd,E",1,6,6,4433
+"Potty","Cambiaso","JUV","D","Ds,Dd,E",5,8,9,5520
+"Potty","Kamara H.","UDI","D","Ds,E",8,9,9,5555
+"Potty","Juan Jesus","VEN","D","Dc,Ds",1,4,5,256
+"Potty","Diego Carlos","PAR","D","Dc",1,8,8,4137
+"Potty","McKennie","JUV","C","C,T",26,16,16,4973
+"Potty","Orsolini","BOL","C","W,A",45,24,23,2167
+"Potty","Modric","MIL","C","M,C",12,12,13,2606
+"Potty","Samardzic","ATA","C","C,T",17,13,13,5119
+"Potty","Sucic P.","INT","C","C",3,8,8,7070
+"Potty","Cissè A.","MIL","C","W,T",2,6,6,6618
+"Potty","Ndour","FIO","C","C",1,8,8,6294
+"Potty","Vergara","NAP","C","W,T",1,9,9,7223
+"Potty","Scamacca","ATA","A","Pc",87,20,19,2137
+"Potty","Dybala","ROM","A","A",130,16,17,309
+"Potty","Esposito Se.","SAS","A","A",3,13,14,4463
+"Potty","Pellegrino M.","FIO","A","Pc",28,16,16,7023
+"Potty","Zapata D.","TOR","A","Pc",1,6,5,608
+"Potty","Noslin","LAZ","A","A",1,8,8,6556
+"Maicol & Matteo","Svilar","ROM","P","Por",52,19,19,5841
+"Maicol & Matteo","Gollini","ROM","P","Por",1,1,1,610
+"Maicol & Matteo","Tornqvist","MON","P","Por",1,1,1,7301
+"Maicol & Matteo","Carlos Augusto","INT","D","B,Ds,E",8,9,10,5877
+"Maicol & Matteo","Bisseck","INT","D","Dc",23,12,12,6217
+"Maicol & Matteo","Zappacosta","ATA","D","Dd,E",11,8,8,554
+"Maicol & Matteo","Solet","UDI","D","Dc",26,13,13,6956
+"Maicol & Matteo","Pavlovic","MIL","D","Dc",23,13,13,5022
+"Maicol & Matteo","Bellanova","ATA","D","Dd,E",4,5,5,4887
+"Maicol & Matteo","Obrador","SAS","D","Ds,E",1,6,6,7329
+"Maicol & Matteo","Sutalo J.","LAZ","D","Dc",1,6,6,7580
+"Maicol & Matteo","Pulisic","MIL","C","T,A",65,24,22,2423
+"Maicol & Matteo","Pessina","MON","C","M,C",2,6,7,2741
+"Maicol & Matteo","Vlasic","TOR","C","T",19,12,11,5687
+"Maicol & Matteo","Mastantuono","FIO","C","W,T",25,14,14,7078
+"Maicol & Matteo","Baldanzi","GEN","C","T",4,11,10,5823
+"Maicol & Matteo","Colpani","MON","C","T",2,9,8,5878
+"Maicol & Matteo","Jones C.","INT","C","C",7,12,12,5172
+"Maicol & Matteo","Gaetano","ATA","C","M,C",1,7,8,4364
+"Maicol & Matteo","Thuram","INT","A","Pc",175,30,30,4871
+"Maicol & Matteo","Laurientè","SAS","A","A",20,16,16,6060
+"Maicol & Matteo","Yeboah J.","VEN","A","A",4,10,10,6904
+"Maicol & Matteo","Romero D.","PAR","A","Pc",1,11,11,7554
+"Maicol & Matteo","Boga","JUV","A","W,A",6,6,7,2832
+"Maicol & Matteo","Bonny","INT","A","Pc",7,8,7,6669

@@ -76,6 +76,56 @@ describe('contenuto del seed', () => {
   });
 });
 
+describe('vincolo: un solo mondo serve sia le leghe classic sia le Mantra', () => {
+  it('ogni giocatore porta sia il ruolo classico sia i ruoli Mantra', () => {
+    // La modalita' e' una scelta di lega, che vive nel livello fanta. Il mondo
+    // simulato non la conosce e deve bastare a entrambe (regola 7).
+    for (const g of mondo.giocatori) {
+      ok(['P', 'D', 'C', 'A'].includes(g.ruoloClassico), `${g.nome}: ruolo classico mancante`);
+      ok(g.ruoliMantra.length >= 1, `${g.nome}: ruoli Mantra mancanti`);
+    }
+  });
+
+  it('il mondo non conosce ne’ la modalita’ di lega ne’ i prezzi', () => {
+    // I nomi dei ruoli Mantra nel mondo vanno benissimo: sono la tassonomia dei
+    // giocatori, non un'impostazione di lega. Un giocatore e' un braccetto a
+    // prescindere da come si gioca, e il ruolo classico ne e' la proiezione
+    // grossolana. Quello che il mondo non deve avere e' l'impostazione della
+    // modalita' e le quotazioni, che appartengono al livello fanta.
+    const chiavi = new Set<string>();
+    const percorri = (v: unknown): void => {
+      if (Array.isArray(v)) v.forEach(percorri);
+      else if (v && typeof v === 'object') {
+        for (const [k, valore] of Object.entries(v)) {
+          chiavi.add(k.toLowerCase());
+          percorri(valore);
+        }
+      }
+    };
+    percorri(mondo);
+
+    for (const proibita of [
+      'modalita', 'modalitaruoli', 'fvm', 'valoremercato', 'valoremercatomantra',
+      'quotazione', 'quotazioneasta', 'quotazioneastamantra', 'prezzo', 'crediti',
+    ]) {
+      ok(!chiavi.has(proibita), `il mondo espone il campo "${proibita}"`);
+    }
+  });
+
+  it('i riferimenti esterni portano entrambe le serie di quotazioni', () => {
+    // Servono all'import e all'asta: una lega classic valida contro Qt.A, una
+    // lega Mantra contro Qt.A M. Sono dati di origine, non dati di dominio.
+    for (const r of riferimenti.giocatori) {
+      for (const campo of [
+        'quotazioneAsta', 'quotazioneIniziale', 'valoreMercato',
+        'quotazioneAstaMantra', 'quotazioneInizialeMantra', 'valoreMercatoMantra',
+      ] as const) {
+        ok(Number.isFinite(r[campo]), `${r.nomeFonte}: manca ${campo}`);
+      }
+    }
+  });
+});
+
 describe('vincolo: i nomi sono dati, mai codice', () => {
   it('con --anonimizza cambiano tutti i nomi, e nient’altro', () => {
     const anonimo = costruisci({ anonimizza: true });

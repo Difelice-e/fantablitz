@@ -58,8 +58,10 @@ Tutti i valori sono parametri, con i default indicati.
 **Struttura**
 - Squadre: 10 (umani + bot)
 - Crediti iniziali: 500
-- Rosa: minimo 23 giocatori, di cui almeno 2 portieri. **Nessun massimo**
-- Modalità ruoli: **Mantra**
+- Rosa: dipende dalla modalità
+  - `mantra`: **minimo 23** giocatori, di cui almeno 2 portieri. **Nessun massimo**
+  - `classic`: **esattamente 25**, con quote **fisse 3-8-8-6** (P-D-C-A). Non è un minimo: è una composizione esatta, e una rosa che non la rispetta non è valida
+- Modalità ruoli: **`mantra` o `classic`**, scelta **per lega** alla creazione e non più modificabile in corsa. Entrambe disponibili dalla prima versione. Il mondo simulato è identico nei due casi: la modalità vive interamente nel livello fanta, e più precisamente nelle regole di schieramento (§6.2)
 - Panchina: ordinata per priorità
 
 **Ritmo**
@@ -76,7 +78,7 @@ Tutti i valori sono parametri, con i default indicati.
 - Soglie gol: 66, 72, 77, 81, 85, 89, 93, 97, 101, 105, poi ogni 4. Implementata come funzione parametrica: `soglia_base` (66) e scarti (6, 5, 4 ricorrente). Sotto la soglia base: 0 gol
 - Bonus/malus: configurabili (gol, assist, ammonizione, espulsione, rigore segnato/sbagliato/parato, autogol, gol subito), con default classici
 - Modificatore di difesa e modificatore portiere: attivabili, con soglie configurabili
-- Malus di adattamento Mantra: default −0.5, configurabile
+- Malus di adattamento Mantra: **−1**, configurabile. È il valore del regolamento ufficiale, che prevede un **solo livello** di malus: non esistono aggravi (§6.2)
 
 ---
 
@@ -109,7 +111,8 @@ Età, potenziale e curva di crescita non sono nel listone: vanno forniti come da
 
 **Derivazione implementata** (milestone 0, `/seed`). Dettagli e motivazioni in `seed/README.md`, numeri in `seed/config/parametri.json`:
 
-1. **Segnale**: `0.7 × ln(1 + FVM M) + 0.3 × ln(1 + Qt.A M)`. La scala logaritmica è necessaria perché `FVM M` è molto storto (mediana 14, massimo 450)
+1. **Segnale**: `0.7 × ln(1 + FVM) + 0.3 × ln(1 + Qt.A)`. La scala logaritmica è necessaria perché il valore di mercato è molto storto (mediana 14, massimo 450).
+   La **fonte** è configurabile (`rating.fonteSegnale`) fra `classic` (`FVM`, `Qt.A`), `mantra` (`FVM M`, `Qt.A M`) e `media`, con **default `media`**. Le due quotazioni divergono su 142 giocatori su 533, con scarto mediano del 15%, e chi si muove di più sono i mediani `M;C`, che in Mantra valgono di più perché lo slot M va riempito comunque. È una differenza di **prezzo, non di bravura**: siccome i rating del mondo descrivono la bravura e sono gli stessi per tutti, la media annulla la distorsione di entrambe le modalità
 2. **Qualità 0–1**, normalizzata **dentro il ruolo classico**, non sull'intero listone: metà dei portieri ha `FVM M = 1` e una normalizzazione globale li schiaccerebbe tutti sul fondo della scala. È un misto fra rango (con rango medio sui pari merito) e magnitudine
 3. **Overall** nella fascia configurata per ruolo. I portieri hanno forbice più stretta e pavimento più alto degli attaccanti
 4. **Aree**: `area = livello_neutro + (overall − livello_neutro) × peso_di_ruolo`, con il primo ruolo Mantra che pesa il doppio dei successivi. Partire dal livello neutro evita che il miglior attaccante risulti il peggior difensore del campionato
@@ -255,7 +258,11 @@ Sequenza, l'ordine conta. Le voci marcate `[flag]` sono spente in fase 1.
 
 L'asta live nativa è rinviata. In fase 1 l'asta si svolge su Fantalab e il risultato si importa.
 
-**La chiave di join è `Fantacalcio_Id`**, presente in entrambi i formati di export. Il listone interno è quello ufficiale Mantra di Fantacalcio.it, quindi l'abbinamento è esatto e non serve alcun matching per somiglianza sui nomi. I nomi restano solo un dato di visualizzazione.
+**La chiave di join è `Fantacalcio_Id`**, presente in entrambi i formati di export. Il listone interno è quello ufficiale di Fantacalcio.it, quindi l'abbinamento è esatto e non serve alcun matching per somiglianza sui nomi. I nomi restano solo un dato di visualizzazione.
+
+**Un solo importatore per entrambe le modalità.** `rose.csv` porta sia `Ruolo` (classico) sia `Ruoli_Mantra`, sia `Quotazione` sia `Quotazione_Mantra`: il parser è lo stesso, cambia solo quale coppia di campi si usa per la validazione. `file_per_fantaleghe.csv` è indifferente alla modalità, perché contiene solo id e prezzo.
+
+*Verificato sui file reali* (vedi `/fixtures`): Fantalab riordina i ruoli Mantra in ordine canonico mentre il listone li elenca col principale per primo, e su 16 righe su 250 i due ordini differiscono pur descrivendo gli stessi ruoli. La validazione deve quindi confrontare **insiemi di ruoli, mai sequenze**.
 
 Due formati da supportare, entrambi CRLF:
 
@@ -277,7 +284,8 @@ Requisiti dell'importatore:
 - Import **atomico**: o passa tutto, o non passa niente
 - Gestione esplicita dell'unico caso di disallineamento possibile: id presente nella rosa ma assente dal listone (listone più recente della rosa) → riga segnalata all'admin, import bloccato finché non è risolta
 - Segnalare come avviso (non errore) le discrepanze tra i campi ridondanti del file e il listone
-- Validazioni: nessun id duplicato nell'intero file, minimo 23 giocatori con almeno 2 portieri per squadra, somma dei prezzi entro il budget, prezzi ≥ 1
+- Validazioni comuni: nessun id duplicato nell'intero file, somma dei prezzi entro il budget, prezzi ≥ 1
+- Validazione della composizione, **dipendente dalla modalità** (§4): in `mantra` minimo 23 giocatori con almeno 2 portieri; in `classic` esattamente 25 con quote 3-8-8-6. I file di esempio forniti rispettano la composizione classic esatta
 - I file di esempio forniti sono le **fixture dei test**. Riferimento del caso tipico: 10 squadre da 25 giocatori (3-8-8-6), spesa tra 482 e 500 crediti, prezzi da 1 a 222
 - Verifica già effettuata sui file reali: **tutti i 250 id delle rose di esempio trovano corrispondenza nel listone 2026/27**, nessun id duplicato, nessuno tra i ceduti. Il join è esatto
 
@@ -285,8 +293,40 @@ Requisiti dell'importatore:
 
 ### 6.2 Formazione
 
-- **11 moduli Mantra**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1. Ogni modulo prevede 5 slot di stampo difensivo e 5 offensivi
-- Matrice di compatibilità **ruolo × slot × modulo**, con le eccezioni del regolamento Mantra (es. W e T intercambiabili con aggravio di malus, tranne nel 4-1-4-1 dove non lo sono nemmeno con malus)
+Lo schieramento è l'**unico punto** in cui le due modalità divergono davvero. Tutto il resto del livello fanta — budget, crediti, scontri diretti, soglie gol, bonus e malus, scambi, bot — è identico.
+
+**Due contratti ortogonali**, non una matrice di casi:
+
+- `RegoleSchieramento` dipende dalla **modalità**: quali moduli esistono, quale giocatore può occupare quale slot, con quale malus. Due implementazioni, `classic` e `mantra`
+- `StrategiaSostituzione` dipende dal **livello** (Basic ora, Easy e Master dietro flag): come si cerca il rimpiazzo. Interroga le regole senza conoscerle
+
+Così le due modalità e i tre livelli si combinano senza duplicare codice: 2 + 3 implementazioni, non 2 × 3. Basic funziona su entrambe le modalità senza sapere quale sta usando.
+
+**Modalità `mantra`**
+
+**11 moduli**: 4-4-2, 4-1-4-1, 4-4-1-1, 4-2-3-1, 3-5-2, 3-5-1-1, 4-3-3, 4-3-1-2, 3-4-3, 3-4-1-2, 3-4-2-1.
+
+Le regole sono la **trascrizione del materiale ufficiale** «Mantra Experience — Edizione 2026/2027»: schemi dei moduli, tabella delle sostituzioni, tabella dei ruoli. Vivono in `fanta/config/mantra.json`, nella notazione degli schemi originali, così da poter essere confrontate a occhio con le immagini del regolamento.
+
+**La tabella delle sostituzioni è la regola.** Riga = ruolo della casella da coprire, colonna = ruolo di chi la copre. Il verso conta: un difensore può coprire una punta con un malus, una punta non può coprire un difensore. Ne segue che all'asta conviene valutare un giocatore nel suo **ruolo più arretrato**, perché è quello che gli apre più caselle.
+
+Gli esiti possibili sono **solo tre**: `OK`, `−1`, `NO`. Tre simboli dipendono però dallo schema e non solo dai due ruoli:
+- `*` → `OK` se la casella elenca i due ruoli **in alternativa**, altrimenti `NO`
+- `**` → `OK` se in alternativa, altrimenti `−1`
+- `***` → `OK` se in alternativa, `NO` nel **4-1-4-1**, altrimenti `−1`
+
+È la ragione per cui la valutazione di una casella riceve anche il modulo: senza, metà della tabella non sarebbe esprimibile.
+
+**Non esistono aggravi di malus.** La tabella ha un solo livello, −1. Il `***` non è un malus più pesante: è la nota che vieta lo scambio W/T nel solo 4-1-4-1.
+
+**Linea e stampo sono due classificazioni diverse.** La *linea* raggruppa i ruoli sul campo: difesa (`DS, DC, DD, B`), centrocampo (`E, M, C`), trequarti (`W, T`), attacco (`A, PC`). Lo *stampo* divide i 5 difensivi (`Dd, Ds, Dc, B, E, M`) dai 5 offensivi (`C, T, W, A, Pc`) che ogni schema impiega. Non coincidono: nel centrocampo convivono entrambi, con `E` e `M` difensivi e `C` offensivo. Il vincolo dei cinque e cinque è verificato come **raggiungibile** e non come già deciso, perché le caselle che mettono in alternativa ruoli di stampo diverso — come `M/C` — lasciano la scelta al fantallenatore.
+
+Altre regole:
+- Dove una casella elenca **più ruoli** (`E/W`, `M/C`, `T/A/PC`), sono alternativi: tutti senza malus
+- Un giocatore con più ruoli entra col **migliore** dei suoi, non col primo dichiarato
+- Il portiere non esce dalla porta e nessuno ci entra al posto suo
+
+**In entrambe le modalità**
 - La formazione è **persistente**: resta quella dell'ultima volta finché l'utente non la cambia
 - Con `giornate_per_ciclo > 1`: **una sola formazione per il ciclo, con auto-adattamento tra una giornata e l'altra** (infortunati e squalificati vengono sostituiti automaticamente dalla panchina secondo le regole di sostituzione)
 
@@ -298,6 +338,8 @@ Ordine di ricerca:
 3. Soluzione **adattata**, con malus per ogni giocatore fuori posizione
 
 Le sostituzioni seguono l'ordine di priorità della panchina. Easy e Master arriveranno dietro flag: l'algoritmo va scritto come strategia sostituibile.
+
+L'ordine di ricerca vale per entrambe le modalità: la strategia chiede alle `RegoleSchieramento` (§6.2) se una soluzione è valida e quanto malus costa, senza sapere se sta giocando in classic o in Mantra. In `classic` il passo 3 non produce mai risultati, perché il malus di adattamento non esiste: la ricerca si ferma naturalmente al passo 2.
 
 ### 6.4 Calendario fanta
 
@@ -364,10 +406,14 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 ```
 /engine     motore di simulazione, TypeScript puro, zero dipendenze dal framework
+/fanta      livello di lega: moduli, schieramento, sostituzioni. Puro come il motore
 /web        app Next.js
 /jobs       job serale (ciclo), importatore, generatori AI
 /seed       dati iniziali del mondo simulato
+/fixtures   file reali per i test
 ```
+
+`/engine` e `/fanta` stanno sui due lati del confine della **regola 7**: voti e statistiche appartengono al mondo e sono uguali per tutti, schieramenti e malus appartengono alla lega. Il motore non conosce la modalità di gioco né i crediti; il livello fanta non conosce i rating né le statistiche. Separarli in due pacchetti rende il confine una proprietà della struttura, non una buona intenzione.
 
 **Principi:**
 - Il motore è un **pacchetto isolato e deterministico**: dato lo stesso seed e lo stesso input, produce lo stesso output. Serve per i test, per la calibrazione e per dirimere le contestazioni
@@ -394,9 +440,9 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 ## 10. Roadmap
 
 0. **Seed** — ✅ *fatto*, in `/seed`. Script che converte il listone `.xlsx` in un seed JSON: esclusione dei ceduti, parsing dei ruoli Mantra, derivazione dei rating da FVM M e Qt.A M, tabella di corrispondenza sigle/nomi dei club. Piccolo e verificabile a occhio (`out/RAPPORTO.md`), è il primo pezzo da scrivere
-1. **Motore + calibrazione** — simulazione di una stagione senza interfaccia, con script che gira centinaia di stagioni e riporta media gol, distribuzione dei voti, infortuni e cartellini per squadra
-2. **Mantra** — matrice ruoli/moduli, validazione formazione, sostituzioni Basic
-3. **Import Fantalab** — parser, riconciliazione, validazioni, sui file di esempio reali
+1. **Motore + calibrazione** — ✅ *fatto*, in `/engine`. simulazione di una stagione senza interfaccia, con script che gira centinaia di stagioni e riporta media gol, distribuzione dei voti, infortuni e cartellini per squadra
+2. **Schieramento** — ✅ *fatto*, in `/fanta`. I due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
+3. **Import Fantalab** — parser, riconciliazione, validazioni, sui file di esempio reali. Un solo parser per le due modalità
 4. **Ciclo di gioco** — job serale, calcolo fantavoti, scontri diretti, classifica
 5. **Interfaccia** — schermata formazione, risultati, classifica, rosa
 6. **Bot** — valutazione e scambi

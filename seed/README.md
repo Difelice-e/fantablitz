@@ -1,8 +1,13 @@
 # seed — dal listone al mondo simulato
 
-Milestone 0 della roadmap. Questo pacchetto legge il listone ufficiale Mantra di
+Milestone 0 della roadmap. Questo pacchetto legge il listone ufficiale di
 Fantacalcio.it e ne ricava il mondo simulato di partenza: venti club, cinquecento
 e passa giocatori con rating, età e propensioni.
+
+Il listone è **uno solo e copre entrambe le modalità**: le colonne `R`, `Qt.A`,
+`Qt.I` e `FVM` sono quelle classic, `RM`, `Qt.A M`, `Qt.I M` e `FVM M` quelle
+Mantra. Il mondo che ne esce serve indifferentemente una lega classic e una
+Mantra, perché la modalità vive nel livello fanta e non qui.
 
 ## Come si usa
 
@@ -41,14 +46,22 @@ forti sono quelle giuste. Trenta secondi e si sa se la derivazione ha funzionato
 
 Il listone non contiene rating: contiene prezzi. La catena è questa.
 
-1. **Segnale.** `FVM M` (peso 0.7) e `Qt.A M` (peso 0.3), entrambi in scala
-   logaritmica. Il logaritmo serve perché `FVM M` è violentemente storto: mediana
-   14, massimo 450. In scala lineare il novanta per cento del listone si
-   schiaccerebbe nel primo decimo della scala.
+1. **Segnale.** Valore di mercato (peso 0.7) e quotazione d'asta (peso 0.3),
+   entrambi in scala logaritmica. Il logaritmo serve perché il valore di mercato
+   è violentemente storto: mediana 14, massimo 450. In scala lineare il novanta
+   per cento del listone si schiaccerebbe nel primo decimo della scala.
+
+   **Quale delle due quotazioni?** `rating.fonteSegnale` sceglie fra `classic`,
+   `mantra` e `media`, e il default è `media`. Le due divergono su 142 giocatori
+   su 533, scarto mediano del 15%, e chi si muove di più sono i mediani `M;C`:
+   in Mantra valgono di più perché lo slot M va riempito comunque. È una
+   differenza di **prezzo, non di bravura** — Calhanoglu non gioca meglio in
+   Mantra. Siccome i rating descrivono la bravura, mediare annulla la
+   distorsione di entrambe le modalità.
 
 2. **Qualità 0–1**, normalizzata **dentro il ruolo classico**, non sull'intero
-   listone. È la scelta meno ovvia e vale la pena spiegarla: metà dei portieri ha
-   `FVM M = 1`, perché il mercato non paga le riserve. Normalizzando su tutti,
+   listone. È la scelta meno ovvia e vale la pena spiegarla: metà dei portieri è
+   quotata al minimo, perché il mercato non paga le riserve. Normalizzando su tutti,
    ogni portiere di scorta finirebbe al livello del peggior giocatore del
    campionato. Dentro il proprio ruolo la scala si riapre.
    La qualità mescola due letture dello stesso segnale: la posizione in classifica

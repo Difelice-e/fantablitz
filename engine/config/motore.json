@@ -1,0 +1,173 @@
+{
+  "_nota": "Parametri del motore partita. Sono numeri destinati a cambiare decine di volte in calibrazione: nessuno di essi vive nel codice. Si modificano qui e si rilancia 'npm run calibra'.",
+  "versione": 1,
+
+  "stati": {
+    "_nota": "Condizione, forma e morale confluiscono nel rating effettivo moltiplicando il rating base (SPEC 5.2). Ogni fattore resta dentro una banda stretta: con banda 0.15 il migliore dei casi vale +15% e il peggiore -15%.",
+    "banda": 0.15,
+    "condizione": {
+      "_nota": "0 = distrutto, 1 = fresco. Novanta minuti costano 'costoPer90', ogni giornata di riposo ne restituisce 'recuperoPerGiornata'. Un turno infrasettimanale accorcia il recupero, un impegno europeo lo consuma a una parte della rosa senza generare partite.",
+      "iniziale": 0.9,
+      "costoPer90Minuti": 0.42,
+      "recuperoPerGiornata": 0.34,
+      "penalitaInfrasettimanale": 0.12,
+      "costoImpegnoEuropeo": 0.2,
+      "quotaRosaImpegnataInEuropa": 0.45,
+      "minima": 0.25,
+      "influenzaEta": 0.15,
+      "etaRiferimento": 27
+    },
+    "forma": {
+      "_nota": "Passeggiata casuale con ritorno alla media, da -1 a 1. Variazione lenta: la forma deve durare qualche giornata, altrimenti non si nota.",
+      "ritornoAllaMedia": 0.22,
+      "volatilita": 0.3,
+      "massima": 1.0
+    },
+    "morale": {
+      "_nota": "Prevalentemente di squadra (SPEC 5.2): la componente individuale e' volutamente minima. 'memoria' e' quanto pesa il passato rispetto all'ultimo risultato.",
+      "memoria": 0.75,
+      "perVittoria": 0.4,
+      "perPareggio": 0.0,
+      "perSconfitta": -0.35,
+      "bonusGoleadaSubita": -0.2,
+      "sogliaGoleada": 3,
+      "quotaIndividuale": 0.15
+    }
+  },
+
+  "forze": {
+    "_nota": "Dalla forza dei reparti ai gol attesi. La forza di un reparto e' una media pesata dei rating effettivi degli undici in campo, non della rosa.",
+    "attacco": { "pesoPunte": 0.5, "pesoCentrocampo": 0.32, "pesoDifesa": 0.18 },
+    "difesa": { "pesoDifensori": 0.5, "pesoPortiere": 0.24, "pesoCentrocampo": 0.26 },
+    "golAttesiBase": 1.35,
+    "_rapportoDiEquilibrio": "Il rapporto attacco/difesa fra due squadre medie. Normalizza il rapporto cosi' che golAttesiBase significhi davvero i gol di una squadra media contro una squadra media. Si rimisura con lo script di calibrazione quando cambiano i pesi dei reparti.",
+    "rapportoDiEquilibrio": 1.065,
+    "esponenteForza": 2.6,
+    "fattoreCampo": 1.08,
+    "golAttesiMinimi": 0.25,
+    "golAttesiMassimi": 4.5
+  },
+
+  "minuti": {
+    "_nota": "Chi parte titolare gioca 90 minuti salvo sostituzione. Le sostituzioni si concentrano nella ripresa, e a uscire e' chi ha meno condizione.",
+    "sostituzioniMinime": 3,
+    "sostituzioniMassime": 5,
+    "minutoPrimaSostituzione": 46,
+    "minutoUltimaSostituzione": 88,
+    "_soglieVoto": "Le soglie di minuti per il senza voto vivono in voto.json, che e' il file della formula del voto: qui sarebbero una seconda copia destinata a divergere."
+  },
+
+  "disciplina": {
+    "_nota": "Probabilita' per novanta minuti, moltiplicate per la propensione del giocatore. I valori di partenza puntano a circa 4.5 ammonizioni e 0.22 espulsioni a partita fra le due squadre.",
+    "ammonizioneBase": 0.53,
+    "secondaAmmonizione": 0.040,
+    "espulsioneDiretta": 0.006,
+    "infortunioBase": 0.05,
+    "infortunioPerCondizioneBassa": 0.6,
+    "durataInfortunio": { "minima": 1, "massima": 8, "media": 2.4 },
+    "ammonizioniPerSqualifica": 5,
+    "giornateSqualificaEspulsione": { "minima": 1, "massima": 3 },
+    "rigoriPerPartita": 0.28,
+    "quotaRigoriSegnati": 0.78
+  },
+
+  "attribuzione": {
+    "_nota": "Come si distribuiscono gol e assist fra chi era in campo. Il peso di un giocatore e' la sua propensione moltiplicata per il rating effettivo d'attacco e per i minuti giocati.",
+    "esponenteRating": 1.4,
+    "quotaGolConAssist": 0.62,
+    "quotaAutogol": 0.03
+  },
+
+  "statistiche": {
+    "_nota": "Medie per novanta minuti, per gruppo di ruolo. Vengono scalate per i minuti giocati e per il rating effettivo, poi estratte con Poisson. Sono i valori che alimentano l'indice di ruolo del voto statistico.",
+    "_scala": "influenzaRating dice quanto il rating effettivo sposta le medie: 0.5 significa che il migliore del campionato produce circa una volta e mezza la media e il peggiore circa la meta'.",
+    "influenzaRating": 0.55,
+
+    "por": {
+      "tiriAffrontati": 4.4, "parate": 3.0, "parateDecisive": 0.45,
+      "usciteRiuscite": 1.5, "usciteSbagliate": 0.18, "rinviPrecisi": 7.0,
+      "passaggiTentati": 28, "quotaPassaggiRiusciti": 0.72,
+      "duelliVinti": 0.4, "duelliAereiVinti": 0.3, "contrasti": 0.05,
+      "intercetti": 0.35, "respinte": 0.6, "palleRecuperate": 1.2, "pallePerse": 1.0,
+      "falliCommessi": 0.1, "errori": 0.22, "erroriDaGol": 0.05, "rigoriConcessi": 0.02,
+      "tiri": 0.0, "tiriInPorta": 0.0, "occasioniCreate": 0.02, "passaggiChiave": 0.02,
+      "crossTentati": 0.0, "quotaCrossRiusciti": 0.0,
+      "dribblingRiusciti": 0.02, "dribblingSubiti": 0.05,
+      "grandiOccasioniFallite": 0.0, "fuorigioco": 0.0, "spondeRiuscite": 0.0
+    },
+    "centrale": {
+      "tiri": 0.55, "tiriInPorta": 0.2, "occasioniCreate": 0.1, "passaggiChiave": 0.25,
+      "passaggiTentati": 52, "quotaPassaggiRiusciti": 0.87,
+      "crossTentati": 0.2, "quotaCrossRiusciti": 0.2,
+      "dribblingRiusciti": 0.3, "dribblingSubiti": 0.7,
+      "duelliVinti": 5.2, "duelliAereiVinti": 2.6, "contrasti": 1.9, "intercetti": 1.7,
+      "respinte": 3.4, "palleRecuperate": 4.2, "pallePerse": 1.1,
+      "falliCommessi": 1.0, "fuorigioco": 0.15, "errori": 0.36, "erroriDaGol": 0.05,
+      "rigoriConcessi": 0.02, "grandiOccasioniFallite": 0.06, "spondeRiuscite": 0.4,
+      "tiriAffrontati": 0, "parate": 0, "parateDecisive": 0,
+      "usciteRiuscite": 0, "usciteSbagliate": 0, "rinviPrecisi": 0
+    },
+    "laterale": {
+      "tiri": 0.9, "tiriInPorta": 0.3, "occasioniCreate": 0.22, "passaggiChiave": 0.85,
+      "passaggiTentati": 45, "quotaPassaggiRiusciti": 0.82,
+      "crossTentati": 3.1, "quotaCrossRiusciti": 0.26,
+      "dribblingRiusciti": 0.9, "dribblingSubiti": 0.9,
+      "duelliVinti": 4.4, "duelliAereiVinti": 1.0, "contrasti": 1.7, "intercetti": 1.5,
+      "respinte": 1.5, "palleRecuperate": 4.0, "pallePerse": 1.9,
+      "falliCommessi": 1.0, "fuorigioco": 0.2, "errori": 0.34, "erroriDaGol": 0.04,
+      "rigoriConcessi": 0.015, "grandiOccasioniFallite": 0.09, "spondeRiuscite": 0.3,
+      "tiriAffrontati": 0, "parate": 0, "parateDecisive": 0,
+      "usciteRiuscite": 0, "usciteSbagliate": 0, "rinviPrecisi": 0
+    },
+    "mediano": {
+      "tiri": 1.1, "tiriInPorta": 0.38, "occasioniCreate": 0.3, "passaggiChiave": 1.0,
+      "passaggiTentati": 58, "quotaPassaggiRiusciti": 0.86,
+      "crossTentati": 0.9, "quotaCrossRiusciti": 0.22,
+      "dribblingRiusciti": 1.0, "dribblingSubiti": 0.7,
+      "duelliVinti": 4.6, "duelliAereiVinti": 0.9, "contrasti": 2.0, "intercetti": 1.4,
+      "respinte": 1.0, "palleRecuperate": 5.4, "pallePerse": 2.3,
+      "falliCommessi": 1.3, "fuorigioco": 0.1, "errori": 0.33, "erroriDaGol": 0.03,
+      "rigoriConcessi": 0.01, "grandiOccasioniFallite": 0.12, "spondeRiuscite": 0.4,
+      "tiriAffrontati": 0, "parate": 0, "parateDecisive": 0,
+      "usciteRiuscite": 0, "usciteSbagliate": 0, "rinviPrecisi": 0
+    },
+    "offensivo": {
+      "tiri": 2.1, "tiriInPorta": 0.8, "occasioniCreate": 0.55, "passaggiChiave": 1.5,
+      "passaggiTentati": 34, "quotaPassaggiRiusciti": 0.79,
+      "crossTentati": 1.6, "quotaCrossRiusciti": 0.24,
+      "dribblingRiusciti": 2.0, "dribblingSubiti": 0.5,
+      "duelliVinti": 3.6, "duelliAereiVinti": 0.7, "contrasti": 0.9, "intercetti": 0.5,
+      "respinte": 0.3, "palleRecuperate": 2.8, "pallePerse": 3.0,
+      "falliCommessi": 0.9, "fuorigioco": 0.6, "errori": 0.26, "erroriDaGol": 0.02,
+      "rigoriConcessi": 0.005, "grandiOccasioniFallite": 0.3, "spondeRiuscite": 0.6,
+      "tiriAffrontati": 0, "parate": 0, "parateDecisive": 0,
+      "usciteRiuscite": 0, "usciteSbagliate": 0, "rinviPrecisi": 0
+    },
+    "punta": {
+      "tiri": 2.7, "tiriInPorta": 1.15, "occasioniCreate": 0.35, "passaggiChiave": 0.8,
+      "passaggiTentati": 22, "quotaPassaggiRiusciti": 0.72,
+      "crossTentati": 0.3, "quotaCrossRiusciti": 0.2,
+      "dribblingRiusciti": 1.2, "dribblingSubiti": 0.4,
+      "duelliVinti": 3.9, "duelliAereiVinti": 2.2, "contrasti": 0.5, "intercetti": 0.3,
+      "respinte": 0.3, "palleRecuperate": 1.9, "pallePerse": 2.8,
+      "falliCommessi": 1.1, "fuorigioco": 1.1, "errori": 0.2, "erroriDaGol": 0.02,
+      "rigoriConcessi": 0.004, "grandiOccasioniFallite": 0.45, "spondeRiuscite": 1.6,
+      "tiriAffrontati": 0, "parate": 0, "parateDecisive": 0,
+      "usciteRiuscite": 0, "usciteSbagliate": 0, "rinviPrecisi": 0
+    }
+  },
+
+  "allenatore": {
+    "_nota": "Schieramento automatico dei club simulati. Non ha niente a che vedere con i moduli della lega fanta: qui si decide solo chi scende in campo nel mondo simulato.",
+    "moduli": [
+      { "difensori": 4, "centrocampisti": 4, "attaccanti": 2 },
+      { "difensori": 4, "centrocampisti": 3, "attaccanti": 3 },
+      { "difensori": 3, "centrocampisti": 5, "attaccanti": 2 },
+      { "difensori": 3, "centrocampisti": 4, "attaccanti": 3 },
+      { "difensori": 5, "centrocampisti": 3, "attaccanti": 2 }
+    ],
+    "pesoCondizioneNellaScelta": 0.45,
+    "sogliaCondizionePerRiposo": 0.45,
+    "rumoreGerarchia": 0.06
+  }
+}
