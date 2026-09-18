@@ -1,0 +1,19 @@
+{
+  "_nota": "Regole di schieramento della modalita' classic. I moduli e la composizione della rosa sono decisioni di prodotto (SPEC 4 e 6.2), quindi stanno in configurazione e non nel codice.",
+  "versione": 1,
+
+  "moduli": [
+    { "nome": "3-4-3", "D": 3, "C": 4, "A": 3 },
+    { "nome": "3-5-2", "D": 3, "C": 5, "A": 2 },
+    { "nome": "4-3-3", "D": 4, "C": 3, "A": 3 },
+    { "nome": "4-4-2", "D": 4, "C": 4, "A": 2 },
+    { "nome": "4-5-1", "D": 4, "C": 5, "A": 1 },
+    { "nome": "5-3-2", "D": 5, "C": 3, "A": 2 },
+    { "nome": "5-4-1", "D": 5, "C": 4, "A": 1 }
+  ],
+
+  "rosa": {
+    "_nota": "In classic la composizione e' esatta, non un minimo: una rosa che non la rispetta non e' valida. Ne segue che la panchina e' sempre di quattordici e che ogni modulo e' coperto per costruzione.",
+    "composizioneEsatta": { "P": 3, "D": 8, "C": 8, "A": 6 }
+  }
+}
