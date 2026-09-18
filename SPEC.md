@@ -76,8 +76,35 @@ Tutti i valori sono parametri, con i default indicati.
 
 **Punteggio**
 - Soglie gol: 66, 72, 77, 81, 85, 89, 93, 97, 101, 105, poi ogni 4. Implementata come funzione parametrica: `soglia_base` (66) e scarti (6, 5, 4 ricorrente). Sotto la soglia base: 0 gol
-- Bonus/malus: configurabili (gol, assist, ammonizione, espulsione, rigore segnato/sbagliato/parato, autogol, gol subito), con default classici
-- Modificatore di difesa e modificatore portiere: attivabili, con soglie configurabili
+- Bonus e malus, i classici del fantacalcio, tutti configurabili:
+
+  | evento | valore |
+  |---|---:|
+  | gol | +3 |
+  | rigore segnato | +3 |
+  | assist | +1 |
+  | rigore parato | +3 |
+  | porta inviolata (solo portiere) | +1 |
+  | ammonizione | −0.5 |
+  | espulsione | −1 |
+  | rigore sbagliato | −3 |
+  | autogol | −2 |
+  | gol subito (solo portiere) | −1 |
+
+  Il rigore segnato ha una voce separata dal gol pur valendo lo stesso: alcune leghe lo pagano 2.5, e la voce separata serve a poterlo cambiare senza toccare codice. La porta inviolata vale solo se il portiere ha preso voto.
+- **Modificatore di difesa**: **attivo**. Media dei voti puri — esclusi bonus e malus — del **portiere più i 3 migliori difensori**, e si applica solo con una **difesa da almeno 4 uomini** e solo se tutti i giocatori considerati portano un voto. Tabella dinamica a sei fasce, un punto ogni quarto di voto:
+
+  | media | bonus |
+  |---:|---:|
+  | 6.00 | +1 |
+  | 6.25 | +2 |
+  | 6.50 | +3 |
+  | 6.75 | +4 |
+  | 7.00 | +5 |
+  | 7.25 | +6 |
+
+  Resta un'impostazione di lega: spegnerlo è una riga di configurazione e non cambia i fantavoti individuali.
+- **Modificatore portiere**: previsto e implementato, ma **spento**. La lega usa per ora il solo modificatore di difesa; il meccanismo resta perché accenderlo sia configurazione e non codice (regola 5)
 - Malus di adattamento Mantra: **−1**, configurabile. È il valore del regolamento ufficiale, che prevede un **solo livello** di malus: non esistono aggravi (§6.2)
 
 ---
@@ -148,17 +175,18 @@ Granularità: **eventi aggregati per partita**, dietro l'interfaccia `simulaPart
 Pipeline:
 
 1. **Formazioni** — l'allenatore AI schiera gli undici
-2. **Risultato** — Poisson sui gol attesi, da forza d'attacco contro forza di difesa più fattore campo
-3. **Attribuzione** — gol assegnati ai giocatori in campo pesando la propensione al gol, poi gli assist
-4. **Statistiche individuali** — tiri, occasioni create, duelli, errori, parate, con medie legate a rating effettivo e ruolo
-5. **Disciplina e infortuni** — cartellini e infortuni con probabilità legate a ruolo, età, minuti accumulati e condizione
-6. **Timeline** — a ogni evento si assegna un minuto, ottenendo la sequenza per la cronaca
-7. **Voto statistico** — formula pesata sulle statistiche del punto 4, **arrotondata a 0.5**, s.v. sotto la soglia di minuti
-8. **Fantavoto** — calcolato per lega, applicando bonus, malus e modificatori della configurazione
+2. **Rigori** — quanti se ne battono per squadra (Poisson) e come finiscono: segnato, parato o fuori. Parato o fuori, per il battitore è lo stesso **rigore sbagliato**: il regolamento non distingue. A cambiare è solo il portiere, che il bonus lo prende soltanto se lo para
+3. **Risultato** — Poisson sui gol attesi, da forza d'attacco contro forza di difesa più fattore campo. **I gol su rigore non si sommano al risultato: fanno parte di esso**, e la loro media viene sottratta da quella dei gol su azione. Senza questa sottrazione i gol a partita salirebbero ogni volta che si tocca la frequenza dei rigori, che è una manopola della disciplina e non del risultato
+4. **Attribuzione** — gol assegnati ai giocatori in campo pesando la propensione al gol, poi gli assist. Una quota dei gol è invece un **autogol** di un avversario: non ha marcatore né assist, e il malus va a chi è stato sfortunato, con pesi per gruppo di ruolo (l'autogol è quasi sempre di un centrale). Allo stesso modo ogni rigore risulta **concesso** da un avversario, e i rigori concessi in tabella sono esattamente quelli battuti
+5. **Statistiche individuali** — tiri, occasioni create, duelli, errori, parate, con medie legate a rating effettivo e ruolo
+6. **Disciplina e infortuni** — cartellini e infortuni con probabilità legate a ruolo, età, minuti accumulati e condizione
+7. **Timeline** — a ogni evento si assegna un minuto, ottenendo la sequenza per la cronaca
+8. **Voto statistico** — formula pesata sulle statistiche del punto 5, **arrotondata a 0.5**, s.v. sotto la soglia di minuti
+9. **Fantavoto** — calcolato per lega, applicando bonus, malus e modificatori della configurazione
 
-I punti 1–7 appartengono al mondo simulato e sono uguali per tutti. Il punto 8 dipende dalle regole della lega.
+I punti 1–8 appartengono al mondo simulato e sono uguali per tutti. Il punto 9 dipende dalle regole della lega.
 
-**Statistiche individuali prodotte al punto 4** (input obbligatorio del voto): minuti giocati, tiri, tiri in porta, grandi occasioni fallite, occasioni create, passaggi tentati e riusciti, passaggi chiave, cross tentati e riusciti, dribbling riusciti e subiti, duelli vinti, duelli aerei vinti, contrasti, intercetti, respinte, palle recuperate, palle perse, falli commessi, fuorigioco, errori, errori da gol, rigori concessi. Per i portieri anche: parate, parate decisive, uscite riuscite e sbagliate, rinvii precisi, tiri affrontati, gol subiti, rigori parati.
+**Statistiche individuali prodotte al punto 5** (input obbligatorio del voto): minuti giocati, tiri, tiri in porta, grandi occasioni fallite, occasioni create, passaggi tentati e riusciti, passaggi chiave, cross tentati e riusciti, dribbling riusciti e subiti, duelli vinti, duelli aerei vinti, contrasti, intercetti, respinte, palle recuperate, palle perse, falli commessi, fuorigioco, errori, errori da gol, rigori concessi (che non si estraggono: vengono dai rigori davvero assegnati). Per i portieri anche: parate, parate decisive, uscite riuscite e sbagliate, rinvii precisi, tiri affrontati, gol subiti, rigori parati.
 
 ### 5.6 Voto statistico
 
@@ -459,3 +487,4 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
 - Premi e verdetti di fine stagione oltre all'albo d'oro
 - Gestione della sostituzione dell'admin in caso di abbandono
+- **Le coppe non producono rotazione misurabile su una stagione.** Il meccanismo di §5.3 funziona ed è coperto da un test esatto: un turno di coppa toglie condizione ai migliori di un club europeo e a nessun altro. Ma l'effetto non sopravvive fino a fine stagione — rimisurato su dodici semi, la differenza di rotazione fra gli stessi club con e senza coppe cambia segno, e triplicando `costoImpegnoEuropeo` va addirittura nella direzione opposta. Il sospetto è il rapporto fra `costoImpegnoEuropeo` (0.2) e `recuperoPerGiornata` (0.34): la coppa si recupera in una giornata. Da decidere se le coppe devono pesare davvero sulle rotazioni o restare un dettaglio di colore

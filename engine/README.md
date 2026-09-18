@@ -80,6 +80,44 @@ che scorre da una partita all'altra, quindi simulare la giornata 12 non dipende
 dall'aver simulato la 11. È la premessa perché il job serale possa essere
 idempotente davvero, e c'è un test che la sorveglia.
 
+## Rigori e autogol
+
+Sono i due eventi che pesano di più nel fantacalcio a parità di rarità: un
+rigore sbagliato vale −3 e un autogol −2, cioè più di quanto valga un gol in
+positivo. Vale la pena spiegare come vengono fuori.
+
+**I rigori si battono prima del risultato.** Quanti se ne battono lo decide
+una Poisson sulla frequenza di configurazione; poi si estrae come finiscono.
+I gol su rigore **non si sommano** ai gol attesi: la loro media viene tolta da
+quella dei gol su azione. È il punto che tiene insieme due calibrazioni
+altrimenti intrecciate — senza la sottrazione, alzare la frequenza dei rigori
+alzerebbe i gol a partita, e i rigori sono una manopola della disciplina, non
+del risultato.
+
+Il primo tentativo era diverso e sbagliato: si estraevano i gol, e poi un
+rigore segnato ne "occupava" uno. Sembra equivalente, non lo è. Una squadra su
+quattro non segna, e in quelle partite il rigore non aveva un gol da occupare:
+la quota di rigori segnati misurata usciva **0.55** contro lo 0.78 di
+configurazione. Con la sottrazione esce 0.77.
+
+**Parato o fuori, per il battitore è lo stesso rigore sbagliato**: il
+regolamento non distingue, il malus è quello. A cambiare è solo il portiere,
+che il bonus lo prende soltanto se lo para. Per questo un rigore parato
+produce **due** eventi, uno per ciascuno dei due.
+
+**L'autogol non aggiunge un gol: ne riclassifica uno.** Una quota dei gol di
+una squadra è in realtà un autogol di un avversario: non ha marcatore né
+assist, e il malus va a chi è stato sfortunato. Nella cronaca è registrato col
+club di chi se lo è fatto, che è quello che ha subito il gol: è come lo si
+legge in una cronaca vera, ed è la ragione per cui il test che quadra i gol
+con gli eventi deve guardare anche gli autogol dell'altra squadra.
+
+**I rigori concessi non si estraggono più.** Erano una statistica indipendente,
+con una media per ruolo. Ora vengono dai rigori davvero assegnati, come i gol
+subiti e i rigori parati: altrimenti in tabella ci sarebbero più rigori
+concessi di quanti se ne sono battuti, e il malus al voto andrebbe a qualcuno
+che non ha commesso niente.
+
 ## Il confine col livello fanta
 
 Il motore produce **voti e statistiche**, che appartengono al mondo e sono
@@ -110,8 +148,9 @@ stessa firma e non si tocca nient'altro.
 
 ## Cosa manca
 
-- Autogol e rigori sbagliati sono previsti dai tipi e dalla formula del voto ma
-  il motore non li genera ancora: usciranno quando si affinerà l'attribuzione.
+- I rigoristi sono scelti pesando la propensione al gol, non designati: chi
+  segna di più batte più rigori, ma non esiste un rigorista di squadra che
+  li batte tutti. Se un giorno servisse, è una riga in `attribuzione`.
 - Le grandi occasioni fallite e le parate decisive sono generate come
   statistiche indipendenti, non derivate dalle occasioni realmente create.
 - La politica di turnover dell'allenatore è volutamente semplice: sceglie il

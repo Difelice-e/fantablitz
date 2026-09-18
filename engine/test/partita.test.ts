@@ -186,20 +186,34 @@ describe('coerenza delle statistiche', () => {
     }
   });
 
-  it('i marcatori erano in campo', () => {
+  it('chiunque compaia in un evento era in campo', () => {
     for (const evento of esito.eventi) {
-      if (evento.tipo !== 'gol' && evento.tipo !== 'rigoreSegnato') continue;
       const lato = evento.clubId === esito.casa.clubId ? esito.casa : esito.ospite;
-      ok(lato.minuti.has(evento.giocatoreId), 'ha segnato qualcuno che non era in campo');
+      ok(
+        lato.minuti.has(evento.giocatoreId),
+        `${evento.tipo}: ${evento.giocatoreId} non era in campo`,
+      );
     }
   });
 
-  it('i gol negli eventi corrispondono al punteggio', () => {
-    for (const lato of [esito.casa, esito.ospite]) {
+  it('i gol negli eventi corrispondono al punteggio, autogol compresi', () => {
+    // L'autogol e' registrato col club di chi se lo e' fatto, che e' quello
+    // che ha subito il gol: nel conto dei gol va all’altra squadra.
+    for (const [lato, altri] of [
+      [esito.casa, esito.ospite],
+      [esito.ospite, esito.casa],
+    ] as const) {
       const segnati = esito.eventi.filter(
         (e) => e.clubId === lato.clubId && (e.tipo === 'gol' || e.tipo === 'rigoreSegnato'),
       ).length;
-      strictEqual(segnati, lato.gol, `${lato.clubId}: eventi gol non coerenti col punteggio`);
+      const regalati = esito.eventi.filter(
+        (e) => e.clubId === altri.clubId && e.tipo === 'autogol',
+      ).length;
+      strictEqual(
+        segnati + regalati,
+        lato.gol,
+        `${lato.clubId}: eventi gol non coerenti col punteggio`,
+      );
     }
   });
 
@@ -208,6 +222,95 @@ describe('coerenza delle statistiche', () => {
       ok(esito.eventi[i]!.minuto >= esito.eventi[i - 1]!.minuto);
     }
     ok(esito.eventi.every((e) => e.minuto >= 1 && e.minuto <= 90));
+  });
+});
+
+describe('rigori e autogol', () => {
+  // Una manciata di partite: i rigori sono rari, su una sola non si vede
+  // niente. Qui si controllano gli invarianti, non le frequenze — quelle
+  // stanno in distribuzione.test.ts.
+  const partite = Array.from({ length: 200 }, (_, i) => partitaDiProva(`rigori-${i}`));
+  const eventi = partite.flatMap((e) => e.eventi);
+
+  it('in duecento partite qualche rigore e qualche autogol ci sono', () => {
+    const rigori = eventi.filter((e) => e.tipo === 'rigoreSegnato' || e.tipo === 'rigoreSbagliato');
+    ok(rigori.length > 0, 'nessun rigore battuto');
+    ok(eventi.some((e) => e.tipo === 'autogol'), 'nessun autogol');
+    ok(eventi.some((e) => e.tipo === 'rigoreParato'), 'nessun rigore parato');
+  });
+
+  it('ogni rigore parato ha il suo rigore sbagliato, e viceversa non sempre', () => {
+    for (const esito of partite) {
+      const parati = esito.eventi.filter((e) => e.tipo === 'rigoreParato');
+      const sbagliati = esito.eventi.filter((e) => e.tipo === 'rigoreSbagliato');
+      // Un rigore parato e' anche un rigore sbagliato dal battitore: il
+      // regolamento non distingue il parato dal fuori, il malus e' lo stesso.
+      ok(
+        parati.length <= sbagliati.length,
+        `${parati.length} parati ma solo ${sbagliati.length} sbagliati`,
+      );
+      for (const parato of parati) {
+        const lato = parato.clubId === esito.casa.clubId ? esito.casa : esito.ospite;
+        strictEqual(
+          lato.statistiche.get(parato.giocatoreId)!.rigoriParati > 0,
+          true,
+          'il rigore parato non risulta nelle statistiche del portiere',
+        );
+      }
+    }
+  });
+
+  it('i rigori concessi in tabella sono esattamente quelli battuti', () => {
+    // Non si estraggono a parte: vengono dai rigori veri. Altrimenti in
+    // tabella ci sarebbero piu' rigori concessi di quanti se ne sono battuti.
+    for (const esito of partite) {
+      for (const [lato, altri] of [
+        [esito.casa, esito.ospite],
+        [esito.ospite, esito.casa],
+      ] as const) {
+        const concessi = [...lato.statistiche.values()].reduce(
+          (a, st) => a + st.rigoriConcessi,
+          0,
+        );
+        const battuti = esito.eventi.filter(
+          (e) =>
+            e.clubId === altri.clubId &&
+            (e.tipo === 'rigoreSegnato' || e.tipo === 'rigoreSbagliato'),
+        ).length;
+        strictEqual(concessi, battuti, `${lato.clubId}: rigori concessi non coerenti`);
+      }
+    }
+  });
+
+  it('chi si fa l’autogol e’ un avversario, non un compagno del marcatore', () => {
+    for (const esito of partite) {
+      for (const e of esito.eventi.filter((x) => x.tipo === 'autogol')) {
+        const lato = e.clubId === esito.casa.clubId ? esito.casa : esito.ospite;
+        ok(lato.minuti.has(e.giocatoreId), 'l’autogol e’ di chi non era in campo');
+      }
+    }
+  });
+
+  it('un autogol non ha assist', () => {
+    for (const esito of partite) {
+      const autogol = esito.eventi.filter((e) => e.tipo === 'autogol');
+      const assist = esito.eventi.filter((e) => e.tipo === 'assist');
+      for (const a of autogol) {
+        ok(
+          !assist.some((x) => x.associatoId === a.giocatoreId),
+          'a un autogol e’ stato attaccato un assist',
+        );
+      }
+    }
+  });
+
+  it('i gol su rigore non gonfiano il risultato', () => {
+    // I rigori si tolgono dai gol attesi su azione: e' la ragione per cui la
+    // media dei gol resta quella della calibrazione anche muovendo la
+    // frequenza dei rigori.
+    const gol = partite.reduce((a, e) => a + e.casa.gol + e.ospite.gol, 0);
+    const perPartita = gol / partite.length;
+    ok(perPartita > 2.2 && perPartita < 3.2, `${perPartita.toFixed(2)} gol a partita`);
   });
 });
 

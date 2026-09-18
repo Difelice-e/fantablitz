@@ -77,11 +77,15 @@ export type ParametriMotore = {
     giornateSqualificaEspulsione: { minima: number; massima: number };
     rigoriPerPartita: number;
     quotaRigoriSegnati: number;
+    quotaRigoriNonSegnatiParati: number;
   };
   attribuzione: {
     esponenteRating: number;
     quotaGolConAssist: number;
     quotaAutogol: number;
+    /** Chi si fa l’autogol e chi concede il rigore, per gruppo di ruolo. */
+    pesiAutogol: Record<GruppoRuolo, number>;
+    pesiRigoreConcesso: Record<GruppoRuolo, number>;
   };
   statistiche: { influenzaRating: number } & Record<GruppoRuolo, MedieGruppo>;
   allenatore: {
@@ -139,7 +143,7 @@ function esigi(condizione: boolean, messaggio: string): void {
 }
 
 export function validaParametriMotore(p: ParametriMotore): ParametriMotore {
-  esigi(p.versione === 1, `versione ${p.versione} non supportata`);
+  esigi(p.versione === 2, `versione ${p.versione} non supportata`);
   esigi(p.stati.banda > 0 && p.stati.banda < 1, 'stati.banda deve stare fra 0 e 1');
   esigi(p.forze.golAttesiBase > 0, 'forze.golAttesiBase deve essere positivo');
   esigi(
@@ -160,7 +164,24 @@ export function validaParametriMotore(p: ParametriMotore): ParametriMotore {
   );
   for (const gruppo of GRUPPI_RUOLO) {
     esigi(p.statistiche[gruppo] != null, `statistiche: manca il gruppo "${gruppo}"`);
+    esigi(
+      p.attribuzione.pesiAutogol[gruppo] != null,
+      `attribuzione.pesiAutogol: manca il gruppo "${gruppo}"`,
+    );
+    esigi(
+      p.attribuzione.pesiRigoreConcesso[gruppo] != null,
+      `attribuzione.pesiRigoreConcesso: manca il gruppo "${gruppo}"`,
+    );
   }
+  for (const [nome, valore] of [
+    ['attribuzione.quotaGolConAssist', p.attribuzione.quotaGolConAssist],
+    ['attribuzione.quotaAutogol', p.attribuzione.quotaAutogol],
+    ['disciplina.quotaRigoriSegnati', p.disciplina.quotaRigoriSegnati],
+    ['disciplina.quotaRigoriNonSegnatiParati', p.disciplina.quotaRigoriNonSegnatiParati],
+  ] as const) {
+    esigi(valore >= 0 && valore <= 1, `${nome} deve stare fra 0 e 1`);
+  }
+  esigi(p.disciplina.rigoriPerPartita >= 0, 'disciplina.rigoriPerPartita non puo’ essere negativo');
   return p;
 }
 

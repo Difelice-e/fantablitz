@@ -147,12 +147,22 @@ Per lo stesso motivo la classifica si **ricalcola** dai risultati, mai per
 accumulo incrementale: una classifica accumulata si sporca al primo doppio
 salvataggio, una ricalcolata è sempre la somma esatta di quello che è successo.
 
+### Il confine della regola 7 passa da una funzione sola
+
+`eventiDaPrestazione` traduce la prestazione del mondo simulato negli eventi
+che la lega sa pagare. È una traduzione uno a uno e non decide niente: il
+motore conta i fatti, la configurazione di lega decide quanto valgono.
+
+È anche il punto in cui un bonus può sparire senza che nessun test del motore
+se ne accorga — il motore conterebbe i rigori, la lega non li pagherebbe — ed
+è per questo che un test gioca dieci giornate vere e verifica che i bonus
+arrivino davvero al fantavoto, invece di limitarsi a provare la funzione.
+
 ## Cosa manca
 
 - I generatori AI, che vivranno qui (milestone 7).
 - La scrittura su Supabase: oggi l'esito riuscito si può salvare come JSON con
   `--scrivi`, e basta. Le tabelle `imports` e `import_rows` di `SPEC.md` §9
   arriveranno col database.
-- Il motore non distingue ancora i gol su rigore dai gol su azione e non produce
-  autogol: i bonus relativi esistono e sono testati, ma restano a zero finché il
-  motore non li genera. Quando lo farà, cambia solo `eventiDaPrestazione`.
+- La scrittura delle cronache: gli eventi ci sono tutti, ma nessuno li racconta
+  ancora a parole (milestone 7).

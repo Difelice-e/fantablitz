@@ -19,7 +19,10 @@ import { regoleClassic, type ConfigurazioneClassic } from '../../fanta/src/class
 import { validaConfigurazioneLega, type ConfigurazioneLega } from '../../fanta/src/fantavoto.ts';
 import { disponi } from '../../fanta/src/schieramento.ts';
 import type { Schierabile } from '../../fanta/src/tipi.ts';
-import { eseguiCiclo, giocaGiornata, type Lega, type SquadraFanta } from '../src/ciclo.ts';
+import {
+  eseguiCiclo, eventiDaPrestazione, giocaGiornata,
+  type Lega, type SquadraFanta,
+} from '../src/ciclo.ts';
 import { importaRose } from '../src/importa.ts';
 import { contesto, roseCompleto } from './comune.ts';
 
@@ -212,6 +215,63 @@ describe('una stagione intera', () => {
   it('la stagione del mondo simulato e’ quella vera, non una finta', () => {
     strictEqual(esito.mondo.partite.length, 380);
     for (const r of esito.mondo.classifica) strictEqual(r.giocate, 38);
+  });
+});
+
+describe('dal mondo simulato ai bonus di lega', () => {
+  // E' il punto in cui si attraversa il confine della regola 7, e l'unico in cui
+  // un bonus puo' sparire senza che nessun test del motore se ne accorga: il
+  // motore conterebbe i rigori e la lega non li pagherebbe.
+  const esito = eseguiCiclo(mondo, motore, voto, lega, { seme: 'bonus', da: 1, quante: 10 });
+
+  it('traduce ogni evento, senza perderne nessuno per strada', () => {
+    const eventi = eventiDaPrestazione({
+      giocatoreId: 'x',
+      clubId: 'c',
+      minuti: 90,
+      voto: 6,
+      gol: 2,
+      rigoriSegnati: 1,
+      rigoriSbagliati: 1,
+      rigoriParati: 3,
+      autogol: 1,
+      assist: 2,
+      ammonito: true,
+      espulso: true,
+      statistiche: { rigoriParati: 3, golSubiti: 2 } as never,
+    });
+    strictEqual(eventi.gol, 2);
+    strictEqual(eventi.rigoriSegnati, 1);
+    strictEqual(eventi.rigoriSbagliati, 1);
+    strictEqual(eventi.autogol, 1);
+    strictEqual(eventi.assist, 2);
+    strictEqual(eventi.rigoriParati, 3);
+    strictEqual(eventi.golSubiti, 2);
+    strictEqual(eventi.ammonizioni, 1);
+    strictEqual(eventi.espulso, true);
+  });
+
+  it('in dieci giornate i bonus arrivano davvero al fantavoto', () => {
+    // Prima che il motore generasse rigori e autogol, i bonus relativi
+    // esistevano e avevano i loro test, ma restavano a zero per sempre: e'
+    // esattamente il buco che un test sulle sole funzioni non vede.
+    const bonus = esito.giornate.flatMap((g) =>
+      g.squadre.flatMap((s) => s.punteggio.prestazioni.map((p) => p.bonus)),
+    );
+    ok(bonus.length > 0);
+    ok(bonus.some((b) => b !== 0), 'nessun bonus assegnato in dieci giornate');
+  });
+
+  it('il modificatore di difesa entra nei fantapunti', () => {
+    const squadre = esito.giornate.flatMap((g) => g.squadre);
+    ok(
+      squadre.some((s) => s.punteggio.difesa.applicato),
+      'il modificatore di difesa non si e’ mai applicato in dieci giornate',
+    );
+    ok(
+      squadre.some((s) => s.punteggio.fantapunti !== s.punteggio.sommaFantavoti),
+      'i modificatori non hanno mai spostato i fantapunti',
+    );
   });
 });
 

@@ -82,9 +82,13 @@ export type EsitoCiclo = {
 export function eventiDaPrestazione(p: PrestazioneGiocatore): EventiFanta {
   return {
     ...EVENTI_VUOTI,
-    // Il motore non distingue ancora i rigori dai gol su azione ne' produce
-    // autogol: quando lo fara', qui cambia solo questa funzione.
+    // Traduzione uno a uno: e' l'unico punto in cui il mondo simulato passa
+    // il confine della regola 7. Il motore conta i fatti, la lega decide
+    // quanto valgono, e qui non si decide niente.
     gol: p.gol,
+    rigoriSegnati: p.rigoriSegnati,
+    rigoriSbagliati: p.rigoriSbagliati,
+    autogol: p.autogol,
     assist: p.assist,
     ammonizioni: p.ammonito ? 1 : 0,
     espulso: p.espulso,

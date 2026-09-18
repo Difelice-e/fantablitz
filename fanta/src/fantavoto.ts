@@ -75,11 +75,17 @@ function validaSoglie(soglie: Soglia[], dove: string): void {
       soglie[i]!.media > soglie[i - 1]!.media,
       `${dove}: le soglie devono essere in ordine crescente di media`,
     );
+    // Una fascia che paga meno della precedente e' sempre un errore di
+    // battitura, e in una tabella a sei fasce non si nota a occhio.
+    esigi(
+      soglie[i]!.bonus >= soglie[i - 1]!.bonus,
+      `${dove}: il bonus non puo’ calare al crescere della media`,
+    );
   }
 }
 
 export function validaConfigurazioneLega(c: ConfigurazioneLega): ConfigurazioneLega {
-  esigi(c.versione === 1, `versione ${c.versione} non supportata`);
+  esigi(c.versione === 2, `versione ${c.versione} non supportata`);
   esigi(c.soglieGol.base > 0, 'soglieGol.base deve essere positiva');
   esigi(c.soglieGol.scarti.length > 0, 'soglieGol: serve almeno uno scarto');
   for (const s of c.soglieGol.scarti) esigi(s > 0, 'soglieGol: gli scarti devono essere positivi');

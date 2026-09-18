@@ -181,15 +181,20 @@ describe('fantavoto individuale', () => {
     );
   });
 
-  it('l’imbattibilita’ e’ spenta di default ma si accende da configurazione', () => {
-    strictEqual(calcolaFantavoto(prestazione(g('p', 'P'), 6), lega).fantavoto, 6);
-    const con = { ...lega, bonus: { ...lega.bonus, imbattibilitaPortiere: 1 } };
-    strictEqual(calcolaFantavoto(prestazione(g('p', 'P'), 6), con).fantavoto, 7);
+  it('la porta inviolata vale un punto, e solo al portiere', () => {
+    strictEqual(calcolaFantavoto(prestazione(g('p', 'P'), 6), lega).fantavoto, 7);
     strictEqual(
-      calcolaFantavoto(prestazione(g('p', 'P'), 6, { golSubiti: 1 }), con).fantavoto,
+      calcolaFantavoto(prestazione(g('p', 'P'), 6, { golSubiti: 1 }), lega).fantavoto,
       5,
-      'con un gol subito non c’e’ imbattibilita’',
+      'con un gol subito non c’e’ imbattibilita’: 6 - 1 di malus',
     );
+    // Un difensore a porta inviolata non prende niente: nel fantacalcio il
+    // bonus e' del portiere, e la difesa la premia semmai il modificatore.
+    strictEqual(calcolaFantavoto(prestazione(g('d', 'D'), 6), lega).fantavoto, 6);
+  });
+
+  it('senza voto non c’e’ imbattibilita’: il portiere non ha giocato', () => {
+    strictEqual(calcolaFantavoto(prestazione(g('p', 'P'), null), lega).bonus, 0);
   });
 });
 
@@ -225,13 +230,22 @@ describe('modificatore di difesa', () => {
     return punteggioSquadra(prestazioni, attivo);
   };
 
-  it('spento di default, non tocca il punteggio', () => {
-    const esito = punteggioSquadra(
-      [prestazione(g('p', 'P'), 7), ...[0, 1, 2, 3].map((i) => prestazione(g(`d${i}`, 'D'), 7))],
-      lega,
-    );
+  it('acceso nella configurazione della lega', () => {
+    strictEqual(lega.modificatoreDifesa.attivo, true);
+    strictEqual(lega.modificatoreDifesa.includiPortiere, true);
+    strictEqual(lega.modificatoreDifesa.difensoriRichiesti, 4, 'solo con la difesa a quattro');
+  });
+
+  it('spegnerlo e’ una riga, e i fantavoti individuali non cambiano', () => {
+    const spento: ConfigurazioneLega = {
+      ...lega,
+      modificatoreDifesa: { ...lega.modificatoreDifesa, attivo: false },
+    };
+    const undici = [prestazione(g('p', 'P'), 7), ...[0, 1, 2, 3].map((i) => prestazione(g(`d${i}`, 'D'), 7))];
+    const esito = punteggioSquadra(undici, spento);
     strictEqual(esito.difesa.applicato, false);
     strictEqual(esito.difesa.bonus, 0);
+    strictEqual(esito.sommaFantavoti, punteggioSquadra(undici, lega).sommaFantavoti);
   });
 
   it('media del portiere piu’ i tre migliori difensori', () => {
@@ -290,17 +304,42 @@ describe('modificatore di difesa', () => {
       senzaPortiere,
     );
     strictEqual(esito.difesa.media, 7, 'il voto del portiere non deve entrare');
-    strictEqual(esito.difesa.bonus, 6);
+    strictEqual(esito.difesa.bonus, 5);
   });
 
-  it('i confini della tabella', () => {
+  it('le sei fasce, al centesimo', () => {
+    // La tabella scelta dalla lega: un punto ogni quarto di voto, da 6.00 a
+    // 7.25. E' il punto in cui un > al posto di un >= toglie un bonus a
+    // qualcuno, e se ne accorge solo chi rifa' i conti a mano.
+    const t = lega.modificatoreDifesa.soglie;
+    strictEqual(t.length, 6, 'sei fasce');
+
+    strictEqual(bonusPerSoglia(5.99, t), 0, 'sotto il 6 non si prende niente');
+    for (const [media, bonus] of [
+      [6.0, 1], [6.25, 2], [6.5, 3], [6.75, 4], [7.0, 5], [7.25, 6],
+    ] as const) {
+      strictEqual(bonusPerSoglia(media, t), bonus, `media ${media} vale +${bonus}`);
+      strictEqual(
+        bonusPerSoglia(media - 0.01, t),
+        bonus - 1,
+        `un centesimo sotto ${media} vale +${bonus - 1}`,
+      );
+    }
+    strictEqual(bonusPerSoglia(9, t), 6, 'sopra l’ultima fascia non si sale piu’');
+  });
+
+  it('le sei fasce, viste dalla squadra in campo', () => {
+    // Le stesse soglie raggiunte davvero, portiere piu’ tre difensori.
     strictEqual(conDifesa([6, 6, 6, 6]).difesa.bonus, 1, 'media 6.00');
+    strictEqual(conDifesa([6.5, 6.5, 6, 6]).difesa.bonus, 2, 'media 6.25');
+    strictEqual(conDifesa([7, 7, 6, 6]).difesa.bonus, 3, 'media 6.50');
+    strictEqual(conDifesa([7, 7, 7, 6]).difesa.bonus, 4, 'media 6.75');
+    strictEqual(conDifesa([7, 7, 7, 7], 7).difesa.bonus, 5, 'media 7.00');
+    strictEqual(conDifesa([7.5, 7.5, 7, 7], 7).difesa.bonus, 6, 'media 7.25');
+
     // Per scendere sotto il 6 non basta un difensore scarso: viene scartato,
     // perche' contano i TRE MIGLIORI. Servono tre voti bassi.
     strictEqual(conDifesa([5, 5, 5, 7]).difesa.bonus, 0, 'media (6+7+5+5)/4 = 5.75');
-    // Il portiere entra nella media: per arrivare a 7.00 deve salire anche lui.
-    strictEqual(conDifesa([7, 7, 7, 7], 7).difesa.bonus, 6, 'media 7.00');
-    strictEqual(conDifesa([7, 7, 7, 7], 6).difesa.bonus, 3, 'media 6.75, il portiere pesa');
   });
 
   it('il difensore peggiore viene scartato, non media tutti e quattro', () => {
@@ -350,13 +389,19 @@ describe('fantapunti di squadra', () => {
     ...[0, 1].map((i) => prestazione(g(`a${i}`, 'A'), 6)),
   ];
 
-  it('somma gli undici fantavoti', () => {
-    strictEqual(punteggioSquadra(undici(), lega).fantapunti, 66);
+  it('somma gli undici fantavoti, il bonus del portiere e il modificatore', () => {
+    const esito = punteggioSquadra(undici(), lega);
+    // Undici volte sei fa 66, piu' un punto di porta inviolata al portiere
+    // (67) piu' il modificatore, che con una difesa tutta da 6 vale +1 (68).
+    strictEqual(esito.sommaFantavoti, 67);
+    strictEqual(esito.difesa.media, 6);
+    strictEqual(esito.difesa.bonus, 1);
+    strictEqual(esito.fantapunti, 68);
   });
 
   it('una squadra tutta da 6 segna esattamente un gol', () => {
-    // Undici volte sei fa sessantasei, che e' la soglia base: e' il caso di
-    // confine piu' facile da sbagliare e il piu' facile da contestare.
+    // 68 punti stanno fra 66 e 72: un gol, non due. E' il caso di confine
+    // piu' facile da sbagliare e il piu' facile da contestare.
     strictEqual(golDaFantapunti(punteggioSquadra(undici(), lega).fantapunti, lega.soglieGol), 1);
   });
 
@@ -364,7 +409,10 @@ describe('fantapunti di squadra', () => {
     const prestazioni = undici();
     prestazioni[3] = prestazione(g('d2', 'D'), null, { gol: 1 });
     const esito = punteggioSquadra(prestazioni, lega);
-    strictEqual(esito.fantapunti, 60);
+    // 60 di fantavoti piu' la porta inviolata. Il modificatore non si applica:
+    // con un difensore senza voto la difesa a quattro non c'e' piu'.
+    strictEqual(esito.difesa.applicato, false);
+    strictEqual(esito.fantapunti, 61);
     deepStrictEqual(esito.senzaVoto, ['d2']);
   });
 
@@ -380,10 +428,11 @@ describe('fantapunti di squadra', () => {
         : p,
     );
     const esito = punteggioSquadra(prestazioni, attivi);
-    strictEqual(esito.sommaFantavoti, 5 * 7 + 6 * 6);
-    strictEqual(esito.difesa.bonus, 6);
+    // Il portiere prende anche la porta inviolata: nessuno gli ha segnato.
+    strictEqual(esito.sommaFantavoti, 5 * 7 + 6 * 6 + 1);
+    strictEqual(esito.difesa.bonus, 5, 'media 7.00');
     strictEqual(esito.portiere.bonus, 2);
-    strictEqual(esito.fantapunti, esito.sommaFantavoti + 8);
+    strictEqual(esito.fantapunti, esito.sommaFantavoti + 7);
   });
 });
 
@@ -401,6 +450,21 @@ describe('configurazione di lega', () => {
           },
         }),
       /ordine crescente/,
+    );
+  });
+
+  it('rifiuta una fascia che paga meno della precedente', () => {
+    // In una tabella a sei fasce un bonus fuori ordine non si nota a occhio.
+    throws(
+      () =>
+        validaConfigurazioneLega({
+          ...lega,
+          modificatoreDifesa: {
+            ...lega.modificatoreDifesa,
+            soglie: [{ media: 6, bonus: 3 }, { media: 6.5, bonus: 2 }],
+          },
+        }),
+      /non puo’ calare/,
     );
   });
 

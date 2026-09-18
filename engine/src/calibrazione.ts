@@ -84,6 +84,10 @@ type Accumulatore = {
   ammonizioni: number;
   espulsioni: number;
   infortuni: number;
+  rigori: number;
+  rigoriSegnati: number;
+  rigoriParati: number;
+  autogol: number;
   indiciPerGruppo: Map<GruppoRuolo, number[]>;
   minutiPerClub: Map<string, number[]>;
   puntiPerClub: Map<string, number[]>;
@@ -96,6 +100,7 @@ function accumulatoreVuoto(): Accumulatore {
     votiPerGruppo: new Map(GRUPPI_RUOLO.map((g) => [g, []])),
     voti: [], senzaVoto: 0, valutazioni: 0,
     ammonizioni: 0, espulsioni: 0, infortuni: 0,
+  rigori: 0, rigoriSegnati: 0, rigoriParati: 0, autogol: 0,
     indiciPerGruppo: new Map(GRUPPI_RUOLO.map((g) => [g, []])),
     minutiPerClub: new Map(), puntiPerClub: new Map(), golPerClub: new Map(),
   };
@@ -137,7 +142,13 @@ function raccogli(
       }
     }
 
-    for (const e of p.eventi) if (e.tipo === 'infortunio') acc.infortuni++;
+    for (const e of p.eventi) {
+      if (e.tipo === 'infortunio') acc.infortuni++;
+      else if (e.tipo === 'autogol') acc.autogol++;
+      else if (e.tipo === 'rigoreParato') acc.rigoriParati++;
+      else if (e.tipo === 'rigoreSegnato') { acc.rigori++; acc.rigoriSegnati++; }
+      else if (e.tipo === 'rigoreSbagliato') acc.rigori++;
+    }
   }
 
   for (const riga of stagione.classifica) {
@@ -269,6 +280,17 @@ async function principale(): Promise<number> {
   console.log(`  ammonizioni            ${d2(acc.ammonizioni / acc.partite)}   ${verdetto(acc.ammonizioni / acc.partite, 4.0, 5.5)}`);
   console.log(`  espulsioni             ${d3(acc.espulsioni / acc.partite)}   ${verdetto(acc.espulsioni / acc.partite, 0.15, 0.35)}`);
   console.log(`  infortuni              ${d3(acc.infortuni / acc.partite)}`);
+
+  console.log('\nRIGORI E AUTOGOL (per partita, somma delle due squadre)');
+  console.log(`  rigori assegnati       ${d3(acc.rigori / acc.partite)}   ${verdetto(acc.rigori / acc.partite, 0.24, 0.32)}`);
+  console.log(
+    `  quota segnati          ${d3(acc.rigoriSegnati / Math.max(1, acc.rigori))}   ` +
+      `${verdetto(acc.rigoriSegnati / Math.max(1, acc.rigori), 0.7, 0.82)}`,
+  );
+  console.log(
+    `  quota parati           ${d3(acc.rigoriParati / Math.max(1, acc.rigori - acc.rigoriSegnati))}`,
+  );
+  console.log(`  autogol                ${d3(acc.autogol / acc.partite)}   ${verdetto(acc.autogol / acc.partite, 0.04, 0.12)}`);
 
   console.log('\nCLUB (media sulle stagioni)');
   console.log('  club                 punti    gol   giocatori usati');

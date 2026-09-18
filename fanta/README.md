@@ -159,14 +159,52 @@ src/classic.ts       regole classic
 src/mantra.ts        regole Mantra, matrice ed eccezioni
 src/schieramento.ts  disposizione, copertura, validazione di una formazione
 src/sostituzione.ts  il contratto StrategiaSostituzione e la strategia Basic
+src/fantavoto.ts     dal voto al fantavoto, bonus, malus e modificatori
+src/soglie.ts        dai fantapunti ai gol
+src/calendarioFanta.ts  il calendario della lega
+src/classifica.ts    scontri diretti e classifica
 ```
+
+## Il punteggio della lega
+
+Il **voto** appartiene al mondo simulato ed è lo stesso per tutte le leghe che
+ci girano sopra. Il **fantavoto** appartiene alla lega: due leghe sullo stesso
+mondo possono pagare la stessa identica partita in modo diverso. Per questo il
+motore non compare da nessuna parte in `fantavoto.ts`: gli eventi arrivano come
+dato, in una forma che il chiamante costruisce.
+
+I valori stanno tutti in `config/lega.json` (`SPEC.md` §4): gol +3, rigore
+segnato +3, assist +1, rigore parato +3, porta inviolata +1, ammonizione −0.5,
+espulsione −1, rigore sbagliato −3, autogol −2, gol subito −1.
+
+### Il modificatore di difesa è acceso, a sei fasce
+
+Media dei voti **puri** — esclusi bonus e malus — del portiere più i **3
+migliori difensori**, e solo con una difesa da almeno 4 uomini. Un punto ogni
+quarto di voto: 6.00 vale +1, 6.25 +2, 6.50 +3, 6.75 +4, 7.00 +5, 7.25 +6.
+
+Due scelte meritano una riga ciascuna.
+
+**Si usano i voti puri, non i fantavoti.** Un difensore che segna non rende la
+difesa più solida: pagarglielo due volte sarebbe un regalo a chi ha in rosa un
+terzino che tira le punizioni.
+
+**Se anche uno solo dei giocatori considerati non porta voto, non si applica
+affatto.** Non si ripiega su una media parziale, che sarebbe più generosa
+proprio con chi ha schierato meno gente.
+
+Resta un'impostazione di lega: spegnerlo è una riga di configurazione, non
+cambia i fantavoti individuali, e c'è un test che lo verifica. Il modificatore
+portiere esiste, ha i suoi test ed è spento: la lega usa per ora il solo
+modificatore di difesa, e accenderlo un domani non deve essere una modifica al
+codice (regola 5).
 
 ## Cosa manca
 
 - Easy e Master, che arriveranno dietro il flag `sostituzioni_easy_master`. La
   strategia Basic è già sostituibile: sono due implementazioni in più, non una
   riscrittura.
-- Il malus in punti non si applica qui: questo pacchetto conta gli adattamenti
-  in unità astratte, e la conversione è del fantavoto, che arriva con la
-  milestone 4. Col malus a −1 il cambio è uno a uno, ma tenerli separati
-  significa che ritoccare il malus non tocca l'algoritmo di schieramento.
+- Il malus in punti non si applica nello schieramento: `schieramento.ts` conta
+  gli adattamenti in unità astratte ed è `fantavoto.ts` a convertirli in punti.
+  Col malus a −1 il cambio è uno a uno, ma tenerli separati significa che
+  ritoccare il malus non tocca l'algoritmo di schieramento.
