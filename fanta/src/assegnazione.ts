@@ -41,19 +41,30 @@ export type Assegnazione = {
  * Risolve l'assegnazione di costo minimo.
  *
  * `costi[r][c]` e' il costo di mettere la colonna `c` nella riga `r`, oppure
- * `VIETATO`. Le righe sono gli slot, le colonne i giocatori, e le colonne
- * possono essere piu' numerose delle righe.
+ * `VIETATO`. Le righe sono gli slot, le colonne i giocatori.
+ *
+ * **I candidati possono essere meno delle caselle.** Non e' un caso di
+ * laboratorio: succede ogni volta che a una squadra restano meno di undici
+ * giocatori con un voto, ed e' frequente quanto le giornate infrasettimanali.
+ * Le caselle che nessuno puo' occupare tornano in `righeScoperte`, e le altre
+ * vengono riempite lo stesso, nel modo migliore: scendere in campo in dieci
+ * vale molto piu' che non scendere affatto.
  */
 export function assegnazioneOttima(costi: readonly (readonly number[])[]): Assegnazione {
   const righe = costi.length;
-  const colonne = righe === 0 ? 0 : costi[0]!.length;
+  const colonneVere = righe === 0 ? 0 : costi[0]!.length;
 
   if (righe === 0) return { perRiga: [], costo: 0, righeScoperte: [] };
-  if (colonne < righe) {
-    throw new Error(
-      `Assegnazione impossibile: ${righe} caselle da riempire e solo ${colonne} candidati`,
-    );
-  }
+
+  // Con meno candidati che caselle si aggiungono candidati fittizi, vietati
+  // ovunque: l'algoritmo assegna loro le caselle che avanzano, e il giro
+  // finale le riconosce come scoperte perche' costano `VIETATO`. Il risultato
+  // e' l'assegnazione ottima di quelli veri.
+  const tabella: readonly (readonly number[])[] =
+    colonneVere >= righe
+      ? costi
+      : costi.map((riga) => [...riga, ...new Array<number>(righe - colonneVere).fill(VIETATO)]);
+  const colonne = tabella[0]!.length;
 
   // Indici a base uno, come vuole la formulazione classica: la riga 0 e la
   // colonna 0 fanno da sentinella.
@@ -77,7 +88,7 @@ export function assegnazioneOttima(costi: readonly (readonly number[])[]): Asseg
 
       for (let c = 1; c <= colonne; c++) {
         if (usata[c]) continue;
-        const costoRidotto = costi[rigaCorrente - 1]![c - 1]! - u[rigaCorrente]! - v[c]!;
+        const costoRidotto = tabella[rigaCorrente - 1]![c - 1]! - u[rigaCorrente]! - v[c]!;
         if (costoRidotto < minimo[c]!) {
           minimo[c] = costoRidotto;
           percorso[c] = colonnaCorrente;
@@ -120,11 +131,12 @@ export function assegnazioneOttima(costi: readonly (readonly number[])[]): Asseg
   let costo = 0;
   for (let r = 0; r < righe; r++) {
     const c = perRiga[r]!;
-    if (c < 0 || costi[r]![c]! >= VIETATO) {
+    // Un candidato fittizio non e' un candidato: la casella resta scoperta.
+    if (c < 0 || c >= colonneVere || tabella[r]![c]! >= VIETATO) {
       righeScoperte.push(r);
       perRiga[r] = -1;
     } else {
-      costo += costi[r]![c]!;
+      costo += tabella[r]![c]!;
     }
   }
 
