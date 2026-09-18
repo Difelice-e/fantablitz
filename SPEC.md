@@ -442,7 +442,7 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 0. **Seed** — ✅ *fatto*, in `/seed`. Script che converte il listone `.xlsx` in un seed JSON: esclusione dei ceduti, parsing dei ruoli Mantra, derivazione dei rating da FVM M e Qt.A M, tabella di corrispondenza sigle/nomi dei club. Piccolo e verificabile a occhio (`out/RAPPORTO.md`), è il primo pezzo da scrivere
 1. **Motore + calibrazione** — ✅ *fatto*, in `/engine`. simulazione di una stagione senza interfaccia, con script che gira centinaia di stagioni e riporta media gol, distribuzione dei voti, infortuni e cartellini per squadra
 2. **Schieramento** — ✅ *fatto*, in `/fanta`. I due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
-3. **Import Fantalab** — parser, riconciliazione, validazioni, sui file di esempio reali. Un solo parser per le due modalità
+3. **Import Fantalab** — ✅ *fatto*, in `/jobs`. Parser, riconciliazione, validazioni, sui file di esempio reali. Un solo importatore per le due modalità, import atomico, copertura dei moduli in uscita
 4. **Ciclo di gioco** — job serale, calcolo fantavoti, scontri diretti, classifica
 5. **Interfaccia** — schermata formazione, risultati, classifica, rosa
 6. **Bot** — valutazione e scambi
