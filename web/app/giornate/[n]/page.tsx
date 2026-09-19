@@ -1,4 +1,4 @@
-import { legaPredefinita, nomiGiocatori, stagioneDi } from '../../../src/dati.ts';
+import { contesto, legaPredefinita, nomiGiocatori, stagioneDi } from '../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,6 +30,11 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
 
   if (!giornata) return <p className="vuoto">Giornata non trovata.</p>;
 
+  const c = await contesto();
+  const nomeClub = (id: string): string => c.mondo.clubPerId.get(id)?.nome ?? id;
+  const editoriale = lega.editoriali.find((e) => e.giornata === numero);
+  const cronache = lega.cronache.filter((cr) => cr.giornata === numero);
+
   return (
     <>
       <section className="riquadro">
@@ -56,6 +61,42 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
           </div>
         ))}
       </section>
+
+      {editoriale && (
+        <section className="riquadro">
+          <h2>
+            Editoriale
+            {editoriale.fonte === 'template' && (
+              <span className="etichetta" title="Il provider AI non era raggiungibile: testo da modello fisso.">
+                da modello
+              </span>
+            )}
+          </h2>
+          <p>{editoriale.testo}</p>
+        </section>
+      )}
+
+      {cronache.length > 0 && (
+        <section className="riquadro">
+          <h2>Cronache dal campionato</h2>
+          <p className="spiega">Il mondo simulato gioca dieci partite a giornata, indipendenti dagli scontri fanta qui sopra.</p>
+          <div className="griglia-due">
+            {cronache.map((cr) => (
+              <div key={`${cr.casaId}-${cr.ospiteId}`}>
+                <h3>
+                  {nomeClub(cr.casaId)} — {nomeClub(cr.ospiteId)}
+                  {cr.fonte === 'template' && (
+                    <span className="etichetta" title="Il provider AI non era raggiungibile: testo da modello fisso.">
+                      da modello
+                    </span>
+                  )}
+                </h3>
+                <p style={{ fontSize: '0.9rem' }}>{cr.testo}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="riquadro">
         <h2>Cosa è successo alle formazioni</h2>

@@ -14,7 +14,9 @@
  */
 
 import { archivioServizio, contesto, RADICE } from '../../../src/dati.ts';
+import { providerDallAmbiente } from '../../../../jobs/src/ai/provider.ts';
 import { vistaStagione } from '../../../../jobs/src/lega.ts';
+import { generaNarrativaGiornate } from '../../../../jobs/src/narrativa.ts';
 
 export const dynamic = 'force-dynamic';
 // La simulazione di una stagione intera non sta nei limiti di una funzione
@@ -59,6 +61,7 @@ export async function POST(richiesta: Request): Promise<Response> {
   if (leghe.length === 0) return Response.json({ giocate: [], nota: 'nessuna lega in archivio' });
 
   const c = await contesto();
+  const provider = providerDallAmbiente(process.env);
   const giocate: { lega: string; da: number; a: number; su: number }[] = [];
 
   for (const { id } of leghe) {
@@ -68,9 +71,15 @@ export async function POST(richiesta: Request): Promise<Response> {
     const totale = vistaStagione({ ...stato, giornateGiocate: 0 }, c).calendario.giornate.length;
     if (stato.giornateGiocate >= totale) continue;
 
+    const da = stato.giornateGiocate + 1;
     const fino = Math.min(totale, stato.giornateGiocate + quante);
     await archivioServizio.segnaGiornateGiocate(id, fino);
-    giocate.push({ lega: id, da: stato.giornateGiocate + 1, a: fino, su: totale });
+
+    const aggiornato = { ...stato, giornateGiocate: fino };
+    const vista = vistaStagione(aggiornato, c);
+    await generaNarrativaGiornate(archivioServizio, aggiornato, c, vista, provider, da, fino);
+
+    giocate.push({ lega: id, da, a: fino, su: totale });
   }
 
   return Response.json({ giocate, radice: RADICE });

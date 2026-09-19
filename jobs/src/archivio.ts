@@ -19,6 +19,13 @@
  * da un'altra parte. Uno stato che si puo' solo ricalcolare non puo' andare
  * fuori sincrono con quello che e' successo: non esiste il caso in cui la
  * classifica salvata dice una cosa e i risultati un'altra.
+ *
+ * **Cronache ed editoriali sono l'eccezione dichiarata** (SPEC 8): sono
+ * derivate dai risultati come la classifica, ma generarle costa una chiamata
+ * a un provider esterno, non un calcolo. Si generano una volta nel job serale
+ * e si salvano per davvero — "mai generazione al caricamento della pagina" —
+ * altrimenti ogni visita alla schermata delle giornate ripagherebbe la stessa
+ * cronaca in quota Groq.
  */
 
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
@@ -85,6 +92,25 @@ export type ScambioSalvato = {
   risoltoIl: string | null;
 };
 
+/** Da chi viene un testo generato (SPEC 8): serve a mostrarlo diversamente, non a nasconderlo. */
+export type FonteTesto = 'ai' | 'template';
+
+/** La cronaca di una partita del mondo simulato: 10 a giornata, indipendenti dalla lega. */
+export type CronacaSalvata = {
+  giornata: number;
+  casaId: string;
+  ospiteId: string;
+  testo: string;
+  fonte: FonteTesto;
+};
+
+/** L'editoriale di lega di una giornata: uno solo, dipende dai risultati fanta. */
+export type EditorialeSalvato = {
+  giornata: number;
+  testo: string;
+  fonte: FonteTesto;
+};
+
 export type StatoLega = {
   versione: number;
   id: string;
@@ -103,9 +129,11 @@ export type StatoLega = {
   squadre: SquadraSalvata[];
   formazioni: FormazioneSalvata[];
   scambi: ScambioSalvato[];
+  cronache: CronacaSalvata[];
+  editoriali: EditorialeSalvato[];
 };
 
-export const VERSIONE_STATO = 2;
+export const VERSIONE_STATO = 3;
 
 /* ------------------------------------------------------------------ */
 /* Il contratto                                                        */
@@ -150,6 +178,14 @@ export type Archivio = {
    * `scrivi()` perche' tocca solo le due squadre coinvolte, non l'intera lega.
    */
   risolviScambio(legaId: string, scambio: ScambioSalvato): Promise<void>;
+  /**
+   * Salva la cronaca di **una** partita di **una** giornata. Rigenerarla
+   * sostituisce quella salvata: e' cosi' che il job serale resta idempotente
+   * anche qui, senza bisogno di una guardia "l'ho gia' generata?".
+   */
+  salvaCronaca(legaId: string, cronaca: CronacaSalvata): Promise<void>;
+  /** Salva l'editoriale di **una** giornata. Stessa logica di `salvaCronaca`. */
+  salvaEditoriale(legaId: string, editoriale: EditorialeSalvato): Promise<void>;
   elenca(): Promise<{ id: string; nome: string }[]>;
 };
 
@@ -227,6 +263,21 @@ export function validaStatoLega(s: StatoLega): StatoLega {
     esigi(sc.daSquadraId !== sc.aSquadraId, `scambio ${sc.id}: una squadra non scambia con se stessa`);
     esigi(sc.offerti.length > 0, `scambio ${sc.id}: nessun giocatore offerto`);
     esigi(sc.richiesti.length > 0, `scambio ${sc.id}: nessun giocatore richiesto`);
+  }
+
+  const cronacheViste = new Set<string>();
+  for (const c of s.cronache) {
+    const chiave = `${c.giornata}:${c.casaId}:${c.ospiteId}`;
+    esigi(!cronacheViste.has(chiave), `cronaca duplicata: ${chiave}`);
+    cronacheViste.add(chiave);
+    esigi(c.giornata >= 1, `cronaca con giornata ${c.giornata}`);
+  }
+
+  const editorialiVisti = new Set<number>();
+  for (const e of s.editoriali) {
+    esigi(!editorialiVisti.has(e.giornata), `editoriale duplicato per la giornata ${e.giornata}`);
+    editorialiVisti.add(e.giornata);
+    esigi(e.giornata >= 1, `editoriale con giornata ${e.giornata}`);
   }
 
   return s;
@@ -336,6 +387,22 @@ export function archivioSuFile(cartella: string): Archivio {
       await this.scrivi(applicaEsitoScambio(stato, scambio));
     },
 
+    async salvaCronaca(legaId, cronaca) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      const altre = stato.cronache.filter(
+        (c) => !(c.giornata === cronaca.giornata && c.casaId === cronaca.casaId && c.ospiteId === cronaca.ospiteId),
+      );
+      await this.scrivi({ ...stato, cronache: [...altre, cronaca] });
+    },
+
+    async salvaEditoriale(legaId, editoriale) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      const altri = stato.editoriali.filter((e) => e.giornata !== editoriale.giornata);
+      await this.scrivi({ ...stato, editoriali: [...altri, editoriale] });
+    },
+
     async elenca() {
       let file: string[];
       try {
@@ -400,6 +467,24 @@ export function archivioInMemoria(iniziale: StatoLega[] = []): Archivio {
       const stato = leghe.get(legaId);
       if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
       leghe.set(legaId, applicaEsitoScambio(stato, structuredClone(scambio)));
+    },
+    async salvaCronaca(legaId, cronaca) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.cronache = [
+        ...stato.cronache.filter(
+          (c) => !(c.giornata === cronaca.giornata && c.casaId === cronaca.casaId && c.ospiteId === cronaca.ospiteId),
+        ),
+        structuredClone(cronaca),
+      ];
+    },
+    async salvaEditoriale(legaId, editoriale) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.editoriali = [
+        ...stato.editoriali.filter((e) => e.giornata !== editoriale.giornata),
+        structuredClone(editoriale),
+      ];
     },
     async elenca() {
       return [...leghe.values()]

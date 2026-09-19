@@ -12,10 +12,18 @@
 
 import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { providerDallAmbiente } from './ai/provider.ts';
 import { archivioSuFile } from './archivio.ts';
 import { caricaContesto, vistaStagione } from './lega.ts';
+import { generaNarrativaGiornate } from './narrativa.ts';
 
 const RADICE = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
+
+try {
+  process.loadEnvFile(join(RADICE, '.env'));
+} catch {
+  // In CI, o senza .env, si lavora con quello che c'e' gia' nell'ambiente.
+}
 
 async function principale(): Promise<number> {
   const argv = process.argv.slice(2);
@@ -63,6 +71,9 @@ async function principale(): Promise<number> {
   const aggiornato = { ...stato, giornateGiocate: fino };
   const vista = vistaStagione(aggiornato, contesto);
   await archivio.scrivi(aggiornato);
+
+  const provider = providerDallAmbiente(process.env);
+  await generaNarrativaGiornate(archivio, aggiornato, contesto, vista, provider, da, fino);
 
   for (const giornata of vista.giornate.filter((g) => g.numero >= da)) {
     console.log(`\nGIORNATA ${giornata.numero}`);

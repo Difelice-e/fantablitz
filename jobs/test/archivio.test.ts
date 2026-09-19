@@ -39,6 +39,8 @@ function statoDiProva(modifiche: Partial<StatoLega> = {}): StatoLega {
     ],
     formazioni: [],
     scambi: [],
+    cronache: [],
+    editoriali: [],
     ...modifiche,
   };
 }
@@ -154,6 +156,22 @@ describe('validazione dello stato', () => {
     throws(
       () => validaStatoLega(statoDiProva({ scambi: [scambio, scambio] })),
       /scambio duplicato/,
+    );
+  });
+
+  it('rifiuta due cronache per la stessa partita', () => {
+    const cronaca = { giornata: 1, casaId: 'X', ospiteId: 'Y', testo: 'testo', fonte: 'template' as const };
+    throws(
+      () => validaStatoLega(statoDiProva({ cronache: [cronaca, cronaca] })),
+      /cronaca duplicata/,
+    );
+  });
+
+  it('rifiuta due editoriali per la stessa giornata', () => {
+    const editoriale = { giornata: 1, testo: 'testo', fonte: 'template' as const };
+    throws(
+      () => validaStatoLega(statoDiProva({ editoriali: [editoriale, editoriale] })),
+      /editoriale duplicato/,
     );
   });
 });
@@ -415,6 +433,34 @@ for (const [nome, costruisci] of [
       deepStrictEqual(stato!.squadre.find((s) => s.id === 'Due')!.giocatori.map((g) => g.giocatoreId), ['a']);
       // Il prezzo pagato all'asta resta legato al giocatore, non alla squadra.
       strictEqual(stato!.squadre.find((s) => s.id === 'Due')!.giocatori[0]!.prezzo, 10);
+    });
+
+    it('salva la cronaca di una partita, rigenerarla sostituisce', async () => {
+      const archivio = await costruisci();
+      await archivio.salvaCronaca('prova', {
+        giornata: 1, casaId: 'X', ospiteId: 'Y', testo: 'prima versione', fonte: 'ai',
+      });
+      await archivio.salvaCronaca('prova', {
+        giornata: 1, casaId: 'X', ospiteId: 'Y', testo: 'seconda versione', fonte: 'template',
+      });
+      await archivio.salvaCronaca('prova', {
+        giornata: 1, casaId: 'Z', ospiteId: 'W', testo: 'un’altra partita', fonte: 'ai',
+      });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.cronache.length, 2, 'la rigenerazione sostituisce, non aggiunge');
+      const xy = stato!.cronache.find((c) => c.casaId === 'X')!;
+      strictEqual(xy.testo, 'seconda versione');
+      strictEqual(xy.fonte, 'template');
+    });
+
+    it('salva l’editoriale di una giornata, rigenerarlo sostituisce', async () => {
+      const archivio = await costruisci();
+      await archivio.salvaEditoriale('prova', { giornata: 1, testo: 'prima versione', fonte: 'ai' });
+      await archivio.salvaEditoriale('prova', { giornata: 1, testo: 'seconda versione', fonte: 'template' });
+      await archivio.salvaEditoriale('prova', { giornata: 2, testo: 'altra giornata', fonte: 'ai' });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.editoriali.length, 2);
+      strictEqual(stato!.editoriali.find((e) => e.giornata === 1)!.testo, 'seconda versione');
     });
 
     it('risolvere uno scambio rifiutato non tocca le rose', async () => {
