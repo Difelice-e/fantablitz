@@ -1,0 +1,19 @@
+{
+  "_nota": "Evoluzione del mondo a fine stagione (SPEC 5.8 punti 4 e 6). Valori di partenza plausibili, non ancora tarati su piu' stagioni simulate come il resto del motore.",
+  "versione": 1,
+
+  "overall": {
+    "_nota": "Stessi estremi 30-99 usati dal seed (seed/config, fasciaPerRuoloClassico).",
+    "minimo": 30,
+    "massimo": 99,
+    "_tassoCrescita": "Quota del divario overall-potenziale recuperata in una stagione, prima del picco. 0.25 vuol dire: un ventenne con margine di 20 punti ne recupera 5 il primo anno, poi meno via via che il margine si stringe.",
+    "tassoCrescita": 0.25,
+    "_tassoDeclino": "Punti di overall persi per anno oltre il picco, moltiplicati per gli anni di distanza dal picco: il primo anno oltre il picco pesa 1x, il quinto pesa 5x.",
+    "tassoDeclino": 0.6
+  },
+
+  "trasferimenti": {
+    "_nota": "Quota di giocatori che cambia club di sua iniziativa ogni stagione (trasferimenti interni, non mercato estero). Semplificazione dichiarata: nessun criterio di realismo, solo un piccolo ricambio casuale.",
+    "quotaPerStagione": 0.08
+  }
+}

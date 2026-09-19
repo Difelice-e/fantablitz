@@ -1,4 +1,5 @@
 import { contesto, legaPredefinita, nomiGiocatori, stagioneDi } from '../../../src/dati.ts';
+import { giornatePerStagione, posizioneStagione } from '../../../../jobs/src/stagioni.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,10 +39,24 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
   const nomeSquadra = (squadraId: string): string =>
     lega.squadre.find((s) => s.id === squadraId)?.nome ?? squadraId;
 
+  const gps = giornatePerStagione(c.mondo);
+  const posizione = posizioneStagione(numero, gps);
+  const primaDellaStagione = posizione.giornataStagionale === 1;
+  const verdettoPrecedente = primaDellaStagione
+    ? lega.alboDoro.find((v) => v.stagione === posizione.stagione - 1)
+    : undefined;
+  const vociMercato = primaDellaStagione
+    ? lega.vociMercato.find((v) => v.stagione === posizione.stagione)
+    : undefined;
+
   return (
     <>
       <section className="riquadro">
-        <h1>Giornata {numero}</h1>
+        <h1>
+          Giornata {numero} <span style={{ color: 'var(--tenue)', fontWeight: 400, fontSize: '0.85rem' }}>
+            (stagione {posizione.stagione}, giornata {posizione.giornataStagionale} di {gps})
+          </span>
+        </h1>
         <p className="spiega">
           Il punteggio in grande sono i gol, quello piccolo i fantapunti da cui derivano.
         </p>
@@ -64,6 +79,32 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
           </div>
         ))}
       </section>
+
+      {(verdettoPrecedente || vociMercato) && (
+        <section className="riquadro">
+          <h2>Inizio stagione {posizione.stagione}</h2>
+          {verdettoPrecedente && (
+            <p className="spiega">
+              La stagione {verdettoPrecedente.stagione} l’ha vinta{' '}
+              <a href={`/squadre/${encodeURIComponent(verdettoPrecedente.campioneSquadraId)}`}>
+                {nomeSquadra(verdettoPrecedente.campioneSquadraId)}
+              </a>
+              {bot(verdettoPrecedente.campioneSquadraId)}, con {verdettoPrecedente.puntiCampione} punti e{' '}
+              {verdettoPrecedente.fantapuntiCampione.toFixed(1)} fantapunti.
+            </p>
+          )}
+          {vociMercato && (
+            <p>
+              {vociMercato.testo}
+              {vociMercato.fonte === 'template' && (
+                <span className="etichetta" title="Il provider AI non era raggiungibile: testo da modello fisso.">
+                  da modello
+                </span>
+              )}
+            </p>
+          )}
+        </section>
+      )}
 
       {editoriale && (
         <section className="riquadro">

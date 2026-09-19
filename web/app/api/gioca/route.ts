@@ -17,6 +17,7 @@ import { archivioServizio, contesto, RADICE } from '../../../src/dati.ts';
 import { providerDallAmbiente } from '../../../../jobs/src/ai/provider.ts';
 import { vistaStagione } from '../../../../jobs/src/lega.ts';
 import { generaChatGiornate } from '../../../../jobs/src/chat.ts';
+import { chiudiStagioniAttraversate } from '../../../../jobs/src/fineStagione.ts';
 import { generaNarrativaGiornate } from '../../../../jobs/src/narrativa.ts';
 import { proponiScambiSpontanei } from '../../../../jobs/src/scambiSpontanei.ts';
 
@@ -64,30 +65,36 @@ export async function POST(richiesta: Request): Promise<Response> {
 
   const c = await contesto();
   const provider = providerDallAmbiente(process.env);
-  const giocate: { lega: string; da: number; a: number; su: number }[] = [];
+  const giocate: { lega: string; da: number; a: number }[] = [];
 
   for (const { id } of leghe) {
     const stato = await archivioServizio.leggi(id);
     if (!stato) continue;
 
-    const totale = vistaStagione({ ...stato, giornateGiocate: 0 }, c).calendario.giornate.length;
-    if (stato.giornateGiocate >= totale) continue;
-
+    // Le stagioni si susseguono senza fine (SPEC 5.8): non c'e' piu' un
+    // "totale" di giornate oltre cui fermarsi, solo la prossima stagione.
     const da = stato.giornateGiocate + 1;
-    const fino = Math.min(totale, stato.giornateGiocate + quante);
+    const fino = stato.giornateGiocate + quante;
     await archivioServizio.segnaGiornateGiocate(id, fino);
 
     const aggiornato = { ...stato, giornateGiocate: fino };
-    const vista = vistaStagione(aggiornato, c);
-    await generaNarrativaGiornate(archivioServizio, aggiornato, c, vista, provider, da, fino);
-    await proponiScambiSpontanei(archivioServizio, aggiornato, c, vista.mondo, c.scambi, da, fino);
+    await chiudiStagioniAttraversate(archivioServizio, aggiornato, c, provider, da, fino);
 
-    // Rilegge: gli scambi spontanei possono aver cambiato `stato.scambi`, e
-    // la chat deve vederli per reagire agli scambi appena conclusi.
+    // Rilegge: chiudere una stagione puo' aver scritto l'albo d'oro e le
+    // voci di mercato, e vista/narrativa/scambi/chat devono vederli.
+    const dopoChiusura = (await archivioServizio.leggi(aggiornato.id))!;
+    const vista = vistaStagione(dopoChiusura, c);
+
+    await generaNarrativaGiornate(archivioServizio, dopoChiusura, c, vista, provider, da, fino);
+    await proponiScambiSpontanei(archivioServizio, dopoChiusura, c, vista.mondo, c.scambi, da, fino);
+
+    // Rilegge di nuovo: gli scambi spontanei possono aver cambiato
+    // `stato.scambi`, e la chat deve vederli per reagire agli scambi appena
+    // conclusi.
     const conScambiFreschi = (await archivioServizio.leggi(aggiornato.id))!;
     await generaChatGiornate(archivioServizio, conScambiFreschi, c, vista, provider, da, fino);
 
-    giocate.push({ lega: id, da, a: fino, su: totale });
+    giocate.push({ lega: id, da, a: fino });
   }
 
   return Response.json({ giocate, radice: RADICE });

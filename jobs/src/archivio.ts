@@ -130,6 +130,28 @@ export type MessaggioChat = {
   fonte: FonteTesto;
 };
 
+/**
+ * Il verdetto di una stagione chiusa (SPEC 5.8 punto 1): chi l'ha vinta.
+ * Non e' un derivato da ricalcolare come la classifica in corso — una volta
+ * chiusa, una stagione non deve poter cambiare verdetto perche' e' cambiata
+ * la formula del fantavoto o un bug e' stato corretto nel frattempo. E'
+ * l'albo d'oro della carriera: si scrive una volta e resta.
+ */
+export type VerdettoStagione = {
+  stagione: number;
+  campioneSquadraId: string;
+  puntiCampione: number;
+  fantapuntiCampione: number;
+};
+
+/** Le voci di mercato di una stagione (SPEC 8): una alla finestra di fine stagione. */
+export type VociMercatoSalvate = {
+  /** La stagione che sta per iniziare, non quella appena chiusa: sono voci su cosa succedera'. */
+  stagione: number;
+  testo: string;
+  fonte: FonteTesto;
+};
+
 export type StatoLega = {
   versione: number;
   id: string;
@@ -151,9 +173,11 @@ export type StatoLega = {
   cronache: CronacaSalvata[];
   editoriali: EditorialeSalvato[];
   chat: MessaggioChat[];
+  alboDoro: VerdettoStagione[];
+  vociMercato: VociMercatoSalvate[];
 };
 
-export const VERSIONE_STATO = 4;
+export const VERSIONE_STATO = 5;
 
 /* ------------------------------------------------------------------ */
 /* Il contratto                                                        */
@@ -214,6 +238,14 @@ export type Archivio = {
    * lo storico.
    */
   salvaMessaggioChat(legaId: string, messaggio: MessaggioChat): Promise<void>;
+  /**
+   * Registra il verdetto di una stagione appena chiusa (SPEC 5.8 punto 1).
+   * Una sola volta per stagione: chi chiama controlla prima che non ci sia
+   * gia', esattamente come per i messaggi di chat.
+   */
+  salvaVerdettoStagione(legaId: string, verdetto: VerdettoStagione): Promise<void>;
+  /** Salva le voci di mercato di una stagione in arrivo. Rigenerarle sostituisce, come `salvaEditoriale`. */
+  salvaVociMercato(legaId: string, voci: VociMercatoSalvate): Promise<void>;
   elenca(): Promise<{ id: string; nome: string }[]>;
 };
 
@@ -314,6 +346,21 @@ export function validaStatoLega(s: StatoLega): StatoLega {
     messaggiVisti.add(m.id);
     esigi(viste.has(m.squadraId), `messaggio di chat di una squadra inesistente: ${m.squadraId}`);
     esigi(m.giornata >= 1, `messaggio di chat con giornata ${m.giornata}`);
+  }
+
+  const stagioniVerdetto = new Set<number>();
+  for (const v of s.alboDoro) {
+    esigi(!stagioniVerdetto.has(v.stagione), `verdetto duplicato per la stagione ${v.stagione}`);
+    stagioniVerdetto.add(v.stagione);
+    esigi(v.stagione >= 1, `verdetto con stagione ${v.stagione}`);
+    esigi(viste.has(v.campioneSquadraId), `verdetto di una squadra inesistente: ${v.campioneSquadraId}`);
+  }
+
+  const stagioniVociMercato = new Set<number>();
+  for (const voci of s.vociMercato) {
+    esigi(!stagioniVociMercato.has(voci.stagione), `voci di mercato duplicate per la stagione ${voci.stagione}`);
+    stagioniVociMercato.add(voci.stagione);
+    esigi(voci.stagione >= 1, `voci di mercato con stagione ${voci.stagione}`);
   }
 
   return s;
@@ -445,6 +492,19 @@ export function archivioSuFile(cartella: string): Archivio {
       await this.scrivi({ ...stato, chat: [...stato.chat, messaggio] });
     },
 
+    async salvaVerdettoStagione(legaId, verdetto) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      await this.scrivi({ ...stato, alboDoro: [...stato.alboDoro, verdetto] });
+    },
+
+    async salvaVociMercato(legaId, voci) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      const altre = stato.vociMercato.filter((v) => v.stagione !== voci.stagione);
+      await this.scrivi({ ...stato, vociMercato: [...altre, voci] });
+    },
+
     async elenca() {
       let file: string[];
       try {
@@ -532,6 +592,19 @@ export function archivioInMemoria(iniziale: StatoLega[] = []): Archivio {
       const stato = leghe.get(legaId);
       if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
       stato.chat = [...stato.chat, structuredClone(messaggio)];
+    },
+    async salvaVerdettoStagione(legaId, verdetto) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.alboDoro = [...stato.alboDoro, structuredClone(verdetto)];
+    },
+    async salvaVociMercato(legaId, voci) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.vociMercato = [
+        ...stato.vociMercato.filter((v) => v.stagione !== voci.stagione),
+        structuredClone(voci),
+      ];
     },
     async elenca() {
       return [...leghe.values()]

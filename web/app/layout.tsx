@@ -1,5 +1,5 @@
 import './globals.css';
-import { legaPredefinita } from '../src/dati.ts';
+import { legaPredefinita, posizioneAttuale } from '../src/dati.ts';
 import { configurato, emailUtente } from '../src/supabase/server.ts';
 import { sonoAmministratore } from '../src/admin.ts';
 
@@ -10,6 +10,7 @@ export const metadata = {
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
   const lega = await legaPredefinita();
+  const posizione = lega ? await posizioneAttuale(lega) : null;
   const email = configurato() ? await emailUtente() : null;
   const admin = await sonoAmministratore();
 
@@ -22,7 +23,11 @@ export default async function Layout({ children }: { children: React.ReactNode }
               Fanta<span>Blitz</span>
             </div>
             <p className="sottotitolo">
-              {lega ? `${lega.nome} — ${lega.giornateGiocate} giornate giocate` : 'nessuna lega'}
+              {lega && posizione
+                ? `${lega.nome} — stagione ${posizione.stagione}, giornata ${posizione.giornataStagionale} di ${posizione.giornatePerStagione}`
+                : lega
+                  ? `${lega.nome} — ${lega.giornateGiocate} giornate giocate`
+                  : 'nessuna lega'}
               {email && (
                 <>
                   {' · '}

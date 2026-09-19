@@ -29,12 +29,15 @@ import { validaConfigurazioneLega, type ConfigurazioneLega } from '../../fanta/s
 import { miglioreDisposizione } from '../../fanta/src/schieramento.ts';
 import type { RegoleSchieramento } from '../../fanta/src/regole.ts';
 import type { Formazione, Modalita, Schierabile } from '../../fanta/src/tipi.ts';
+import { validaParametriEvoluzione, type ParametriEvoluzione } from '../../engine/src/evoluzione.ts';
+import type { PartitaGiocata } from '../../engine/src/stagione.ts';
 import { eseguiCiclo, type EsitoCiclo, type Lega, type SquadraFanta } from './ciclo.ts';
 import type { FormazioneSalvata, StatoLega, SquadraSalvata } from './archivio.ts';
 import { VERSIONE_STATO } from './archivio.ts';
 import type { RiferimentiEsterni, SquadraImportata } from './importa.ts';
 import { validaConfigurazioneScambi, type ConfigurazioneScambi } from './valutazione.ts';
 import { validaConfigurazioneChat, type ConfigurazioneChat } from './personaggio.ts';
+import { giornatePerStagione, mondoDellaStagione, posizioneStagione } from './stagioni.ts';
 
 /* ------------------------------------------------------------------ */
 /* Il contesto: tutto quello che non cambia da una lega all'altra       */
@@ -52,6 +55,8 @@ export type ContestoMondo = {
   scambi: ConfigurazioneScambi;
   /** Personaggi ed eventi scatenanti della chat dei bot (SPEC 7.2). */
   chat: ConfigurazioneChat;
+  /** Evoluzione del mondo a fine stagione: eta', rating, trasferimenti interni (SPEC 5.8). */
+  evoluzione: ParametriEvoluzione;
 };
 
 const json = async (percorso: string): Promise<unknown> =>
@@ -64,17 +69,19 @@ const json = async (percorso: string): Promise<unknown> =>
  * l'esecuzione: si carica una volta sola e si tiene.
  */
 export async function caricaContesto(radice: string): Promise<ContestoMondo> {
-  const [mondo, riferimenti, motore, voto, punteggio, classic, mantra, scambi, chat] = await Promise.all([
-    json(join(radice, 'seed', 'out', 'mondo.json')),
-    json(join(radice, 'seed', 'out', 'riferimenti-esterni.json')),
-    json(join(radice, 'engine', 'config', 'motore.json')),
-    json(join(radice, 'engine', 'config', 'voto.json')),
-    json(join(radice, 'fanta', 'config', 'lega.json')),
-    json(join(radice, 'fanta', 'config', 'classic.json')),
-    json(join(radice, 'fanta', 'config', 'mantra.json')),
-    json(join(radice, 'fanta', 'config', 'scambi.json')),
-    json(join(radice, 'fanta', 'config', 'chat.json')),
-  ]);
+  const [mondo, riferimenti, motore, voto, punteggio, classic, mantra, scambi, chat, evoluzione] =
+    await Promise.all([
+      json(join(radice, 'seed', 'out', 'mondo.json')),
+      json(join(radice, 'seed', 'out', 'riferimenti-esterni.json')),
+      json(join(radice, 'engine', 'config', 'motore.json')),
+      json(join(radice, 'engine', 'config', 'voto.json')),
+      json(join(radice, 'fanta', 'config', 'lega.json')),
+      json(join(radice, 'fanta', 'config', 'classic.json')),
+      json(join(radice, 'fanta', 'config', 'mantra.json')),
+      json(join(radice, 'fanta', 'config', 'scambi.json')),
+      json(join(radice, 'fanta', 'config', 'chat.json')),
+      json(join(radice, 'engine', 'config', 'evoluzione.json')),
+    ]);
 
   return {
     mondo: indicizza(caricaMondo(mondo)),
@@ -88,6 +95,7 @@ export async function caricaContesto(radice: string): Promise<ContestoMondo> {
     },
     scambi: validaConfigurazioneScambi(scambi as ConfigurazioneScambi),
     chat: validaConfigurazioneChat(chat as ConfigurazioneChat),
+    evoluzione: validaParametriEvoluzione(evoluzione as ParametriEvoluzione),
   };
 }
 
@@ -190,15 +198,55 @@ export function formazioneAutomatica(
  * Si ferma a `giornateGiocate`: le giornate successive esistono nel calendario
  * ma non sono ancora state giocate, e mostrarle in anticipo significherebbe far
  * vedere a tutti i voti prima che le formazioni siano chiuse.
+ *
+ * La lega e' una sola e continua oltre la fine di una stagione (SPEC 5.8): le
+ * giornate si numerano in avanti senza mai ripartire da 1. Qui si rigioca una
+ * `eseguiCiclo` per ogni stagione attraversata — ciascuna col proprio mondo
+ * evoluto (`mondoDellaStagione`) e il proprio seme — e si concatenano i
+ * risultati, spostando i numeri di giornata di ognuna in avanti della propria
+ * posizione. La classifica esposta e' quella della sola stagione in corso:
+ * l'albo d'oro (`StatoLega.alboDoro`), non questa vista, e' dove si trova il
+ * verdetto delle stagioni chiuse.
  */
 export function vistaStagione(stato: StatoLega, c: ContestoMondo): EsitoCiclo {
   const lega = legaDaStato(stato, c);
-  return eseguiCiclo(c.mondo, c.motore, c.voto, lega, {
-    seme: stato.seme,
-    da: 1,
-    quante: Math.max(0, stato.giornateGiocate),
-    formazioneDi: (squadraId, giornata) => formazionePerGiornata(stato, squadraId, giornata),
-  });
+  const gps = giornatePerStagione(c.mondo);
+  const finoGlobale = Math.max(0, stato.giornateGiocate);
+  const { stagione: stagioneCorrente } = posizioneStagione(Math.max(1, finoGlobale), gps);
+
+  const giornate: EsitoCiclo['giornate'] = [];
+  const partite: PartitaGiocata[] = [];
+  const calendarioGiornate: EsitoCiclo['calendario']['giornate'] = [];
+  let classifica: EsitoCiclo['classifica'] = [];
+  let ultimoMondo: EsitoCiclo['mondo'] | null = null;
+
+  for (let s = 1; s <= stagioneCorrente; s++) {
+    const offsetGlobale = (s - 1) * gps;
+    const mondoStagionale = mondoDellaStagione(c.mondo, s, stato.seme, c.evoluzione);
+    const quanteInQuestaStagione = s < stagioneCorrente ? gps : finoGlobale - offsetGlobale;
+
+    const esito = eseguiCiclo(mondoStagionale, c.motore, c.voto, lega, {
+      seme: `${stato.seme}:stagione${s}`,
+      da: 1,
+      quante: Math.max(0, quanteInQuestaStagione),
+      formazioneDi: (squadraId, giornataLocale) =>
+        formazionePerGiornata(stato, squadraId, giornataLocale + offsetGlobale),
+    });
+
+    for (const g of esito.giornate) giornate.push({ ...g, numero: g.numero + offsetGlobale });
+    for (const p of esito.mondo.partite) partite.push({ ...p, giornata: p.giornata + offsetGlobale });
+    for (const g of esito.calendario.giornate) calendarioGiornate.push({ ...g, numero: g.numero + offsetGlobale });
+
+    classifica = esito.classifica;
+    ultimoMondo = esito.mondo;
+  }
+
+  return {
+    calendario: { giornate: calendarioGiornate },
+    giornate,
+    classifica,
+    mondo: { ...ultimoMondo!, partite },
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -239,5 +287,7 @@ export function statoDaImport(
     cronache: [],
     editoriali: [],
     chat: [],
+    alboDoro: [],
+    vociMercato: [],
   };
 }
