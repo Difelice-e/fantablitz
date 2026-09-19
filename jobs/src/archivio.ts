@@ -61,6 +61,30 @@ export type FormazioneSalvata = {
   panchina: string[];
 };
 
+/**
+ * Uno scambio, dalla proposta alla risoluzione (SPEC 6.5).
+ *
+ * `offerti` sono i giocatori che escono dalla rosa di `daSquadraId` verso
+ * `aSquadraId`; `richiesti` il contrario. Il record resta anche dopo essere
+ * stato risolto: e' lo storico che SPEC 6.5 chiede, e senza uno stato passato
+ * non si potrebbe nemmeno contare il tetto di scambi per stagione.
+ */
+export type StatoScambio = 'proposto' | 'accettato' | 'rifiutato' | 'ritirato';
+
+export type ScambioSalvato = {
+  id: string;
+  daSquadraId: string;
+  aSquadraId: string;
+  offerti: string[];
+  richiesti: string[];
+  stato: StatoScambio;
+  /** Perche' e' stato deciso cosi': soprattutto per i rifiuti automatici dei bot. */
+  motivo: string | null;
+  creatoIl: string;
+  /** `null` finche' e' `proposto`. */
+  risoltoIl: string | null;
+};
+
 export type StatoLega = {
   versione: number;
   id: string;
@@ -78,9 +102,10 @@ export type StatoLega = {
   amministratore: string | null;
   squadre: SquadraSalvata[];
   formazioni: FormazioneSalvata[];
+  scambi: ScambioSalvato[];
 };
 
-export const VERSIONE_STATO = 1;
+export const VERSIONE_STATO = 2;
 
 /* ------------------------------------------------------------------ */
 /* Il contratto                                                        */
@@ -112,6 +137,19 @@ export type Archivio = {
    * stesso numero non cambia niente.
    */
   segnaGiornateGiocate(legaId: string, fino: number): Promise<void>;
+  /**
+   * Registra una nuova proposta di scambio. Una riga sola, per lo stesso
+   * motivo di `salvaFormazione`: proporre uno scambio non deve poter
+   * travolgere il lavoro di chi ne sta proponendo un altro nello stesso
+   * momento.
+   */
+  proponiScambio(legaId: string, scambio: ScambioSalvato): Promise<void>;
+  /**
+   * Risolve uno scambio gia' proposto: ne aggiorna lo stato e, se accettato,
+   * sposta i giocatori fra le due rose nella stessa scrittura logica. Non e'
+   * `scrivi()` perche' tocca solo le due squadre coinvolte, non l'intera lega.
+   */
+  risolviScambio(legaId: string, scambio: ScambioSalvato): Promise<void>;
   elenca(): Promise<{ id: string; nome: string }[]>;
 };
 
@@ -121,6 +159,13 @@ export type Archivio = {
 
 function esigi(condizione: boolean, messaggio: string): void {
   if (!condizione) throw new Error(`Stato di lega non valido: ${messaggio}`);
+}
+
+/** Trova una squadra per id, o fallisce con un messaggio che dice quale manca. */
+export function trovaSquadra(stato: StatoLega, squadraId: string): SquadraSalvata {
+  const squadra = stato.squadre.find((s) => s.id === squadraId);
+  if (!squadra) throw new Error(`Squadra sconosciuta: ${squadraId}`);
+  return squadra;
 }
 
 /**
@@ -173,7 +218,57 @@ export function validaStatoLega(s: StatoLega): StatoLega {
     );
   }
 
+  const scambiVisti = new Set<string>();
+  for (const sc of s.scambi) {
+    esigi(!scambiVisti.has(sc.id), `scambio duplicato: ${sc.id}`);
+    scambiVisti.add(sc.id);
+    esigi(viste.has(sc.daSquadraId), `scambio ${sc.id}: squadra inesistente ${sc.daSquadraId}`);
+    esigi(viste.has(sc.aSquadraId), `scambio ${sc.id}: squadra inesistente ${sc.aSquadraId}`);
+    esigi(sc.daSquadraId !== sc.aSquadraId, `scambio ${sc.id}: una squadra non scambia con se stessa`);
+    esigi(sc.offerti.length > 0, `scambio ${sc.id}: nessun giocatore offerto`);
+    esigi(sc.richiesti.length > 0, `scambio ${sc.id}: nessun giocatore richiesto`);
+  }
+
   return s;
+}
+
+/* ------------------------------------------------------------------ */
+/* Scambi: la parte comune alle implementazioni dell'archivio           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Applica a uno stato l'esito di uno scambio gia' deciso altrove: aggiorna il
+ * suo record e, se accettato, sposta i giocatori fra le due rose.
+ *
+ * E' una funzione pura e non fa parte del contratto: le tre implementazioni la
+ * condividono per non dover concordare tre volte la stessa regola su "cosa
+ * vuol dire accettare uno scambio".
+ */
+export function applicaEsitoScambio(stato: StatoLega, scambio: ScambioSalvato): StatoLega {
+  const altri = stato.scambi.filter((s) => s.id !== scambio.id);
+
+  if (scambio.stato !== 'accettato') {
+    return { ...stato, scambi: [...altri, scambio] };
+  }
+
+  const da = stato.squadre.find((s) => s.id === scambio.daSquadraId);
+  const a = stato.squadre.find((s) => s.id === scambio.aSquadraId);
+  if (!da || !a) throw new Error(`Scambio ${scambio.id}: squadra sconosciuta`);
+
+  const offertiSet = new Set(scambio.offerti);
+  const richiestiSet = new Set(scambio.richiesti);
+  const daGiocatori = da.giocatori.filter((g) => !offertiSet.has(g.giocatoreId));
+  const aGiocatori = a.giocatori.filter((g) => !richiestiSet.has(g.giocatoreId));
+  const spostatiVersoA = da.giocatori.filter((g) => offertiSet.has(g.giocatoreId));
+  const spostatiVersoDa = a.giocatori.filter((g) => richiestiSet.has(g.giocatoreId));
+
+  const squadre = stato.squadre.map((s) => {
+    if (s.id === da.id) return { ...s, giocatori: [...daGiocatori, ...spostatiVersoDa] };
+    if (s.id === a.id) return { ...s, giocatori: [...aGiocatori, ...spostatiVersoA] };
+    return s;
+  });
+
+  return { ...stato, squadre, scambi: [...altri, scambio] };
 }
 
 /* ------------------------------------------------------------------ */
@@ -227,6 +322,18 @@ export function archivioSuFile(cartella: string): Archivio {
       const stato = await this.leggi(legaId);
       if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
       await this.scrivi({ ...stato, giornateGiocate: fino });
+    },
+
+    async proponiScambio(legaId, scambio) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      await this.scrivi({ ...stato, scambi: [...stato.scambi, scambio] });
+    },
+
+    async risolviScambio(legaId, scambio) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      await this.scrivi(applicaEsitoScambio(stato, scambio));
     },
 
     async elenca() {
@@ -283,6 +390,16 @@ export function archivioInMemoria(iniziale: StatoLega[] = []): Archivio {
       const stato = leghe.get(legaId);
       if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
       stato.giornateGiocate = fino;
+    },
+    async proponiScambio(legaId, scambio) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.scambi = [...stato.scambi, structuredClone(scambio)];
+    },
+    async risolviScambio(legaId, scambio) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      leghe.set(legaId, applicaEsitoScambio(stato, structuredClone(scambio)));
     },
     async elenca() {
       return [...leghe.values()]

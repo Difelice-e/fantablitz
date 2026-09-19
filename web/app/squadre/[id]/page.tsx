@@ -42,6 +42,9 @@ export default async function Rosa({ params }: { params: Promise<{ id: string }>
           <a href={`/squadre/${encodeURIComponent(squadraId)}/formazione`}>
             <button className="principale">Schiera la formazione</button>
           </a>
+          <a href={`/squadre/${encodeURIComponent(squadraId)}/scambi`}>
+            <button className="secondario">Scambi</button>
+          </a>
         </div>
       </section>
 

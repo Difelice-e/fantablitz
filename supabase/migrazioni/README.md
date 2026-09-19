@@ -10,6 +10,7 @@ deve elencare esattamente queste, nello stesso ordine.
 | `20260918233504` | `funzioni_in_schema_privato` | sposta le funzioni fuori da `public` |
 | `20260919010226` | `parola_lega_e_ingresso` | parola d'ordine di lega, nome lega univoco, funzioni per l'ingresso autonomo |
 | `20260919010326` | `revoca_anon_dalle_funzioni_di_ingresso` | corregge una revoca che sembrava fatta e non lo era: vedi il commento nel file |
+| `20260919140000` | `tabella_scambi` | tabella `scambi` (storico degli scambi fra squadre) e la sua policy di lettura |
 
 Non si modifica una migrazione già applicata: se ne aggiunge un'altra. Un file
 cambiato dopo l'applicazione racconta una storia diversa da quella del
