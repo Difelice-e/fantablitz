@@ -231,5 +231,7 @@ export function statoDaImport(
     })),
     formazioni: [],
     scambi: [],
+    cronache: [],
+    editoriali: [],
   };
 }

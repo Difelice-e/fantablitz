@@ -57,7 +57,7 @@ npm run importa -- fixtures/rose.csv
 | 4 — Ciclo di gioco, fantavoto | ✅ `/jobs` + `/fanta` |
 | 5 — Interfaccia | ✅ `/web`, autenticazione compresa |
 | 6 — Bot: valutazione e scambi | 🚧 proposta/accettazione/rifiuto/ritiro e valutazione fatte; bot che propongono per primi no — vedi §6 |
-| 7 — Strato AI | ⬜ |
+| 7 — Strato AI | 🚧 cronaca partita ed editoriale di lega fatti, con Groq vero e testato; voci di mercato e chat dei bot no — vedi §7 |
 | 8 — Fine stagione | ⬜ |
 
 **L'autenticazione è in codice** (link magico, Supabase Auth, RLS): vedi §5
@@ -318,7 +318,63 @@ mondo), e `/fanta` non deve poter guardare il secondo (regola 7).
 
 ---
 
-## 7. Decisioni aperte
+## 7. Strato AI: cronache ed editoriale, come funzionano
+
+`SPEC.md` §8. Due dei quattro generatori — cronaca partita ed editoriale di
+lega — girano dentro il job serale (`jobs/src/narrativa.ts`, chiamato sia da
+`npm run gioca` che da `/api/gioca`) e si salvano, mai generati al
+caricamento di una pagina.
+
+- **Il provider e' un'interfaccia** (`jobs/src/ai/provider.ts`, regola 4):
+  `ProviderAI` ha un solo metodo, `genera(messaggi)`. `providerGroq` lo
+  implementa con `fetch` verso l'endpoint compatibile OpenAI di Groq, senza
+  aggiungere una libreria. `providerDallAmbiente` restituisce `null` senza
+  `GROQ_API_KEY`: senza chiave, o se Groq non risponde, tutto ricade sul
+  template — "la giornata si gioca lo stesso" e' verificato, non solo scritto.
+- **La cronaca partita** (`jobs/src/ai/cronaca.ts`) racconta le partite del
+  *mondo* simulato — dieci a giornata, indipendenti dalla lega — non gli
+  scontri fanta. Ha la validazione automatica che SPEC 8 chiede: il risultato
+  esatto (`golCasa-golOspite`, letteralmente) e ogni marcatore devono comparire
+  nel testo, altrimenti una rigenerazione e poi il template. **È una rete
+  parziale**, non una garanzia totale: verifica che i fatti veri ci siano, non
+  che non ce ne siano altri inventati — quello richiederebbe un secondo
+  modello, e non c'è.
+- **L'editoriale di lega** (`jobs/src/ai/editoriale.ts`) commenta i risultati
+  fanta e la classifica — non ha la stessa validazione stretta, che SPEC 8
+  chiede solo per la cronaca, ma ha lo stesso fallback da template.
+  L'orchestrazione (`narrativa.ts`) gli passa la classifica **cumulata solo
+  fino alla sua giornata**, non quella finale del gruppo appena giocato: due
+  giornate giocate insieme in un colpo non devono raccontare lo stesso
+  piazzamento per entrambe.
+- **Idempotente per scelta**: `salvaCronaca`/`salvaEditoriale` sostituiscono
+  per chiave (giornata + partita, o giornata), quindi rigenerare non duplica.
+  `narrativa.ts` salta comunque quello che è già salvato — non per la
+  correttezza, che ci sarebbe comunque, ma per non ripagare la stessa cronaca
+  in quota Groq a ogni rilancio del job.
+- **Testato con chiamate vere**, non solo con un `ProviderAI` finto nei test
+  (quello resta, per non dipendere dalla rete e per non consumare quota):
+  una lega di prova creata da `/fixtures`, giocata giornata per giornata con
+  la chiave Groq vera del progetto.
+- **Scoperta della sessione, non prevista da SPEC 8**: il limite del piano
+  gratuito che si tocca per primo è i **token al minuto** (8.000 per
+  `openai/gpt-oss-20b`, misurato), non le chiamate al giorno. Una giornata da
+  dieci cronache più un editoriale, generata tutta insieme, può esaurirlo a
+  metà e cadere sul template per il resto — osservato dal 70% di fallback
+  iniziale al 30-50% dopo aver tagliato gli eventi minori dal prompt e il
+  tetto di token per risposta. Non è un errore: è il fallback previsto,
+  attivato più spesso di quanto SPEC 8 stimasse. In un uso reale (un rilancio
+  del job al giorno, non quattro in due minuti come nei test di questa
+  sessione) il budget si ricarica da solo fra una giornata e l'altra.
+- **Non fatto**: voci di mercato (aspettano la finestra di fine stagione, non
+  ancora raggiungibile) e chat dei bot (aspetta una scheda personaggio —
+  nome, carattere, tic linguistici — non ancora progettata).
+- **Non testato in un browser reale**: la sezione "Cronache dal campionato" e
+  "Editoriale" in `web/app/giornate/[n]/page.tsx` — build di produzione
+  riuscita, tipi corretti, contenuto vero generato e verificato via CLI.
+
+---
+
+## 8. Decisioni aperte
 
 Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
 
@@ -332,10 +388,14 @@ Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
   favorire una squadra a scapito della lega.
 - **Taratura di `fanta/config/scambi.json`.** Valori di partenza plausibili,
   non ancora provati su una stagione giocata da persone vere.
+- **Il piano gratuito di Groq limita i token al minuto, non le chiamate al
+  giorno.** Vedi §7. Da rivedere se, con una lega vera che gioca una giornata
+  al giorno, il fallback da template si vedesse più spesso di quanto sembri
+  accettabile.
 
 ---
 
-## 8. Cose da sapere prima di toccare qualcosa
+## 9. Cose da sapere prima di toccare qualcosa
 
 - **Il repo GitHub è pubblico.** Contiene `seed/out/mondo.json` coi nomi veri di
   533 giocatori e 20 club, il listone in `fixtures/`, e i nomi delle squadre
@@ -368,12 +428,12 @@ Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
 
 ---
 
-## 9. Struttura
+## 10. Struttura
 
 ```
 /engine     motore di simulazione, puro e deterministico. Niente Math.random()
 /fanta      livello di lega: moduli, schieramento, fantavoto, soglie
-/jobs       import, ciclo serale, scambi e valutazione bot, archivio (contratto + file + Supabase)
+/jobs       import, ciclo serale, scambi e valutazione bot, strato AI (jobs/src/ai), archivio (contratto + file + Supabase)
 /web        Next.js: classifica, giornate, rosa, schieramento, scambi
 /seed       lo script che converte il listone .xlsx, e il seed prodotto
 /fixtures   i due export reali di Fantalab, usati come fixture nei test
