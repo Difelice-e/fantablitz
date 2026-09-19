@@ -71,6 +71,11 @@ export type StatoLega = {
   budget: number;
   /** Quante giornate sono state giocate. Le successive non esistono ancora. */
   giornateGiocate: number;
+  /**
+   * La mail di chi ha creato la lega: puo' assegnare le sue squadre e
+   * impostarne la parola d'ordine. Non e' un ruolo globale, e' per lega.
+   */
+  amministratore: string | null;
   squadre: SquadraSalvata[];
   formazioni: FormazioneSalvata[];
 };

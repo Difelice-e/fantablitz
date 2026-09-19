@@ -202,6 +202,8 @@ export function statoDaImport(
     seme: string;
     modalita: Modalita;
     budget: number;
+    /** Chi crea la lega ne e' l'amministratore (regola: vedi SPEC.md §9). */
+    amministratore: string | null;
   },
   squadre: readonly SquadraImportata[],
 ): StatoLega {
@@ -213,6 +215,7 @@ export function statoDaImport(
     modalita: dati.modalita,
     budget: dati.budget,
     giornateGiocate: 0,
+    amministratore: dati.amministratore,
     squadre: squadre.map((s) => ({
       // Il nome della squadra e' anche il suo identificativo: viene dall'export
       // di Fantalab, e li' e' gia' unico.
