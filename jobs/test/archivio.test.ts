@@ -42,6 +42,8 @@ function statoDiProva(modifiche: Partial<StatoLega> = {}): StatoLega {
     cronache: [],
     editoriali: [],
     chat: [],
+    alboDoro: [],
+    vociMercato: [],
     ...modifiche,
   };
 }
@@ -199,6 +201,34 @@ describe('validazione dello stato', () => {
           }),
         ),
       /squadra inesistente/,
+    );
+  });
+
+  it('rifiuta due verdetti per la stessa stagione', () => {
+    const verdetto = { stagione: 1, campioneSquadraId: 'Uno', puntiCampione: 90, fantapuntiCampione: 2000 };
+    throws(
+      () => validaStatoLega(statoDiProva({ alboDoro: [verdetto, verdetto] })),
+      /verdetto duplicato/,
+    );
+  });
+
+  it('rifiuta un verdetto per una squadra inesistente', () => {
+    throws(
+      () =>
+        validaStatoLega(
+          statoDiProva({
+            alboDoro: [{ stagione: 1, campioneSquadraId: 'Tre', puntiCampione: 90, fantapuntiCampione: 2000 }],
+          }),
+        ),
+      /squadra inesistente/,
+    );
+  });
+
+  it('rifiuta due voci di mercato per la stessa stagione', () => {
+    const voci = { stagione: 2, testo: 'testo', fonte: 'template' as const };
+    throws(
+      () => validaStatoLega(statoDiProva({ vociMercato: [voci, voci] })),
+      /voci di mercato duplicate/,
     );
   });
 });
@@ -502,6 +532,28 @@ for (const [nome, costruisci] of [
       });
       const stato = await archivio.leggi('prova');
       strictEqual(stato!.chat.length, 2, 'due messaggi diversi convivono, anche nella stessa giornata');
+    });
+
+    it('salva un verdetto di stagione, e non lo confonde con la prossima', async () => {
+      const archivio = await costruisci();
+      await archivio.salvaVerdettoStagione('prova', {
+        stagione: 1, campioneSquadraId: 'Uno', puntiCampione: 90, fantapuntiCampione: 2100,
+      });
+      await archivio.salvaVerdettoStagione('prova', {
+        stagione: 2, campioneSquadraId: 'Due', puntiCampione: 88, fantapuntiCampione: 2050,
+      });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.alboDoro.length, 2);
+      strictEqual(stato!.alboDoro.find((v) => v.stagione === 1)!.campioneSquadraId, 'Uno');
+    });
+
+    it('salva le voci di mercato di una stagione, rigenerarle sostituisce', async () => {
+      const archivio = await costruisci();
+      await archivio.salvaVociMercato('prova', { stagione: 2, testo: 'prima versione', fonte: 'ai' });
+      await archivio.salvaVociMercato('prova', { stagione: 2, testo: 'seconda versione', fonte: 'template' });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.vociMercato.length, 1);
+      strictEqual(stato!.vociMercato[0]!.testo, 'seconda versione');
     });
 
     it('risolvere uno scambio rifiutato non tocca le rose', async () => {

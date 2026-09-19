@@ -1,4 +1,4 @@
-import { legaPredefinita, stagioneDi } from '../src/dati.ts';
+import { legaPredefinita, posizioneAttuale, stagioneDi } from '../src/dati.ts';
 import { sonoAmministratore } from '../src/admin.ts';
 
 export const dynamic = 'force-dynamic';
@@ -32,16 +32,20 @@ export default async function Classifica() {
 
   const proprietari = new Map(lega.squadre.map((s) => [s.id, s.proprietario]));
   const stagione = await stagioneDi(lega);
-  const totale = stagione.calendario.giornate.length;
+  const posizione = await posizioneAttuale(lega);
+  const nomeSquadra = (squadraId: string): string =>
+    lega.squadre.find((s) => s.id === squadraId)?.nome ?? squadraId;
 
   return (
     <>
       <section className="riquadro">
-        <h1>Classifica</h1>
+        <h1>
+          Classifica — Stagione {posizione.stagione}
+        </h1>
         <p className="spiega">
           {lega.giornateGiocate === 0
-            ? `La stagione non è ancora iniziata: ${totale} giornate in calendario.`
-            : `Dopo ${lega.giornateGiocate} giornate su ${totale}.`}
+            ? `La stagione non è ancora iniziata: ${posizione.giornatePerStagione} giornate in calendario.`
+            : `Dopo ${posizione.giornataStagionale} giornate su ${posizione.giornatePerStagione} di questa stagione.`}
         </p>
 
         {lega.giornateGiocate === 0 ? (
@@ -93,6 +97,41 @@ export default async function Classifica() {
           </table>
         )}
       </section>
+
+      {lega.alboDoro.length > 0 && (
+        <section className="riquadro">
+          <h2>Albo d’oro</h2>
+          <table>
+            <thead>
+              <tr>
+                <th className="numero">Stagione</th>
+                <th>Campione</th>
+                <th className="numero">Punti</th>
+                <th className="numero">Fantapunti</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...lega.alboDoro]
+                .sort((a, b) => b.stagione - a.stagione)
+                .map((v) => (
+                  <tr key={v.stagione}>
+                    <td className="numero">{v.stagione}</td>
+                    <td>
+                      <a href={`/squadre/${encodeURIComponent(v.campioneSquadraId)}`}>
+                        {nomeSquadra(v.campioneSquadraId)}
+                      </a>
+                      {proprietari.get(v.campioneSquadraId) === null && (
+                        <span className="etichetta-bot">BOT</span>
+                      )}
+                    </td>
+                    <td className="numero">{v.puntiCampione}</td>
+                    <td className="numero">{v.fantapuntiCampione.toFixed(1)}</td>
+                  </tr>
+                ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </>
   );
 }

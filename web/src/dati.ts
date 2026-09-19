@@ -22,6 +22,7 @@ import {
   type ContestoMondo,
 } from '../../jobs/src/lega.ts';
 import type { EsitoCiclo } from '../../jobs/src/ciclo.ts';
+import { giornatePerStagione, posizioneStagione, type PosizioneStagione } from '../../jobs/src/stagioni.ts';
 import type { Formazione, Schierabile } from '../../fanta/src/tipi.ts';
 import { configurato, creaClientServer } from './supabase/server.ts';
 
@@ -94,6 +95,15 @@ export async function stagioneDi(stato: StatoLega): Promise<EsitoCiclo> {
   const esito = vistaStagione(stato, await contesto());
   ultima = { chiave, esito };
   return esito;
+}
+
+export type PosizioneAttuale = PosizioneStagione & { giornatePerStagione: number };
+
+/** A che punto della stagione e' una lega, per mostrarlo (SPEC 5.8): la lega non si ferma mai a una sola. */
+export async function posizioneAttuale(stato: StatoLega): Promise<PosizioneAttuale> {
+  const c = await contesto();
+  const gps = giornatePerStagione(c.mondo);
+  return { ...posizioneStagione(Math.max(1, stato.giornateGiocate), gps), giornatePerStagione: gps };
 }
 
 /* ------------------------------------------------------------------ */

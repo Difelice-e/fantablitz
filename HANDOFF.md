@@ -58,7 +58,7 @@ npm run importa -- fixtures/rose.csv
 | 5 — Interfaccia | ✅ `/web`, autenticazione compresa |
 | 6 — Bot: valutazione e scambi | ✅ tranne il livello sociale (aspetta una scheda personaggio) — vedi §6 |
 | 7 — Strato AI | 🚧 cronaca partita, editoriale di lega e chat dei bot fatti, con Groq vero e testato; voci di mercato no — vedi §7 |
-| 8 — Fine stagione | ⬜ |
+| 8 — Fine stagione | 🚧 verdetti/albo d'oro, evoluzione rating, trasferimenti interni, nuovo calendario fatti; crediti e svincoli rimandati — vedi §8 |
 
 **L'autenticazione è in codice** (link magico, Supabase Auth, RLS): vedi §5
 qui sotto per come funziona e §4 per i passi manuali che restano prima del
@@ -440,7 +440,71 @@ e si salvano, mai generati al caricamento di una pagina.
 
 ---
 
-## 8. Decisioni aperte
+## 8. Fine stagione, come funziona
+
+`SPEC.md` §5.8. La decisione che tiene in piedi tutto il resto: **una lega è
+una sola, e continua** — non una lega nuova a ogni stagione. Le giornate si
+numerano in avanti senza mai ripartire da 1 (la stagione 2 comincia alla
+giornata `giornatePerStagione + 1`, oggi 39), e squadre, rose, scambi e chat
+restano nello stesso record.
+
+- **Il mondo non si salva mai "invecchiato"** (`engine/src/evoluzione.ts`,
+  `jobs/src/stagioni.ts`). E' una funzione pura di (mondo base del seed,
+  numero di stagione, seme di lega): `mondoDellaStagione` applica
+  `evolviMondo` (età, rating, trasferimenti interni) tante volte quante sono
+  le stagioni passate, e la si ricalcola ogni volta che serve — la stessa
+  idempotenza della regola 6, vista dal lato anagrafico. Nessuna nuova
+  tabella di "mondo mutato" da tenere sincronizzata.
+- **Evoluzione del rating**: prima del picco (`etaPicco`) l'overall si
+  avvicina al potenziale con una rampa configurabile; dopo il picco declina,
+  sempre più in fretta con gli anni di distanza. I quattro rating d'area si
+  scalano in proporzione — **semplificazione dichiarata**: il seed li
+  ri-deriverebbe dal profilo di ruolo (`areeDaOverall`), ma importare quella
+  configurazione (pensata per la generazione una tantum del listone)
+  accoppierebbe il motore a qualcosa che deve restare autosufficiente.
+- **Trasferimenti interni**: una quota configurabile di giocatori
+  (`engine/config/evoluzione.json`, `trasferimenti.quotaPerStagione`)
+  cambia club ogni stagione, scelta a caso dal generatore seminato —
+  nessun criterio di realismo, dichiarato come tale.
+- **`vistaStagione`** (`jobs/src/lega.ts`) rigioca una `eseguiCiclo` per
+  ogni stagione attraversata, ciascuna col proprio mondo evoluto e il
+  proprio seme, e concatena i risultati spostando i numeri di giornata di
+  ognuna in avanti della propria posizione. La classifica esposta è sempre
+  quella della sola stagione in corso, mai accumulata dalla precedente.
+- **Chiusura di stagione** (`jobs/src/fineStagione.ts`,
+  `chiudiStagioniAttraversate`): quando un rilancio del job attraversa un
+  confine di stagione, scrive il verdetto nell'albo d'oro
+  (`StatoLega.alboDoro` — non si ricalcola mai, a differenza di quasi tutto
+  il resto: un verdetto già scritto non deve cambiare se domani si corregge
+  un bug nel fantavoto) e genera le voci di mercato sui trasferimenti
+  interni appena decisi per la stagione in arrivo. Idempotente per lo stesso
+  motivo di `narrativa.ts`: salta le stagioni già in `alboDoro`.
+- **Non c'è più un "totale" di giornate oltre cui il job si ferma**: prima
+  c'era (una sola stagione, calendario fisso), ora la lega continua da sola
+  di stagione in stagione. `cliGioca.ts` e `/api/gioca` non controllano più
+  un tetto: giocano semplicemente `quante` giornate in più, attraversando
+  quante stagioni serve.
+- **Voci di mercato** (`jobs/src/ai/vociMercato.ts`) chiudono i quattro
+  generatori di SPEC 8. Semplificazione dichiarata rispetto a "parzialmente
+  vere": raccontano trasferimenti già decisi, non voci che si rivelano poi
+  false in parte — quel meccanismo si può aggiungere in un secondo momento
+  senza toccare il resto.
+- **Rimandati**: rimborso e rifornimento crediti, finestra degli svincoli
+  volontari, asta degli svincolati (SPEC 5.8 punti 7-9) — senza un'asta
+  nativa (fase 2) non c'è ancora nulla su cui spendere crediti spendibili,
+  e costruirlo oggi sarebbe codice senza un consumatore reale. Restano
+  spenti anche ritiri, mercato estero e ricambio generazionale (punti 2, 3,
+  5): erano già flag di fase 1 spenti, non è cambiato niente lì.
+- **Provato attraversando per davvero il confine di stagione**: una lega di
+  prova con le rose reali di `/fixtures`, giocata oltre la trentottesima
+  giornata. L'albo d'oro, le voci di mercato, la classifica che si azzera a
+  inizio stagione e l'intestazione "stagione 2, giornata 2 di 38" sono stati
+  verificati **in un browser vero** (l'estensione Chrome era connessa in
+  questa parte della sessione), non solo nei test.
+
+---
+
+## 9. Decisioni aperte
 
 Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
 
@@ -470,10 +534,21 @@ Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
   scelti a tavolino, non provati su una stagione vera. Il pool di otto
   caratteri e otto tic è piccolo apposta per restare leggero da mantenere —
   da allargare se con dieci bot i personaggi iniziassero a sembrare ripetuti.
+- **Trasferimenti interni casuali, senza criterio.** Vedi §8: a differenza
+  del mercato estero (che SPEC 5.8 chiede pesato per età e rapporto
+  rating/potenziale), qui non c'è ancora una regola scritta. Da decidere se
+  serve, o se basta così per un ricambio "di colore".
+- **I quattro rating d'area si scalano in proporzione all'overall**, non
+  vengono ri-derivati dal profilo di ruolo come farebbe il seed. Vedi §8:
+  semplificazione dichiarata, da rivedere se con più stagioni la
+  distribuzione dei rating si sbilanciasse in modo visibile.
+- **Taratura di `engine/config/evoluzione.json`.** Tasso di crescita, tasso
+  di declino, quota di trasferimenti: valori di partenza plausibili, non
+  ancora provati su più stagioni giocate per davvero.
 
 ---
 
-## 9. Cose da sapere prima di toccare qualcosa
+## 10. Cose da sapere prima di toccare qualcosa
 
 - **Il repo GitHub è pubblico.** Contiene `seed/out/mondo.json` coi nomi veri di
   533 giocatori e 20 club, il listone in `fixtures/`, e i nomi delle squadre
@@ -506,12 +581,12 @@ Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
 
 ---
 
-## 10. Struttura
+## 11. Struttura
 
 ```
-/engine     motore di simulazione, puro e deterministico. Niente Math.random()
+/engine     motore di simulazione ed evoluzione fra stagioni, puro e deterministico. Niente Math.random()
 /fanta      livello di lega: moduli, schieramento, fantavoto, soglie
-/jobs       import, ciclo serale, scambi e valutazione bot, strato AI (jobs/src/ai), archivio (contratto + file + Supabase)
+/jobs       import, ciclo serale, scambi e valutazione bot, fine stagione, strato AI (jobs/src/ai), archivio (contratto + file + Supabase)
 /web        Next.js: classifica, giornate, rosa, schieramento, scambi
 /seed       lo script che converte il listone .xlsx, e il seed prodotto
 /fixtures   i due export reali di Fantalab, usati come fixture nei test

@@ -23,7 +23,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   validaStatoLega, VERSIONE_STATO,
   type Archivio, type CronacaSalvata, type EditorialeSalvato, type FormazioneSalvata,
-  type MessaggioChat, type ScambioSalvato, type StatoLega,
+  type MessaggioChat, type ScambioSalvato, type StatoLega, type VerdettoStagione, type VociMercatoSalvate,
 } from './archivio.ts';
 
 /* ------------------------------------------------------------------ */
@@ -79,6 +79,14 @@ type RigaMessaggioChat = {
   testo: string;
   fonte: string;
 };
+type RigaVerdetto = {
+  lega_id: string;
+  stagione: number;
+  campione_squadra_id: string;
+  punti_campione: number;
+  fantapunti_campione: number;
+};
+type RigaVociMercato = { lega_id: string; stagione: number; testo: string; fonte: string };
 
 /** Un errore di Supabase diventa un errore leggibile, col contesto di cosa si stava facendo. */
 function esigiRiuscito(errore: { message: string } | null, cosa: string): void {
@@ -151,6 +159,28 @@ function aRigaMessaggioChat(legaId: string, m: MessaggioChat): RigaMessaggioChat
   };
 }
 
+function daRigaVerdetto(r: RigaVerdetto): VerdettoStagione {
+  return {
+    stagione: r.stagione, campioneSquadraId: r.campione_squadra_id,
+    puntiCampione: r.punti_campione, fantapuntiCampione: r.fantapunti_campione,
+  };
+}
+
+function aRigaVerdetto(legaId: string, v: VerdettoStagione): RigaVerdetto {
+  return {
+    lega_id: legaId, stagione: v.stagione, campione_squadra_id: v.campioneSquadraId,
+    punti_campione: v.puntiCampione, fantapunti_campione: v.fantapuntiCampione,
+  };
+}
+
+function daRigaVociMercato(r: RigaVociMercato): VociMercatoSalvate {
+  return { stagione: r.stagione, testo: r.testo, fonte: r.fonte as VociMercatoSalvate['fonte'] };
+}
+
+function aRigaVociMercato(legaId: string, v: VociMercatoSalvate): RigaVociMercato {
+  return { lega_id: legaId, stagione: v.stagione, testo: v.testo, fonte: v.fonte };
+}
+
 /* ------------------------------------------------------------------ */
 
 export type OpzioniSupabase = {
@@ -182,17 +212,20 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(error, `lettura della lega ${legaId}`);
       if (!lega) return null;
 
-      // Sette letture in parallelo: sono indipendenti e la latenza verso il
-      // database si paga una volta sola invece di sette.
-      const [squadre, rose, formazioni, scambi, cronache, editoriali, chat] = await Promise.all([
-        client.from('squadre').select('*').eq('lega_id', legaId).order('id'),
-        client.from('rose').select('*').eq('lega_id', legaId),
-        client.from('formazioni').select('*').eq('lega_id', legaId),
-        client.from('scambi').select('*').eq('lega_id', legaId).order('creato_il'),
-        client.from('cronache').select('*').eq('lega_id', legaId),
-        client.from('editoriali').select('*').eq('lega_id', legaId),
-        client.from('chat').select('*').eq('lega_id', legaId),
-      ]);
+      // Nove letture in parallelo: sono indipendenti e la latenza verso il
+      // database si paga una volta sola invece di nove.
+      const [squadre, rose, formazioni, scambi, cronache, editoriali, chat, alboDoro, vociMercato] =
+        await Promise.all([
+          client.from('squadre').select('*').eq('lega_id', legaId).order('id'),
+          client.from('rose').select('*').eq('lega_id', legaId),
+          client.from('formazioni').select('*').eq('lega_id', legaId),
+          client.from('scambi').select('*').eq('lega_id', legaId).order('creato_il'),
+          client.from('cronache').select('*').eq('lega_id', legaId),
+          client.from('editoriali').select('*').eq('lega_id', legaId),
+          client.from('chat').select('*').eq('lega_id', legaId),
+          client.from('albo_doro').select('*').eq('lega_id', legaId),
+          client.from('voci_mercato').select('*').eq('lega_id', legaId),
+        ]);
       esigiRiuscito(squadre.error, 'lettura delle squadre');
       esigiRiuscito(rose.error, 'lettura delle rose');
       esigiRiuscito(formazioni.error, 'lettura delle formazioni');
@@ -200,6 +233,8 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(cronache.error, 'lettura delle cronache');
       esigiRiuscito(editoriali.error, 'lettura degli editoriali');
       esigiRiuscito(chat.error, 'lettura della chat');
+      esigiRiuscito(alboDoro.error, 'lettura dell’albo d’oro');
+      esigiRiuscito(vociMercato.error, 'lettura delle voci di mercato');
 
       const perSquadra = new Map<string, { giocatoreId: string; prezzo: number }[]>();
       for (const r of (rose.data ?? []) as RigaRosa[]) {
@@ -234,6 +269,8 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
         cronache: ((cronache.data ?? []) as RigaCronaca[]).map(daRigaCronaca),
         editoriali: ((editoriali.data ?? []) as RigaEditoriale[]).map(daRigaEditoriale),
         chat: ((chat.data ?? []) as RigaMessaggioChat[]).map(daRigaMessaggioChat),
+        alboDoro: ((alboDoro.data ?? []) as RigaVerdetto[]).map(daRigaVerdetto),
+        vociMercato: ((vociMercato.data ?? []) as RigaVociMercato[]).map(daRigaVociMercato),
       };
 
       // Si valida anche quello che arriva dal database: le regole che il
@@ -346,6 +383,28 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
           'scrittura della chat',
         );
       }
+
+      if (stato.alboDoro.length > 0) {
+        esigiRiuscito(
+          (
+            await client
+              .from('albo_doro')
+              .upsert(stato.alboDoro.map((v) => aRigaVerdetto(stato.id, v)))
+          ).error,
+          'scrittura dell’albo d’oro',
+        );
+      }
+
+      if (stato.vociMercato.length > 0) {
+        esigiRiuscito(
+          (
+            await client
+              .from('voci_mercato')
+              .upsert(stato.vociMercato.map((v) => aRigaVociMercato(stato.id, v)))
+          ).error,
+          'scrittura delle voci di mercato',
+        );
+      }
     },
 
     async salvaFormazione(legaId, formazione: FormazioneSalvata) {
@@ -433,6 +492,20 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(
         (await client.from('chat').insert(aRigaMessaggioChat(legaId, messaggio))).error,
         `salvataggio del messaggio di chat ${messaggio.id}`,
+      );
+    },
+
+    async salvaVerdettoStagione(legaId, verdetto) {
+      esigiRiuscito(
+        (await client.from('albo_doro').upsert(aRigaVerdetto(legaId, verdetto))).error,
+        `salvataggio del verdetto della stagione ${verdetto.stagione}`,
+      );
+    },
+
+    async salvaVociMercato(legaId, voci) {
+      esigiRiuscito(
+        (await client.from('voci_mercato').upsert(aRigaVociMercato(legaId, voci))).error,
+        `salvataggio delle voci di mercato della stagione ${voci.stagione}`,
       );
     },
 

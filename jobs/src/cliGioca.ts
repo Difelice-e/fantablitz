@@ -15,9 +15,11 @@ import { fileURLToPath } from 'node:url';
 import { providerDallAmbiente } from './ai/provider.ts';
 import { archivioSuFile } from './archivio.ts';
 import { generaChatGiornate } from './chat.ts';
+import { chiudiStagioniAttraversate } from './fineStagione.ts';
 import { caricaContesto, vistaStagione } from './lega.ts';
 import { generaNarrativaGiornate } from './narrativa.ts';
 import { proponiScambiSpontanei } from './scambiSpontanei.ts';
+import { giornatePerStagione, posizioneStagione } from './stagioni.ts';
 
 const RADICE = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -61,25 +63,29 @@ async function principale(): Promise<number> {
   }
 
   const contesto = await caricaContesto(RADICE);
-  const totale = vistaStagione({ ...stato, giornateGiocate: 0 }, contesto).calendario.giornate.length;
+  // Le stagioni si susseguono senza fine (SPEC 5.8): non c'e' piu' un
+  // "totale" di giornate oltre cui fermarsi, solo la prossima stagione.
+  const gps = giornatePerStagione(contesto.mondo);
 
   const da = stato.giornateGiocate + 1;
-  const fino = Math.min(totale, stato.giornateGiocate + quante);
-  if (da > totale) {
-    console.log(`La stagione e’ finita: ${totale} giornate su ${totale}.`);
-    return 0;
-  }
+  const fino = stato.giornateGiocate + quante;
 
   const aggiornato = { ...stato, giornateGiocate: fino };
-  const vista = vistaStagione(aggiornato, contesto);
   await archivio.scrivi(aggiornato);
 
   const provider = providerDallAmbiente(process.env);
-  await generaNarrativaGiornate(archivio, aggiornato, contesto, vista, provider, da, fino);
-  await proponiScambiSpontanei(archivio, aggiornato, contesto, vista.mondo, contesto.scambi, da, fino);
+  await chiudiStagioniAttraversate(archivio, aggiornato, contesto, provider, da, fino);
 
-  // Rilegge: gli scambi spontanei possono aver cambiato `stato.scambi`, e la
-  // chat deve vederli per reagire agli scambi appena conclusi.
+  // Rilegge: chiudere una stagione puo' aver scritto l'albo d'oro e le voci
+  // di mercato, e vista/narrativa/scambi/chat devono vederli aggiornati.
+  const dopoChiusura = (await archivio.leggi(aggiornato.id))!;
+  const vista = vistaStagione(dopoChiusura, contesto);
+
+  await generaNarrativaGiornate(archivio, dopoChiusura, contesto, vista, provider, da, fino);
+  await proponiScambiSpontanei(archivio, dopoChiusura, contesto, vista.mondo, contesto.scambi, da, fino);
+
+  // Rilegge di nuovo: gli scambi spontanei possono aver cambiato `stato.scambi`,
+  // e la chat deve vederli per reagire agli scambi appena conclusi.
   const conScambiFreschi = (await archivio.leggi(aggiornato.id))!;
   await generaChatGiornate(archivio, conScambiFreschi, contesto, vista, provider, da, fino);
 
@@ -100,7 +106,18 @@ async function principale(): Promise<number> {
         `   ${r.golFatti}-${r.golSubiti}   ${r.fantapunti.toFixed(1)} fantapunti`,
     );
   });
-  console.log(`\nGiocate ${fino} giornate su ${totale}.`);
+
+  const posizione = posizioneStagione(fino, gps);
+  console.log(
+    `\nGiocate ${fino} giornate in totale: stagione ${posizione.stagione}, ` +
+      `giornata ${posizione.giornataStagionale} di ${gps}.`,
+  );
+  if (dopoChiusura.alboDoro.length > 0) {
+    console.log('\nALBO D’ORO');
+    for (const v of dopoChiusura.alboDoro) {
+      console.log(`  Stagione ${v.stagione}: ${v.campioneSquadraId} (${v.puntiCampione} pt)`);
+    }
+  }
   return 0;
 }
 

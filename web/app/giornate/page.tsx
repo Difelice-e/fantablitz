@@ -1,4 +1,4 @@
-import { legaPredefinita, stagioneDi } from '../../src/dati.ts';
+import { legaPredefinita, posizioneAttuale, stagioneDi } from '../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,14 +7,18 @@ export default async function Giornate() {
   if (!lega) return <p className="vuoto">Nessuna lega in archivio.</p>;
 
   const stagione = await stagioneDi(lega);
+  // Cresce di stagione in stagione (SPEC 5.8): non e' un tetto fisso, e' fin
+  // dove arriva il calendario della stagione in corso.
   const totale = stagione.calendario.giornate.length;
+  const posizione = await posizioneAttuale(lega);
 
   return (
     <section className="riquadro">
       <h1>Giornate</h1>
       <p className="spiega">
-        {lega.giornateGiocate} giocate su {totale}. Le giornate non ancora giocate non si possono
-        aprire: i voti si vedono dopo, non prima.
+        Stagione {posizione.stagione}: {posizione.giornataStagionale} giornate giocate su{' '}
+        {posizione.giornatePerStagione}. Le giornate non ancora giocate non si possono aprire: i
+        voti si vedono dopo, non prima.
       </p>
 
       <div className="caselle">
