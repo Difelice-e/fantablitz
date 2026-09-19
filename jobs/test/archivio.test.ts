@@ -38,6 +38,7 @@ function statoDiProva(modifiche: Partial<StatoLega> = {}): StatoLega {
       { id: 'Due', nome: 'Due', proprietario: null, giocatori: [{ giocatoreId: 'b', prezzo: 20 }] },
     ],
     formazioni: [],
+    scambi: [],
     ...modifiche,
   };
 }
@@ -112,6 +113,47 @@ describe('validazione dello stato', () => {
           }),
         ),
       /squadra inesistente/,
+    );
+  });
+
+  it('rifiuta uno scambio con una squadra inesistente', () => {
+    throws(
+      () =>
+        validaStatoLega(
+          statoDiProva({
+            scambi: [{
+              id: '1', daSquadraId: 'Uno', aSquadraId: 'Tre', offerti: ['a'], richiesti: ['b'],
+              stato: 'proposto', motivo: null, creatoIl: 'ora', risoltoIl: null,
+            }],
+          }),
+        ),
+      /squadra inesistente/,
+    );
+  });
+
+  it('rifiuta uno scambio senza giocatori da una parte', () => {
+    throws(
+      () =>
+        validaStatoLega(
+          statoDiProva({
+            scambi: [{
+              id: '1', daSquadraId: 'Uno', aSquadraId: 'Due', offerti: [], richiesti: ['b'],
+              stato: 'proposto', motivo: null, creatoIl: 'ora', risoltoIl: null,
+            }],
+          }),
+        ),
+      /nessun giocatore offerto/,
+    );
+  });
+
+  it('rifiuta due scambi con lo stesso id', () => {
+    const scambio = {
+      id: '1', daSquadraId: 'Uno', aSquadraId: 'Due', offerti: ['a'], richiesti: ['b'],
+      stato: 'proposto' as const, motivo: null, creatoIl: 'ora', risoltoIl: null,
+    };
+    throws(
+      () => validaStatoLega(statoDiProva({ scambi: [scambio, scambio] })),
+      /scambio duplicato/,
     );
   });
 });
@@ -342,6 +384,54 @@ for (const [nome, costruisci] of [
         () => archivio.segnaGiornateGiocate('inesistente', 1),
         /inesistente/i,
       );
+    });
+
+    it('propone uno scambio, che resta in attesa', async () => {
+      const archivio = await costruisci();
+      await archivio.proponiScambio('prova', {
+        id: 's1', daSquadraId: 'Uno', aSquadraId: 'Due', offerti: ['a'], richiesti: ['b'],
+        stato: 'proposto', motivo: null, creatoIl: '2026-01-01T00:00:00.000Z', risoltoIl: null,
+      });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.scambi.length, 1);
+      strictEqual(stato!.scambi[0]!.stato, 'proposto');
+      // Le rose non si toccano finche' non e' risolto.
+      deepStrictEqual(stato!.squadre.find((s) => s.id === 'Uno')!.giocatori.map((g) => g.giocatoreId), ['a']);
+    });
+
+    it('risolvere uno scambio accettato sposta i giocatori fra le rose', async () => {
+      const archivio = await costruisci();
+      await archivio.proponiScambio('prova', {
+        id: 's1', daSquadraId: 'Uno', aSquadraId: 'Due', offerti: ['a'], richiesti: ['b'],
+        stato: 'proposto', motivo: null, creatoIl: '2026-01-01T00:00:00.000Z', risoltoIl: null,
+      });
+      await archivio.risolviScambio('prova', {
+        id: 's1', daSquadraId: 'Uno', aSquadraId: 'Due', offerti: ['a'], richiesti: ['b'],
+        stato: 'accettato', motivo: null, creatoIl: '2026-01-01T00:00:00.000Z', risoltoIl: '2026-01-02T00:00:00.000Z',
+      });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.scambi[0]!.stato, 'accettato');
+      deepStrictEqual(stato!.squadre.find((s) => s.id === 'Uno')!.giocatori.map((g) => g.giocatoreId), ['b']);
+      deepStrictEqual(stato!.squadre.find((s) => s.id === 'Due')!.giocatori.map((g) => g.giocatoreId), ['a']);
+      // Il prezzo pagato all'asta resta legato al giocatore, non alla squadra.
+      strictEqual(stato!.squadre.find((s) => s.id === 'Due')!.giocatori[0]!.prezzo, 10);
+    });
+
+    it('risolvere uno scambio rifiutato non tocca le rose', async () => {
+      const archivio = await costruisci();
+      await archivio.proponiScambio('prova', {
+        id: 's1', daSquadraId: 'Uno', aSquadraId: 'Due', offerti: ['a'], richiesti: ['b'],
+        stato: 'proposto', motivo: null, creatoIl: '2026-01-01T00:00:00.000Z', risoltoIl: null,
+      });
+      await archivio.risolviScambio('prova', {
+        id: 's1', daSquadraId: 'Uno', aSquadraId: 'Due', offerti: ['a'], richiesti: ['b'],
+        stato: 'rifiutato', motivo: 'troppo sbilanciato', creatoIl: '2026-01-01T00:00:00.000Z',
+        risoltoIl: '2026-01-02T00:00:00.000Z',
+      });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.scambi[0]!.stato, 'rifiutato');
+      deepStrictEqual(stato!.squadre.find((s) => s.id === 'Uno')!.giocatori.map((g) => g.giocatoreId), ['a']);
+      deepStrictEqual(stato!.squadre.find((s) => s.id === 'Due')!.giocatori.map((g) => g.giocatoreId), ['b']);
     });
   });
 }

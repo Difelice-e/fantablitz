@@ -56,7 +56,7 @@ npm run importa -- fixtures/rose.csv
 | 3 — Import Fantalab | ✅ `/jobs` |
 | 4 — Ciclo di gioco, fantavoto | ✅ `/jobs` + `/fanta` |
 | 5 — Interfaccia | ✅ `/web`, autenticazione compresa |
-| 6 — Bot: valutazione e scambi | ⬜ |
+| 6 — Bot: valutazione e scambi | 🚧 proposta/accettazione/rifiuto/ritiro e valutazione fatte; bot che propongono per primi no — vedi §6 |
 | 7 — Strato AI | ⬜ |
 | 8 — Fine stagione | ⬜ |
 
@@ -267,23 +267,75 @@ scelta autonoma fra le squadre libere.
 
 ---
 
-## 6. Decisioni aperte
+## 6. Scambi e valutazione bot, come funzionano
 
-Sono in fondo a `SPEC.md` §11. Le due che contano adesso:
+`SPEC.md` §6.5 e §7.1. Sta in `/jobs` (`valutazione.ts`, `scambi.ts`) e non in
+`/fanta`, deliberatamente: valutare un giocatore serve sia il prezzo pagato
+all'asta (dato di lega) sia come si è comportato nel mondo simulato (dato di
+mondo), e `/fanta` non deve poter guardare il secondo (regola 7).
+
+- **Il ciclo di vita** è in `StatoLega.scambi`: `proposto` → `accettato` /
+  `rifiutato` / `ritirato`. Verso una squadra con un proprietario umano resta
+  `proposto` finché non risponde lui; verso un bot si valuta e si risolve
+  nello stesso momento — un bot non ha una sera in cui pensarci.
+- **Il valore di un giocatore** è la quota del budget della sua squadra
+  (`valoreGiocatore` in `valutazione.ts`): parte dal prezzo pagato all'asta e
+  si sposta verso la resa osservata in campo (media del **voto** del mondo
+  simulato, non il fantavoto: è il dato uniforme per tutte le leghe) con una
+  rampa lineare sulle giornate giocate (`giornateAllaPienaFiducia` in
+  `fanta/config/scambi.json`). Tutte le squadre partono con lo stesso budget,
+  quindi la quota è già confrontabile fra squadre diverse senza un'altra
+  conversione in crediti assoluti — è la "percentuale sul budget circolante"
+  che chiede SPEC 7.1, solo espressa in un'unità più comoda. C'è anche una
+  correzione di scarsità sul ruolo Mantra più raro fra quelli del giocatore.
+- **Le regole anti-exploit valgono solo se una delle due squadre è un bot** —
+  decisione esplicita del proprietario: fra due persone uno scambio passa
+  sempre, è una loro scelta. Per un bot: rumore di valutazione e margine
+  richiesto dipendono dalla sua **personalità**, seminata su (seme di lega,
+  squadra) e quindi stabile per tutta la stagione, non su un orologio; sotto
+  la soglia di rifiuto automatico (`sogliaRifiutoAutomatico`) nessun rumore
+  può far accettare un'offerta palesemente sbilanciata; oltre il tetto
+  stagionale (`tettoScambiPerStagione`) il bot rifiuta senza nemmeno valutare.
+- `web/app/squadre/[id]/scambi/` — propone (checkbox sui propri giocatori e su
+  quelli della controparte scelta), risponde alle proposte ricevute, ritira le
+  proprie in attesa, mostra lo storico. Le scritture passano da
+  `archivioServizio` (chiave di servizio), non dall'archivio della richiesta:
+  uno scambio accettato tocca le rose di *due* squadre, e la RLS su `rose` non
+  lascia scrivere niente dal sito nemmeno per la propria — solo il job e
+  l'amministrazione hanno quella chiave. L'autorizzazione ("è davvero la tua
+  squadra?") si controlla in TypeScript, come per l'amministrazione di lega.
+- Tabella `scambi` su Supabase: solo lettura via RLS (`e_della_lega`, come
+  formazioni e rose), nessuna policy di scrittura — stessa scelta di
+  `leghe`/`squadre`/`rose`.
+- **Non implementato**: correzione di valore per buchi in rosa e crediti
+  residui (SPEC 7.1 punto 3, parte restante — i crediti residui non hanno un
+  uso reale finché il mercato intra-stagione resta chiuso), bot che propongono
+  scambi per primi (oggi rispondono soltanto), il livello sociale di SPEC 7.2.
+- **Non testato in un browser reale** (l'estensione Chrome non era connessa
+  in questa sessione): build di produzione riuscita, tipi corretti, e la
+  logica di dominio (`valutazione.ts`, `scambi.ts`) provata a fondo in
+  `jobs/test/` con le rose reali di `/fixtures` — non la schermata.
+
+---
+
+## 7. Decisioni aperte
+
+Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
 
 - **Le coppe non producono rotazione misurabile su una stagione.** Il
   meccanismo funziona ed è coperto da un test esatto, ma l'effetto non
   sopravvive a fine stagione, e triplicando `costoImpegnoEuropeo` va nella
   direzione opposta. È una domanda di calibrazione, non un test da riscrivere a
   tentativi.
-- **Bot.** Nella prima lega saranno dieci umani, ma il proprietario vuole i bot
-  **per i suoi test**. Nel modello il posto c'è già: `proprietario: null` su una
-  squadra significa «non la gestisce nessuno». La milestone 6 si riduce quindi a
-  valutazione + scambi fra utenti, più bot abbastanza buoni da fare da sparring.
+- **Anti-exploit degli scambi solo sui bot.** Decisione del proprietario: da
+  rivedere se in una stagione vera emergessero scambi concordati fra amici per
+  favorire una squadra a scapito della lega.
+- **Taratura di `fanta/config/scambi.json`.** Valori di partenza plausibili,
+  non ancora provati su una stagione giocata da persone vere.
 
 ---
 
-## 7. Cose da sapere prima di toccare qualcosa
+## 8. Cose da sapere prima di toccare qualcosa
 
 - **Il repo GitHub è pubblico.** Contiene `seed/out/mondo.json` coi nomi veri di
   533 giocatori e 20 club, il listone in `fixtures/`, e i nomi delle squadre
@@ -316,13 +368,13 @@ Sono in fondo a `SPEC.md` §11. Le due che contano adesso:
 
 ---
 
-## 8. Struttura
+## 9. Struttura
 
 ```
 /engine     motore di simulazione, puro e deterministico. Niente Math.random()
 /fanta      livello di lega: moduli, schieramento, fantavoto, soglie
-/jobs       import, ciclo serale, archivio (contratto + file + Supabase)
-/web        Next.js: classifica, giornate, rosa, schieramento
+/jobs       import, ciclo serale, scambi e valutazione bot, archivio (contratto + file + Supabase)
+/web        Next.js: classifica, giornate, rosa, schieramento, scambi
 /seed       lo script che converte il listone .xlsx, e il seed prodotto
 /fixtures   i due export reali di Fantalab, usati come fixture nei test
 /supabase   le migrazioni SQL

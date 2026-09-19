@@ -22,7 +22,7 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   validaStatoLega, VERSIONE_STATO,
-  type Archivio, type FormazioneSalvata, type StatoLega,
+  type Archivio, type FormazioneSalvata, type ScambioSalvato, type StatoLega,
 } from './archivio.ts';
 
 /* ------------------------------------------------------------------ */
@@ -47,10 +47,51 @@ type RigaFormazione = {
   titolari: [string, string][];
   panchina: string[];
 };
+type RigaScambio = {
+  lega_id: string;
+  id: string;
+  da_squadra_id: string;
+  a_squadra_id: string;
+  offerti: string[];
+  richiesti: string[];
+  stato: string;
+  motivo: string | null;
+  creato_il: string;
+  risolto_il: string | null;
+};
 
 /** Un errore di Supabase diventa un errore leggibile, col contesto di cosa si stava facendo. */
 function esigiRiuscito(errore: { message: string } | null, cosa: string): void {
   if (errore) throw new Error(`${cosa}: ${errore.message}`);
+}
+
+function daRigaScambio(r: RigaScambio): ScambioSalvato {
+  return {
+    id: r.id,
+    daSquadraId: r.da_squadra_id,
+    aSquadraId: r.a_squadra_id,
+    offerti: r.offerti,
+    richiesti: r.richiesti,
+    stato: r.stato as ScambioSalvato['stato'],
+    motivo: r.motivo,
+    creatoIl: r.creato_il,
+    risoltoIl: r.risolto_il,
+  };
+}
+
+function aRigaScambio(legaId: string, s: ScambioSalvato): RigaScambio {
+  return {
+    lega_id: legaId,
+    id: s.id,
+    da_squadra_id: s.daSquadraId,
+    a_squadra_id: s.aSquadraId,
+    offerti: s.offerti,
+    richiesti: s.richiesti,
+    stato: s.stato,
+    motivo: s.motivo,
+    creato_il: s.creatoIl,
+    risolto_il: s.risoltoIl,
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -84,16 +125,18 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(error, `lettura della lega ${legaId}`);
       if (!lega) return null;
 
-      // Tre letture in parallelo: sono indipendenti e la latenza verso il
-      // database si paga una volta sola invece di tre.
-      const [squadre, rose, formazioni] = await Promise.all([
+      // Quattro letture in parallelo: sono indipendenti e la latenza verso il
+      // database si paga una volta sola invece di quattro.
+      const [squadre, rose, formazioni, scambi] = await Promise.all([
         client.from('squadre').select('*').eq('lega_id', legaId).order('id'),
         client.from('rose').select('*').eq('lega_id', legaId),
         client.from('formazioni').select('*').eq('lega_id', legaId),
+        client.from('scambi').select('*').eq('lega_id', legaId).order('creato_il'),
       ]);
       esigiRiuscito(squadre.error, 'lettura delle squadre');
       esigiRiuscito(rose.error, 'lettura delle rose');
       esigiRiuscito(formazioni.error, 'lettura delle formazioni');
+      esigiRiuscito(scambi.error, 'lettura degli scambi');
 
       const perSquadra = new Map<string, { giocatoreId: string; prezzo: number }[]>();
       for (const r of (rose.data ?? []) as RigaRosa[]) {
@@ -124,6 +167,7 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
           titolari: f.titolari,
           panchina: f.panchina,
         })),
+        scambi: ((scambi.data ?? []) as RigaScambio[]).map(daRigaScambio),
       };
 
       // Si valida anche quello che arriva dal database: le regole che il
@@ -198,6 +242,14 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
           'scrittura delle formazioni',
         );
       }
+
+      if (stato.scambi.length > 0) {
+        esigiRiuscito(
+          (await client.from('scambi').upsert(stato.scambi.map((s) => aRigaScambio(stato.id, s))))
+            .error,
+          'scrittura degli scambi',
+        );
+      }
     },
 
     async salvaFormazione(legaId, formazione: FormazioneSalvata) {
@@ -223,6 +275,47 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(
         (await client.from('leghe').update({ giornate_giocate: fino }).eq('id', legaId)).error,
         'aggiornamento delle giornate giocate',
+      );
+    },
+
+    async proponiScambio(legaId, scambio) {
+      esigiRiuscito(
+        (await client.from('scambi').insert(aRigaScambio(legaId, scambio))).error,
+        `proposta dello scambio ${scambio.id}`,
+      );
+    },
+
+    async risolviScambio(legaId, scambio) {
+      // Se accettato, prima si spostano i giocatori fra le rose e solo dopo si
+      // marca lo scambio risolto: un'interruzione a meta' lascia uno scambio
+      // ancora "proposto" da poter ritentare, mai un doppio spostamento.
+      if (scambio.stato === 'accettato') {
+        esigiRiuscito(
+          (
+            await client
+              .from('rose')
+              .update({ squadra_id: scambio.aSquadraId })
+              .eq('lega_id', legaId)
+              .in('giocatore_id', scambio.offerti)
+          ).error,
+          `scambio ${scambio.id}: spostamento dei giocatori offerti`,
+        );
+        esigiRiuscito(
+          (
+            await client
+              .from('rose')
+              .update({ squadra_id: scambio.daSquadraId })
+              .eq('lega_id', legaId)
+              .in('giocatore_id', scambio.richiesti)
+          ).error,
+          `scambio ${scambio.id}: spostamento dei giocatori richiesti`,
+        );
+      }
+
+      esigiRiuscito(
+        (await client.from('scambi').update(aRigaScambio(legaId, scambio)).eq('id', scambio.id))
+          .error,
+        `risoluzione dello scambio ${scambio.id}`,
       );
     },
 
