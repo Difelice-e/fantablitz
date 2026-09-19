@@ -111,6 +111,25 @@ export type EditorialeSalvato = {
   fonte: FonteTesto;
 };
 
+/** L'evento che fa intervenire un bot in chat (SPEC 7.2). */
+export type EventoChat = 'sconfittaPesante' | 'scambioRifiutato' | 'colpoDiMercato';
+
+/**
+ * Un messaggio di un bot in chat: reazione a un evento scatenante, mai un
+ * commento libero. `riferimento` e' l'id dello scambio quando l'evento e' uno
+ * scambio, `null` per una sconfitta — serve a non far reagire due volte allo
+ * stesso episodio.
+ */
+export type MessaggioChat = {
+  id: string;
+  giornata: number;
+  squadraId: string;
+  evento: EventoChat;
+  riferimento: string | null;
+  testo: string;
+  fonte: FonteTesto;
+};
+
 export type StatoLega = {
   versione: number;
   id: string;
@@ -131,9 +150,10 @@ export type StatoLega = {
   scambi: ScambioSalvato[];
   cronache: CronacaSalvata[];
   editoriali: EditorialeSalvato[];
+  chat: MessaggioChat[];
 };
 
-export const VERSIONE_STATO = 3;
+export const VERSIONE_STATO = 4;
 
 /* ------------------------------------------------------------------ */
 /* Il contratto                                                        */
@@ -186,6 +206,14 @@ export type Archivio = {
   salvaCronaca(legaId: string, cronaca: CronacaSalvata): Promise<void>;
   /** Salva l'editoriale di **una** giornata. Stessa logica di `salvaCronaca`. */
   salvaEditoriale(legaId: string, editoriale: EditorialeSalvato): Promise<void>;
+  /**
+   * Aggiunge un messaggio di chat. Sempre in aggiunta, mai in sostituzione:
+   * a differenza di cronaca ed editoriale, in una giornata possono convivere
+   * piu' messaggi (di bot diversi, o per eventi diversi). E' chi genera —
+   * `chat.ts` — a non generarne due per lo stesso evento, controllando prima
+   * lo storico.
+   */
+  salvaMessaggioChat(legaId: string, messaggio: MessaggioChat): Promise<void>;
   elenca(): Promise<{ id: string; nome: string }[]>;
 };
 
@@ -278,6 +306,14 @@ export function validaStatoLega(s: StatoLega): StatoLega {
     esigi(!editorialiVisti.has(e.giornata), `editoriale duplicato per la giornata ${e.giornata}`);
     editorialiVisti.add(e.giornata);
     esigi(e.giornata >= 1, `editoriale con giornata ${e.giornata}`);
+  }
+
+  const messaggiVisti = new Set<string>();
+  for (const m of s.chat) {
+    esigi(!messaggiVisti.has(m.id), `messaggio di chat duplicato: ${m.id}`);
+    messaggiVisti.add(m.id);
+    esigi(viste.has(m.squadraId), `messaggio di chat di una squadra inesistente: ${m.squadraId}`);
+    esigi(m.giornata >= 1, `messaggio di chat con giornata ${m.giornata}`);
   }
 
   return s;
@@ -403,6 +439,12 @@ export function archivioSuFile(cartella: string): Archivio {
       await this.scrivi({ ...stato, editoriali: [...altri, editoriale] });
     },
 
+    async salvaMessaggioChat(legaId, messaggio) {
+      const stato = await this.leggi(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      await this.scrivi({ ...stato, chat: [...stato.chat, messaggio] });
+    },
+
     async elenca() {
       let file: string[];
       try {
@@ -485,6 +527,11 @@ export function archivioInMemoria(iniziale: StatoLega[] = []): Archivio {
         ...stato.editoriali.filter((e) => e.giornata !== editoriale.giornata),
         structuredClone(editoriale),
       ];
+    },
+    async salvaMessaggioChat(legaId, messaggio) {
+      const stato = leghe.get(legaId);
+      if (!stato) throw new Error(`Lega inesistente: ${legaId}`);
+      stato.chat = [...stato.chat, structuredClone(messaggio)];
     },
     async elenca() {
       return [...leghe.values()]

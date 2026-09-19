@@ -52,6 +52,20 @@ export function providerGroq(chiave: string, modello: string): ProviderAI {
 const MODELLO_PREDEFINITO = 'openai/gpt-oss-20b';
 
 /**
+ * Un secondo scarso fra una chiamata e la prossima. Il piano gratuito di Groq
+ * limita i token al minuto, non solo le chiamate al giorno: una giornata con
+ * molte generazioni ravvicinate — dieci cronache, un editoriale, qualche
+ * messaggio di chat — ha esaurito il budget a meta' in un test reale ed e'
+ * caduta sul template per il resto. Senza provider non si aspetta: il
+ * template e' istantaneo e aspettare sarebbe solo tempo perso.
+ */
+export const PAUSA_FRA_CHIAMATE_MS = 1200;
+
+export function attesa(ms: number): Promise<void> {
+  return new Promise((risolvi) => setTimeout(risolvi, ms));
+}
+
+/**
  * Il provider giusto secondo l'ambiente: senza chiave, `null`. E' lo stesso
  * pattern di `archivioDallAmbiente` — senza Groq configurato tutto continua a
  * funzionare, solo col fallback da template (SPEC 8: "se il provider e'

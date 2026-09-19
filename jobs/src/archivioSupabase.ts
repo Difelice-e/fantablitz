@@ -23,7 +23,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   validaStatoLega, VERSIONE_STATO,
   type Archivio, type CronacaSalvata, type EditorialeSalvato, type FormazioneSalvata,
-  type ScambioSalvato, type StatoLega,
+  type MessaggioChat, type ScambioSalvato, type StatoLega,
 } from './archivio.ts';
 
 /* ------------------------------------------------------------------ */
@@ -69,6 +69,16 @@ type RigaCronaca = {
   fonte: string;
 };
 type RigaEditoriale = { lega_id: string; giornata: number; testo: string; fonte: string };
+type RigaMessaggioChat = {
+  lega_id: string;
+  id: string;
+  giornata: number;
+  squadra_id: string;
+  evento: string;
+  riferimento: string | null;
+  testo: string;
+  fonte: string;
+};
 
 /** Un errore di Supabase diventa un errore leggibile, col contesto di cosa si stava facendo. */
 function esigiRiuscito(errore: { message: string } | null, cosa: string): void {
@@ -126,6 +136,21 @@ function aRigaEditoriale(legaId: string, e: EditorialeSalvato): RigaEditoriale {
   return { lega_id: legaId, giornata: e.giornata, testo: e.testo, fonte: e.fonte };
 }
 
+function daRigaMessaggioChat(r: RigaMessaggioChat): MessaggioChat {
+  return {
+    id: r.id, giornata: r.giornata, squadraId: r.squadra_id,
+    evento: r.evento as MessaggioChat['evento'], riferimento: r.riferimento,
+    testo: r.testo, fonte: r.fonte as MessaggioChat['fonte'],
+  };
+}
+
+function aRigaMessaggioChat(legaId: string, m: MessaggioChat): RigaMessaggioChat {
+  return {
+    lega_id: legaId, id: m.id, giornata: m.giornata, squadra_id: m.squadraId,
+    evento: m.evento, riferimento: m.riferimento, testo: m.testo, fonte: m.fonte,
+  };
+}
+
 /* ------------------------------------------------------------------ */
 
 export type OpzioniSupabase = {
@@ -157,15 +182,16 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(error, `lettura della lega ${legaId}`);
       if (!lega) return null;
 
-      // Sei letture in parallelo: sono indipendenti e la latenza verso il
-      // database si paga una volta sola invece di sei.
-      const [squadre, rose, formazioni, scambi, cronache, editoriali] = await Promise.all([
+      // Sette letture in parallelo: sono indipendenti e la latenza verso il
+      // database si paga una volta sola invece di sette.
+      const [squadre, rose, formazioni, scambi, cronache, editoriali, chat] = await Promise.all([
         client.from('squadre').select('*').eq('lega_id', legaId).order('id'),
         client.from('rose').select('*').eq('lega_id', legaId),
         client.from('formazioni').select('*').eq('lega_id', legaId),
         client.from('scambi').select('*').eq('lega_id', legaId).order('creato_il'),
         client.from('cronache').select('*').eq('lega_id', legaId),
         client.from('editoriali').select('*').eq('lega_id', legaId),
+        client.from('chat').select('*').eq('lega_id', legaId),
       ]);
       esigiRiuscito(squadre.error, 'lettura delle squadre');
       esigiRiuscito(rose.error, 'lettura delle rose');
@@ -173,6 +199,7 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(scambi.error, 'lettura degli scambi');
       esigiRiuscito(cronache.error, 'lettura delle cronache');
       esigiRiuscito(editoriali.error, 'lettura degli editoriali');
+      esigiRiuscito(chat.error, 'lettura della chat');
 
       const perSquadra = new Map<string, { giocatoreId: string; prezzo: number }[]>();
       for (const r of (rose.data ?? []) as RigaRosa[]) {
@@ -206,6 +233,7 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
         scambi: ((scambi.data ?? []) as RigaScambio[]).map(daRigaScambio),
         cronache: ((cronache.data ?? []) as RigaCronaca[]).map(daRigaCronaca),
         editoriali: ((editoriali.data ?? []) as RigaEditoriale[]).map(daRigaEditoriale),
+        chat: ((chat.data ?? []) as RigaMessaggioChat[]).map(daRigaMessaggioChat),
       };
 
       // Si valida anche quello che arriva dal database: le regole che il
@@ -310,6 +338,14 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
           'scrittura degli editoriali',
         );
       }
+
+      if (stato.chat.length > 0) {
+        esigiRiuscito(
+          (await client.from('chat').upsert(stato.chat.map((m) => aRigaMessaggioChat(stato.id, m))))
+            .error,
+          'scrittura della chat',
+        );
+      }
     },
 
     async salvaFormazione(legaId, formazione: FormazioneSalvata) {
@@ -390,6 +426,13 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       esigiRiuscito(
         (await client.from('editoriali').upsert(aRigaEditoriale(legaId, editoriale))).error,
         `salvataggio dell'editoriale della giornata ${editoriale.giornata}`,
+      );
+    },
+
+    async salvaMessaggioChat(legaId, messaggio) {
+      esigiRiuscito(
+        (await client.from('chat').insert(aRigaMessaggioChat(legaId, messaggio))).error,
+        `salvataggio del messaggio di chat ${messaggio.id}`,
       );
     },
 

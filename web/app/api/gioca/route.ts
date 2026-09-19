@@ -16,6 +16,7 @@
 import { archivioServizio, contesto, RADICE } from '../../../src/dati.ts';
 import { providerDallAmbiente } from '../../../../jobs/src/ai/provider.ts';
 import { vistaStagione } from '../../../../jobs/src/lega.ts';
+import { generaChatGiornate } from '../../../../jobs/src/chat.ts';
 import { generaNarrativaGiornate } from '../../../../jobs/src/narrativa.ts';
 import { proponiScambiSpontanei } from '../../../../jobs/src/scambiSpontanei.ts';
 
@@ -80,6 +81,11 @@ export async function POST(richiesta: Request): Promise<Response> {
     const vista = vistaStagione(aggiornato, c);
     await generaNarrativaGiornate(archivioServizio, aggiornato, c, vista, provider, da, fino);
     await proponiScambiSpontanei(archivioServizio, aggiornato, c, vista.mondo, c.scambi, da, fino);
+
+    // Rilegge: gli scambi spontanei possono aver cambiato `stato.scambi`, e
+    // la chat deve vederli per reagire agli scambi appena conclusi.
+    const conScambiFreschi = (await archivioServizio.leggi(aggiornato.id))!;
+    await generaChatGiornate(archivioServizio, conScambiFreschi, c, vista, provider, da, fino);
 
     giocate.push({ lega: id, da, a: fino, su: totale });
   }

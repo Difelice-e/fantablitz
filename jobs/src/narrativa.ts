@@ -16,7 +16,7 @@
 import { calcolaClassifica } from '../../fanta/src/classifica.ts';
 import { generaCronaca, type DatiCronaca } from './ai/cronaca.ts';
 import { generaEditoriale, type DatiEditoriale } from './ai/editoriale.ts';
-import type { ProviderAI } from './ai/provider.ts';
+import { attesa, PAUSA_FRA_CHIAMATE_MS, type ProviderAI } from './ai/provider.ts';
 import type { Archivio, StatoLega } from './archivio.ts';
 import type { EsitoCiclo } from './ciclo.ts';
 import type { ContestoMondo } from './lega.ts';
@@ -28,20 +28,6 @@ function nomeGiocatore(id: string, c: ContestoMondo): string {
 function nomeClub(id: string, c: ContestoMondo): string {
   return c.mondo.clubPerId.get(id)?.nome ?? id;
 }
-
-function attesa(ms: number): Promise<void> {
-  return new Promise((risolvi) => setTimeout(risolvi, ms));
-}
-
-/**
- * Un secondo scarso fra una chiamata e la prossima. Il piano gratuito di Groq
- * limita i token al minuto, non solo le chiamate al giorno: una giornata da
- * dieci partite piu' un editoriale, sparata tutta insieme, in un test reale
- * ha esaurito il budget a meta' ed e' caduta sul template per il resto. Senza
- * provider non si aspetta: il template e' istantaneo e aspettare sarebbe solo
- * tempo perso.
- */
-const PAUSA_FRA_CHIAMATE_MS = 1200;
 
 /**
  * Genera cronache ed editoriali per le giornate da `da` a `fino`, comprese,

@@ -1,0 +1,32 @@
+{
+  "_nota": "Personaggi dei bot in chat e regole per quando intervengono (SPEC 7.2, 8). Nomi di fantasia della personalità, non dei bot: quelli restano il nome della squadra, che arriva dall'import. Cambiare i personaggi qui non tocca il codice.",
+  "versione": 1,
+
+  "_tettoMessaggiAlGiorno": "Quanti messaggi al massimo puo' mandare un singolo bot in una giornata, anche se ha piu' di un evento scatenante.",
+  "tettoMessaggiAlGiorno": 1,
+
+  "_sogliaSconfittaPesante": "Scarto minimo di fantapunti nello scontro perche' una sconfitta sia 'pesante' e faccia scattare una reazione.",
+  "sogliaSconfittaPesante": 20,
+
+  "caratteri": [
+    "smargiasso: si vanta anche quando perde di poco",
+    "piagnone: la colpa non è mai sua",
+    "filosofo: prende tutto con un distacco irritante",
+    "superstizioso: ha sempre una scusa rituale",
+    "competitivo fino all'ossessione",
+    "ottimista incorreggibile: vede sempre il lato buono",
+    "sarcastico: risponde sempre con una battuta tagliente",
+    "nostalgico: paragona tutto alla stagione scorsa"
+  ],
+
+  "tic": [
+    "chiude ogni messaggio con \"vedrete\"",
+    "usa sempre puntini di sospensione...",
+    "parla spesso di sé in terza persona",
+    "cita statistiche a caso per sembrare autorevole",
+    "usa troppi punti esclamativi!!!",
+    "aggiunge sempre un \"comunque\" fuori luogo",
+    "si paragona sempre a un grande campione del passato",
+    "finisce spesso le frasi con un \"eh già\""
+  ]
+}

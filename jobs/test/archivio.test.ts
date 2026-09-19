@@ -41,6 +41,7 @@ function statoDiProva(modifiche: Partial<StatoLega> = {}): StatoLega {
     scambi: [],
     cronache: [],
     editoriali: [],
+    chat: [],
     ...modifiche,
   };
 }
@@ -172,6 +173,32 @@ describe('validazione dello stato', () => {
     throws(
       () => validaStatoLega(statoDiProva({ editoriali: [editoriale, editoriale] })),
       /editoriale duplicato/,
+    );
+  });
+
+  it('rifiuta due messaggi di chat con lo stesso id', () => {
+    const messaggio = {
+      id: '1', giornata: 1, squadraId: 'Uno', evento: 'sconfittaPesante' as const,
+      riferimento: null, testo: 'testo', fonte: 'template' as const,
+    };
+    throws(
+      () => validaStatoLega(statoDiProva({ chat: [messaggio, messaggio] })),
+      /messaggio di chat duplicato/,
+    );
+  });
+
+  it('rifiuta un messaggio di chat di una squadra inesistente', () => {
+    throws(
+      () =>
+        validaStatoLega(
+          statoDiProva({
+            chat: [{
+              id: '1', giornata: 1, squadraId: 'Tre', evento: 'sconfittaPesante',
+              riferimento: null, testo: 'testo', fonte: 'template',
+            }],
+          }),
+        ),
+      /squadra inesistente/,
     );
   });
 });
@@ -461,6 +488,20 @@ for (const [nome, costruisci] of [
       const stato = await archivio.leggi('prova');
       strictEqual(stato!.editoriali.length, 2);
       strictEqual(stato!.editoriali.find((e) => e.giornata === 1)!.testo, 'seconda versione');
+    });
+
+    it('aggiunge messaggi di chat senza mai sostituire i precedenti', async () => {
+      const archivio = await costruisci();
+      await archivio.salvaMessaggioChat('prova', {
+        id: 'm1', giornata: 1, squadraId: 'Uno', evento: 'sconfittaPesante',
+        riferimento: null, testo: 'che disastro', fonte: 'template',
+      });
+      await archivio.salvaMessaggioChat('prova', {
+        id: 'm2', giornata: 1, squadraId: 'Due', evento: 'colpoDiMercato',
+        riferimento: 's1', testo: 'affare fatto', fonte: 'ai',
+      });
+      const stato = await archivio.leggi('prova');
+      strictEqual(stato!.chat.length, 2, 'due messaggi diversi convivono, anche nella stessa giornata');
     });
 
     it('risolvere uno scambio rifiutato non tocca le rose', async () => {

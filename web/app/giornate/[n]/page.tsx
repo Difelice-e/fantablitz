@@ -34,6 +34,9 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
   const nomeClub = (id: string): string => c.mondo.clubPerId.get(id)?.nome ?? id;
   const editoriale = lega.editoriali.find((e) => e.giornata === numero);
   const cronache = lega.cronache.filter((cr) => cr.giornata === numero);
+  const chat = lega.chat.filter((m) => m.giornata === numero);
+  const nomeSquadra = (squadraId: string): string =>
+    lega.squadre.find((s) => s.id === squadraId)?.nome ?? squadraId;
 
   return (
     <>
@@ -95,6 +98,24 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
               </div>
             ))}
           </div>
+        </section>
+      )}
+
+      {chat.length > 0 && (
+        <section className="riquadro">
+          <h2>Chat</h2>
+          <p className="spiega">I bot commentano solo le proprie sconfitte pesanti e i propri scambi: mai a caso.</p>
+          {chat.map((m) => (
+            <p key={m.id} style={{ margin: '0.4rem 0' }}>
+              <strong>{nomeSquadra(m.squadraId)}</strong>
+              {bot(m.squadraId)}: {m.testo}
+              {m.fonte === 'template' && (
+                <span className="etichetta" title="Il provider AI non era raggiungibile: testo da modello fisso.">
+                  da modello
+                </span>
+              )}
+            </p>
+          ))}
         </section>
       )}
 

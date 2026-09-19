@@ -57,7 +57,7 @@ npm run importa -- fixtures/rose.csv
 | 4 — Ciclo di gioco, fantavoto | ✅ `/jobs` + `/fanta` |
 | 5 — Interfaccia | ✅ `/web`, autenticazione compresa |
 | 6 — Bot: valutazione e scambi | ✅ tranne il livello sociale (aspetta una scheda personaggio) — vedi §6 |
-| 7 — Strato AI | 🚧 cronaca partita ed editoriale di lega fatti, con Groq vero e testato; voci di mercato e chat dei bot no — vedi §7 |
+| 7 — Strato AI | 🚧 cronaca partita, editoriale di lega e chat dei bot fatti, con Groq vero e testato; voci di mercato no — vedi §7 |
 | 8 — Fine stagione | ⬜ |
 
 **L'autenticazione è in codice** (link magico, Supabase Auth, RLS): vedi §5
@@ -355,12 +355,12 @@ mondo), e `/fanta` non deve poter guardare il secondo (regola 7).
 
 ---
 
-## 7. Strato AI: cronache ed editoriale, come funzionano
+## 7. Strato AI: cronache, editoriale e chat, come funzionano
 
-`SPEC.md` §8. Due dei quattro generatori — cronaca partita ed editoriale di
-lega — girano dentro il job serale (`jobs/src/narrativa.ts`, chiamato sia da
-`npm run gioca` che da `/api/gioca`) e si salvano, mai generati al
-caricamento di una pagina.
+`SPEC.md` §8. Tre dei quattro generatori — cronaca partita, editoriale di
+lega e chat dei bot — girano dentro il job serale (`jobs/src/narrativa.ts`
+e `jobs/src/chat.ts`, chiamati sia da `npm run gioca` che da `/api/gioca`)
+e si salvano, mai generati al caricamento di una pagina.
 
 - **Il provider e' un'interfaccia** (`jobs/src/ai/provider.ts`, regola 4):
   `ProviderAI` ha un solo metodo, `genera(messaggi)`. `providerGroq` lo
@@ -388,26 +388,55 @@ caricamento di una pagina.
   `narrativa.ts` salta comunque quello che è già salvato — non per la
   correttezza, che ci sarebbe comunque, ma per non ripagare la stessa cronaca
   in quota Groq a ogni rilancio del job.
+- **La chat dei bot** (`jobs/src/chat.ts`, `jobs/src/personaggio.ts`, SPEC
+  7.2) reagisce solo a tre eventi, mai a caso: sconfitta pesante nello
+  scontro fanta di giornata (`sogliaSconfittaPesante` in
+  `fanta/config/chat.json`), scambio rifiutato (solo chi l'ha proposto si
+  lamenta, non chi ha rifiutato), scambio concluso (entrambe le squadre
+  coinvolte, con un messaggio ciascuna). Ogni bot ha una **scheda
+  personaggio** — carattere e tic linguistico, non un nome a parte: il bot
+  *è* la squadra — seminata su (seme di lega, squadra) come `personalitaBot`
+  degli scambi, quindi stabile per la stagione. Un `tettoMessaggiAlGiorno`
+  (default 1) limita quanti messaggi manda un bot con più eventi nello
+  stesso giro, dando priorità al colpo di mercato (buona notizia) sulla
+  sconfitta e sul rifiuto.
+  Non è legata a una sola giornata quanto a "quello a cui quel bot non ha
+  ancora reagito": uno scambio proposto da un bot può essere accettato o
+  rifiutato da una persona molto dopo, quindi `chat.ts` guarda tutto lo
+  storico degli scambi a ogni rilancio, non solo quelli della giornata in
+  corso, e salta solo gli episodi già commentati — tracciati per (evento,
+  squadra, riferimento), dove riferimento è l'id dello scambio o, per una
+  sconfitta, la giornata stessa.
+  **Due bug trovati scrivendo i test, non a occhio**: la chiave di
+  deduplica iniziale non includeva la squadra che reagisce, solo l'evento e
+  l'id dello scambio — quando due bot reagivano allo stesso scambio (uno
+  perché l'ha proposto, uno perché l'ha ricevuto), il primo a reagire faceva
+  sembrare "già fatto" anche il turno del secondo, che restava senza
+  messaggio. Corretto includendo sempre lo squadraId nella chiave.
 - **Testato con chiamate vere**, non solo con un `ProviderAI` finto nei test
   (quello resta, per non dipendere dalla rete e per non consumare quota):
   una lega di prova creata da `/fixtures`, giocata giornata per giornata con
-  la chiave Groq vera del progetto.
+  la chiave Groq vera del progetto — compresi messaggi di chat generati
+  davvero, con il carattere assegnato che si sente nel testo (es. un
+  personaggio "filosofo" che commenta uno scambio come "un altro passo
+  nell'inesauribile danza delle scelte").
 - **Scoperta della sessione, non prevista da SPEC 8**: il limite del piano
   gratuito che si tocca per primo è i **token al minuto** (8.000 per
-  `openai/gpt-oss-20b`, misurato), non le chiamate al giorno. Una giornata da
-  dieci cronache più un editoriale, generata tutta insieme, può esaurirlo a
-  metà e cadere sul template per il resto — osservato dal 70% di fallback
-  iniziale al 30-50% dopo aver tagliato gli eventi minori dal prompt e il
-  tetto di token per risposta. Non è un errore: è il fallback previsto,
-  attivato più spesso di quanto SPEC 8 stimasse. In un uso reale (un rilancio
-  del job al giorno, non quattro in due minuti come nei test di questa
-  sessione) il budget si ricarica da solo fra una giornata e l'altra.
+  `openai/gpt-oss-20b`, misurato), non le chiamate al giorno. Una giornata
+  con molte generazioni ravvicinate — cronache, editoriale e ora anche
+  chat — può esaurirlo a metà e cadere sul template per il resto — osservato
+  dal 70% di fallback iniziale al 30-50% dopo aver tagliato gli eventi
+  minori dal prompt e il tetto di token per risposta. Non è un errore: è il
+  fallback previsto, attivato più spesso di quanto SPEC 8 stimasse. In un
+  uso reale (un rilancio del job al giorno, non quattro in due minuti come
+  nei test di questa sessione) il budget si ricarica da solo fra una
+  giornata e l'altra.
 - **Non fatto**: voci di mercato (aspettano la finestra di fine stagione, non
-  ancora raggiungibile) e chat dei bot (aspetta una scheda personaggio —
-  nome, carattere, tic linguistici — non ancora progettata).
-- **Non testato in un browser reale**: la sezione "Cronache dal campionato" e
-  "Editoriale" in `web/app/giornate/[n]/page.tsx` — build di produzione
-  riuscita, tipi corretti, contenuto vero generato e verificato via CLI.
+  ancora raggiungibile).
+- **Non testato in un browser reale**: le sezioni "Cronache dal campionato",
+  "Editoriale" e "Chat" in `web/app/giornate/[n]/page.tsx` — build di
+  produzione riuscita, tipi corretti, contenuto vero generato e verificato
+  via CLI.
 
 ---
 
@@ -436,6 +465,11 @@ Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
   giorno.** Vedi §7. Da rivedere se, con una lega vera che gioca una giornata
   al giorno, il fallback da template si vedesse più spesso di quanto sembri
   accettabile.
+- **Taratura di `fanta/config/chat.json`.** Soglia di sconfitta pesante,
+  tetto di messaggi al giorno, il pool di caratteri e tic: valori plausibili
+  scelti a tavolino, non provati su una stagione vera. Il pool di otto
+  caratteri e otto tic è piccolo apposta per restare leggero da mantenere —
+  da allargare se con dieci bot i personaggi iniziassero a sembrare ripetuti.
 
 ---
 
