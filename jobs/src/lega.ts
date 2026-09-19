@@ -34,6 +34,7 @@ import type { FormazioneSalvata, StatoLega, SquadraSalvata } from './archivio.ts
 import { VERSIONE_STATO } from './archivio.ts';
 import type { RiferimentiEsterni, SquadraImportata } from './importa.ts';
 import { validaConfigurazioneScambi, type ConfigurazioneScambi } from './valutazione.ts';
+import { validaConfigurazioneChat, type ConfigurazioneChat } from './personaggio.ts';
 
 /* ------------------------------------------------------------------ */
 /* Il contesto: tutto quello che non cambia da una lega all'altra       */
@@ -49,6 +50,8 @@ export type ContestoMondo = {
   regole: Record<Modalita, RegoleSchieramento>;
   /** Valutazione bot e regole anti-exploit degli scambi (SPEC 6.5 e 7.1). */
   scambi: ConfigurazioneScambi;
+  /** Personaggi ed eventi scatenanti della chat dei bot (SPEC 7.2). */
+  chat: ConfigurazioneChat;
 };
 
 const json = async (percorso: string): Promise<unknown> =>
@@ -61,7 +64,7 @@ const json = async (percorso: string): Promise<unknown> =>
  * l'esecuzione: si carica una volta sola e si tiene.
  */
 export async function caricaContesto(radice: string): Promise<ContestoMondo> {
-  const [mondo, riferimenti, motore, voto, punteggio, classic, mantra, scambi] = await Promise.all([
+  const [mondo, riferimenti, motore, voto, punteggio, classic, mantra, scambi, chat] = await Promise.all([
     json(join(radice, 'seed', 'out', 'mondo.json')),
     json(join(radice, 'seed', 'out', 'riferimenti-esterni.json')),
     json(join(radice, 'engine', 'config', 'motore.json')),
@@ -70,6 +73,7 @@ export async function caricaContesto(radice: string): Promise<ContestoMondo> {
     json(join(radice, 'fanta', 'config', 'classic.json')),
     json(join(radice, 'fanta', 'config', 'mantra.json')),
     json(join(radice, 'fanta', 'config', 'scambi.json')),
+    json(join(radice, 'fanta', 'config', 'chat.json')),
   ]);
 
   return {
@@ -83,6 +87,7 @@ export async function caricaContesto(radice: string): Promise<ContestoMondo> {
       mantra: regoleMantra(mantra as ConfigurazioneMantra),
     },
     scambi: validaConfigurazioneScambi(scambi as ConfigurazioneScambi),
+    chat: validaConfigurazioneChat(chat as ConfigurazioneChat),
   };
 }
 
@@ -233,5 +238,6 @@ export function statoDaImport(
     scambi: [],
     cronache: [],
     editoriali: [],
+    chat: [],
   };
 }

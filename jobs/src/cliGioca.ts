@@ -14,6 +14,7 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { providerDallAmbiente } from './ai/provider.ts';
 import { archivioSuFile } from './archivio.ts';
+import { generaChatGiornate } from './chat.ts';
 import { caricaContesto, vistaStagione } from './lega.ts';
 import { generaNarrativaGiornate } from './narrativa.ts';
 import { proponiScambiSpontanei } from './scambiSpontanei.ts';
@@ -76,6 +77,11 @@ async function principale(): Promise<number> {
   const provider = providerDallAmbiente(process.env);
   await generaNarrativaGiornate(archivio, aggiornato, contesto, vista, provider, da, fino);
   await proponiScambiSpontanei(archivio, aggiornato, contesto, vista.mondo, contesto.scambi, da, fino);
+
+  // Rilegge: gli scambi spontanei possono aver cambiato `stato.scambi`, e la
+  // chat deve vederli per reagire agli scambi appena conclusi.
+  const conScambiFreschi = (await archivio.leggi(aggiornato.id))!;
+  await generaChatGiornate(archivio, conScambiFreschi, contesto, vista, provider, da, fino);
 
   for (const giornata of vista.giornate.filter((g) => g.numero >= da)) {
     console.log(`\nGIORNATA ${giornata.numero}`);
