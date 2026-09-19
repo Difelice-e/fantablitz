@@ -116,27 +116,51 @@ pannello). Vanno in un `.env` nella **radice** del progetto — vedi
 
 ---
 
-## 4. Vercel — cosa resta da fare
+## 4. Vercel — è online
 
 Team `difelicees-projects` (piano hobby), progetto `fantablitz`, collegato al
-repo GitHub.
+repo GitHub. **Il sito è in produzione**: https://fantablitz.vercel.app
+risponde, rimanda a `/login` chi non ha sessione, e `/api/gioca` è collegato
+al vero database Supabase (verificato: risponde "nessuna lega in archivio",
+corretto perché non ne è stata ancora creata una vera lì).
 
-**Il deploy attuale non pubblica niente.** Risulta `READY` ma ha costruito
-`main` prima che `/web` esistesse: i log dicono
-*"Build Completed in /vercel/output [119ms]"*, nessun file caricato.
+Root Directory (`web`) e le cinque variabili d'ambiente
+(`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `ADMIN_EMAIL`) sono impostate. Il
+connettore Vercel **non è più di sola lettura** da quando il plugin è stato
+installato per intero: le ha impostate lui, non serve più passare dal
+pannello per questo.
 
-Da fare a mano nel pannello — il connettore Vercel è di sola lettura e non può
-farlo:
+**Il primo passo vero, ora**: aprire `/admin` con la mail in `ADMIN_EMAIL`,
+creare la prima lega da un export Fantalab, e assegnare le squadre.
 
-1. **Settings → General → Root Directory: `web`**
-   È la cosa che fa partire tutto. `web/vercel.json` (col cron serale) viene
-   letto solo se la Root Directory è `web`: Vercel legge il `vercel.json` della
-   Root Directory, uno nella radice del repo verrebbe ignorato.
-2. **Settings → Environment Variables**, le cinque di `.env.example`:
-   `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `ADMIN_EMAIL` (la tua mail:
-   è quella che vede la voce "Amministrazione" nel sito).
-3. Rilanciare il deploy su `main` dopo aver unito il branch di lavoro.
+### Tre trappole di Vercel già disinnescate, non ovvie dal pannello
+
+Il primo deploy con Root Directory impostata falliva tre volte di fila, ogni
+volta con un errore diverso. Utile saperlo se un domani un altro progetto
+Vercel su questo monorepo ripete lo stesso percorso:
+
+1. **L'installazione delle dipendenze non vede il resto del monorepo.** Con
+   Root Directory `web`, Vercel per default lancia `npm install` dentro
+   `web/` come se fosse un progetto a se stante: non trova `typescript` e
+   `@types/node`, che sono `devDependencies` della radice condivisi da tutti
+   i workspace (`npm run build` falliva con *"It looks like you're trying to
+   use TypeScript but do not have the required package(s) installed"*, pur
+   avendo un `tsconfig.json` a posto). Risolto impostando l'**Install
+   Command** su `cd .. && npm install`, cosi' l'installazione vede
+   `package.json` alla radice e i suoi workspace.
+2. **`sourceFilesOutsideRootDirectory: true`** va comunque tenuto attivo:
+   senza, i file fuori da `web/` (`/engine`, `/fanta`, `/jobs`, `/seed`) non
+   arriverebbero nel contenitore di build, e l'install command del punto 1
+   non troverebbe nemmeno la radice da cui partire.
+3. **Il campo "framework" del progetto era rimasto `null`** da quando il
+   primo deploy (prima che `/web` esistesse) non aveva trovato niente da
+   riconoscere. Con `framework: null`, Vercel esegue comunque `next build`
+   ma poi si aspetta l'output di un sito statico in una cartella `public/`,
+   e fallisce con *"No Output Directory named 'public' found"* anche se la
+   build e' andata a buon fine. Risolto impostando `framework: "nextjs"` sul
+   progetto: a quel punto Vercel confeziona l'output di Next.js per le
+   funzioni serverless invece che aspettarsi file statici.
 
 ### Una trappola già disinnescata
 
