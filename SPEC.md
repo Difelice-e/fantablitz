@@ -14,7 +14,7 @@ I posti vacanti nella lega sono occupati da bot.
 ### Vincoli di progetto (fase privata)
 
 - Uso **privato tra amici**: nessuna monetizzazione, nessuna pubblicità, nessuna quota di iscrizione con montepremi, nessuna pubblicazione sugli store, nessuna landing page indicizzata.
-- Accesso **solo su invito**.
+- Accesso **solo su invito**: creare un account (mail e password) è aperto a chiunque, ma un account senza invito non vede né tocca nessuna lega. L'invito è o una mail assegnata da un amministratore di lega, o il nome della lega più la sua parola d'ordine — vedi §9
 - **Solo testo**: nessuna foto di calciatori, nessun logo o maglia di club reali.
 - I nomi di giocatori e squadre sono **dati sostituibili**, mai cablati nella logica. Deve essere possibile sostituire l'intero database con nomi di fantasia cambiando solo il seed.
 
@@ -454,8 +454,21 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 - Il motore è un **pacchetto isolato e deterministico**: dato lo stesso seed e lo stesso input, produce lo stesso output. Serve per i test, per la calibrazione e per dirimere le contestazioni
 - RNG esplicito e seminabile, mai `Math.random()` sparso nel codice
 - Il job serale è **idempotente**: eseguirlo due volte sulla stessa giornata non duplica nulla
-- Autenticazione: **link magico via email**, nessuna password
+- Autenticazione: **mail e password** via Supabase Auth (non più link magico — decisione rivista, vedi sotto)
 - Notifiche push: non nella prima versione
+
+### Leghe: creazione, amministrazione e ingresso
+
+**Chi crea una lega ne è l'amministratore.** `leghe.amministratore` (colonna già nello schema, va popolata alla creazione) è la mail di chi l'ha creata: è lui a poter assegnare le squadre di quella lega e — quando esisterà — a impostarne la parola d'ordine. Non è un ruolo globale: è per lega, cosi' il giorno in cui più persone creano le proprie leghe nessuna di loro amministra quelle degli altri.
+
+**Oggi può creare una lega solo `ADMIN_EMAIL`** (una mail sola, quella del proprietario del sito): la fase attuale ha un solo creatore. Il campo è già per-lega, e non un semplice controllo globale, perché aprire la creazione a chiunque abbia un account sia un giorno un cambio di configurazione, non di modello dati.
+
+**Due modi per finire in una squadra**, entrambi già invito nel senso della regola 8:
+
+1. **Assegnazione diretta** (quella che c'è già): l'amministratore della lega inserisce la mail di una persona su una squadra, da `/admin`. Chi si autentica con quella mail vede quella lega e quella squadra.
+2. **Nome lega + parola d'ordine**, in stile Fantaleghe (nuovo): l'amministratore fissa una parola d'ordine per la lega; chi la conosce insieme al nome della lega entra e sceglie da sé una squadra fra quelle libere (`proprietario` nullo). È il caso in cui l'amministratore non sa in anticipo le mail di tutti, o preferisce che scelgano da soli.
+
+Il secondo punto tocca la RLS in un modo che il primo non tocca: oggi nessuno vede una riga di `squadre` finché non è già `e_della_lega` (cioè finché una squadra non è già sua). Per lasciar scegliere una squadra libera a chi non è ancora dentro serve una funzione `security definer` — sulla falsariga di `private.e_della_lega` — che verifica nome lega e parola d'ordine e restituisce solo le squadre libere di quella lega, niente altro; e un'azione che assegna quella scelta in modo atomico, per evitare che due persone prendano la stessa squadra nello stesso istante. La parola d'ordine si salva come hash, mai in chiaro, con lo stesso spirito con cui `CRON_SECRET` non finisce mai in una riga di log.
 
 **Cron**: il piano gratuito di Vercel esegue un cron al giorno, sufficiente anche con `giornate_per_ciclo > 1` perché il job cicla N giornate in sequenza. Se servisse più di un'esecuzione al giorno, l'alternativa gratuita è un workflow schedulato su GitHub Actions che chiama l'endpoint del job.
 
@@ -479,7 +492,7 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 2. **Schieramento** — ✅ *fatto*, in `/fanta`. I due contratti di §6.2. Prima `classic` (conteggio per ruolo, nessun malus), che è il caso semplice e mette alla prova l'interfaccia, poi la matrice ruolo × slot × modulo di `mantra`. Validazione formazione e sostituzioni Basic per entrambe
 3. **Import Fantalab** — ✅ *fatto*, in `/jobs`. Parser, riconciliazione, validazioni, sui file di esempio reali. Un solo importatore per le due modalità, import atomico, copertura dei moduli in uscita
 4. **Ciclo di gioco** — ✅ *fatto*. Fantavoto, modificatori e soglie gol in `/fanta`; job serale, scontri diretti e classifica in `/jobs`. L'idempotenza è per costruzione: l'esito di una giornata è funzione pura dello stato iniziale e del numero di giornata
-5. **Interfaccia** — ✅ *fatto*, in `/web`. Next.js senza altre dipendenze, quasi tutto calcolato sul server. Classifica, giornate con tabellini, rosa e schieramento. Autenticazione con link magico via Supabase Auth: le pagine e le azioni di scrittura passano da un client per-richiesta che porta i cookie di sessione, cosi' le policy RLS vedono la mail di chi chiede invece di essere scavalcate. Il job serale (`/api/gioca`) resta sulla chiave di servizio, perche' non lavora per conto di una persona. Un'area di amministrazione (`/admin`, dietro `ADMIN_EMAIL`) crea leghe da un export Fantalab e assegna le squadre alle mail — l'invito della regola 8 — dal browser invece che da riga di comando; le squadre senza proprietario sono bot, pilotati dall'adattamento automatico, ed etichettate ovunque compaiono
+5. **Interfaccia** — ✅ *fatto* per la parte servita, in `/web`. Next.js senza altre dipendenze, quasi tutto calcolato sul server. Classifica, giornate con tabellini, rosa e schieramento. Le pagine e le azioni di scrittura passano da un client per-richiesta che porta i cookie di sessione, cosi' le policy RLS vedono la mail di chi chiede invece di essere scavalcate. Il job serale (`/api/gioca`) resta sulla chiave di servizio, perche' non lavora per conto di una persona. Un'area di amministrazione (`/admin`, dietro `ADMIN_EMAIL`) crea leghe da un export Fantalab e assegna le squadre alle mail; le squadre senza proprietario sono bot, pilotati dall'adattamento automatico, ed etichettate ovunque compaiono. **In revisione**: l'autenticazione passa da link magico a mail e password, e si aggiunge l'ingresso per nome lega + parola d'ordine — dettagli in §9 e §11
 6. **Bot** — valutazione e scambi
 7. **Strato AI** — cronache, editoriale, chat
 8. **Fine stagione** — sequenza completa con i flag di fase 1
@@ -489,6 +502,7 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 
 ## 11. Decisioni aperte
 
+- **Prossimo lavoro, deciso ma non ancora scritto**: sostituire il link magico con autenticazione a mail e password (Supabase Auth), e aggiungere l'ingresso in lega per nome lega + parola d'ordine con scelta autonoma della squadra fra quelle libere — vedi §9 "Leghe: creazione, amministrazione e ingresso" per i dettagli decisi. Da chiarire in fase di implementazione: schermata di recupero password; se la parola d'ordine è unica per lega o rigenerabile dall'amministratore; cosa succede se due persone scelgono la stessa squadra libera nello stesso istante (la funzione di assegnazione deve fallire pulita per una delle due, non corrompere lo stato)
 - Condizione esatta di chiusura dell'asta nativa (proposta: fase obbligatoria fino a 23 giocatori, poi possibilità di dichiarare chiusa la rosa)
 - Destino dei giocatori estratti e non aggiudicati nell'asta nativa (proposta: tornano nel pool svincolati)
 - Taratura fine dei pesi del voto statistico (valori di partenza in §5.6, da rifinire con lo script di calibrazione)
