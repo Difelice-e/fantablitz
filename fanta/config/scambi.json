@@ -19,6 +19,8 @@
     },
     "_sogliaRifiutoAutomatico": "Sotto questa percentuale di valore ricevuto rispetto a quello dato, il bot rifiuta sempre: nessun rumore ne' personalita' puo' far accettare una proposta palesemente sbilanciata.",
     "sogliaRifiutoAutomatico": 0.25,
-    "tettoScambiPerStagione": 6
+    "tettoScambiPerStagione": 6,
+    "_proponiOgniGiornate": "Un bot considera di proporre uno scambio di sua iniziativa al massimo una volta ogni tante giornate: senza un ritmo, un bot con una rosa scoperta proporrebbe scambi a ogni giornata giocata.",
+    "proponiOgniGiornate": 3
   }
 }

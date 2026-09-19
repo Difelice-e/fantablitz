@@ -20,8 +20,8 @@ import { importaRose } from '../src/importa.ts';
 import { statoDaImport } from '../src/lega.ts';
 import type { StatoLega } from '../src/archivio.ts';
 import {
-  decisioneBot, fattoreScarsita, frequenzaRuoli, mediaVoto, personalitaBot,
-  validaConfigurazioneScambi, valoreGiocatore, valoreGiocatori,
+  decisioneBot, fattoreScarsita, frequenzaRuoli, frequenzaRuoliSquadra, mediaVoto, personalitaBot,
+  validaConfigurazioneScambi, valoreGiocatore, valoreGiocatorePerRicevente, valoreGiocatori,
   type ConfigurazioneScambi,
 } from '../src/valutazione.ts';
 import type { PropostaScambio } from '../src/scambi.ts';
@@ -168,6 +168,53 @@ describe('valoreGiocatori', () => {
       0,
     );
     strictEqual(valoreGiocatori(ids, stato, mondo, stagione, configScambi, frequenza), somma);
+  });
+});
+
+describe('frequenzaRuoliSquadra e valoreGiocatorePerRicevente', () => {
+  it('la frequenza di una squadra conta solo la sua rosa, non tutta la lega', () => {
+    const stato = statoDiProva(0);
+    const squadra = stato.squadre[0]!;
+    const frequenzaLega = frequenzaRuoli(stato, mondo);
+    const frequenzaPropria = frequenzaRuoliSquadra(squadra, mondo);
+
+    let totalePropria = 0;
+    for (const v of frequenzaPropria.values()) totalePropria += v;
+    let totaleLega = 0;
+    for (const v of frequenzaLega.values()) totaleLega += v;
+
+    ok(totalePropria < totaleLega, 'la rosa di una squadra e’ un sottoinsieme di quella della lega');
+  });
+
+  it('un giocatore vale di piu’ per chi ha un buco nel suo ruolo che per il mercato in generale', () => {
+    const stato = statoDiProva(0);
+    const frequenzaLega = frequenzaRuoli(stato, mondo);
+
+    // Cerca una squadra e un giocatore (di un'altra squadra) con un ruolo,
+    // fra i suoi, che quella squadra non copre affatto: il caso in cui la
+    // correzione per buchi in rosa deve alzare il valore percepito.
+    for (const ricevente of stato.squadre) {
+      const frequenzaPropria = frequenzaRuoliSquadra(ricevente, mondo);
+      for (const altra of stato.squadre) {
+        if (altra.id === ricevente.id) continue;
+        for (const g of altra.giocatori) {
+          const ruoli = mondo.giocatorePerId.get(g.giocatoreId)!.ruoliMantra;
+          const hasBuco = ruoli.some((r) => (frequenzaPropria.get(r) ?? 0) === 0);
+          if (!hasBuco) continue;
+
+          const valoreMercato = valoreGiocatore(g.giocatoreId, stato, mondo, stagione, configScambi, frequenzaLega);
+          const valorePerRicevente = valoreGiocatorePerRicevente(
+            g.giocatoreId, stato, mondo, stagione, configScambi, frequenzaLega, ricevente,
+          );
+          ok(
+            valorePerRicevente > valoreMercato,
+            `${g.giocatoreId} dovrebbe valere di piu’ per ${ricevente.nome}, che non ha nessuno nel suo ruolo`,
+          );
+          return;
+        }
+      }
+    }
+    throw new Error('nessun caso di buco in rosa trovato nelle fixture: aggiornare il test');
   });
 });
 

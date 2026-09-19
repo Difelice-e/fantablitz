@@ -16,6 +16,7 @@ import { providerDallAmbiente } from './ai/provider.ts';
 import { archivioSuFile } from './archivio.ts';
 import { caricaContesto, vistaStagione } from './lega.ts';
 import { generaNarrativaGiornate } from './narrativa.ts';
+import { proponiScambiSpontanei } from './scambiSpontanei.ts';
 
 const RADICE = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 
@@ -74,6 +75,7 @@ async function principale(): Promise<number> {
 
   const provider = providerDallAmbiente(process.env);
   await generaNarrativaGiornate(archivio, aggiornato, contesto, vista, provider, da, fino);
+  await proponiScambiSpontanei(archivio, aggiornato, contesto, vista.mondo, contesto.scambi, da, fino);
 
   for (const giornata of vista.giornate.filter((g) => g.numero >= da)) {
     console.log(`\nGIORNATA ${giornata.numero}`);

@@ -29,7 +29,7 @@ import type { StagioneSimulata } from '../../engine/src/stagione.ts';
 import { generatore, seme } from '../../engine/src/casuale.ts';
 import type { RuoloMantra } from '../../fanta/src/tipi.ts';
 import { RUOLI_MANTRA } from '../../fanta/src/tipi.ts';
-import type { ScambioSalvato, StatoLega } from './archivio.ts';
+import { trovaSquadra, type ScambioSalvato, type SquadraSalvata, type StatoLega } from './archivio.ts';
 
 /* ------------------------------------------------------------------ */
 /* Configurazione                                                      */
@@ -46,6 +46,8 @@ export type ConfigurazioneScambi = {
     margineRichiesto: { base: number; variazionePersonalita: number };
     sogliaRifiutoAutomatico: number;
     tettoScambiPerStagione: number;
+    /** Un bot valuta di proporre uno scambio di sua iniziativa al massimo ogni tante giornate. */
+    proponiOgniGiornate: number;
   };
 };
 
@@ -72,6 +74,7 @@ export function validaConfigurazioneScambi(c: ConfigurazioneScambi): Configurazi
     'bot.sogliaRifiutoAutomatico deve stare fra 0 e 1',
   );
   esigi(c.bot.tettoScambiPerStagione >= 0, 'bot.tettoScambiPerStagione non puo’ essere negativo');
+  esigi(c.bot.proponiOgniGiornate >= 1, 'bot.proponiOgniGiornate deve essere almeno 1');
   return c;
 }
 
@@ -111,10 +114,29 @@ export function frequenzaRuoli(stato: StatoLega, mondo: MondoIndicizzato): Reado
   return frequenza;
 }
 
+/** Quante volte ciascun ruolo Mantra compare nella rosa di **una** squadra: la base dei suoi buchi. */
+export function frequenzaRuoliSquadra(
+  squadra: SquadraSalvata,
+  mondo: MondoIndicizzato,
+): ReadonlyMap<RuoloMantra, number> {
+  const frequenza = new Map<RuoloMantra, number>(RUOLI_MANTRA.map((r) => [r, 0]));
+  for (const g of squadra.giocatori) {
+    const nelMondo = mondo.giocatorePerId.get(g.giocatoreId);
+    if (!nelMondo) continue;
+    for (const ruolo of nelMondo.ruoliMantra) frequenza.set(ruolo, (frequenza.get(ruolo) ?? 0) + 1);
+  }
+  return frequenza;
+}
+
 /**
  * Il moltiplicatore di scarsita' del ruolo Mantra piu' raro fra quelli del
  * giocatore: chi copre piu' ruoli prende il migliore dei suoi, perche' la
  * flessibilita' e' un pregio, non una media.
+ *
+ * La stessa funzione serve sia la scarsita' di lega (frequenza calcolata su
+ * tutte le rose) sia i buchi in rosa di una singola squadra (frequenza
+ * calcolata sulla sua sola rosa, vedi `frequenzaRuoliSquadra`): "raro" e
+ * "che mi manca" sono la stessa domanda posta su due popolazioni diverse.
  */
 export function fattoreScarsita(
   ruoli: readonly RuoloMantra[],
@@ -190,6 +212,50 @@ export function valoreGiocatori(
   );
 }
 
+/**
+ * Il valore di un giocatore **per chi lo riceverebbe** (SPEC 7.1 punto 3,
+ * "correzione ... per i buchi in rosa"): il valore di mercato di
+ * `valoreGiocatore`, corretto da quanto quella squadra specifica ha bisogno
+ * del suo ruolo. Un playmaker in piu' vale il suo prezzo di mercato per
+ * chiunque, ma vale di piu' per chi non ne ha nessuno in rosa.
+ */
+export function valoreGiocatorePerRicevente(
+  giocatoreId: string,
+  stato: StatoLega,
+  mondo: MondoIndicizzato,
+  stagione: StagioneSimulata,
+  config: ConfigurazioneScambi,
+  frequenzaLega: ReadonlyMap<RuoloMantra, number>,
+  ricevente: SquadraSalvata,
+): number {
+  const base = valoreGiocatore(giocatoreId, stato, mondo, stagione, config, frequenzaLega);
+  const nelMondo = mondo.giocatorePerId.get(giocatoreId);
+  if (!nelMondo) throw new Error(`Giocatore sconosciuto al mondo: ${giocatoreId}`);
+  const bisogno = fattoreScarsita(
+    nelMondo.ruoliMantra,
+    frequenzaRuoliSquadra(ricevente, mondo),
+    config.valutazione.scarsitaRuoloMantra,
+  );
+  return base * bisogno;
+}
+
+/** Il valore per chi riceve di un insieme di giocatori: la somma delle loro quote corrette. */
+export function valoreGiocatoriPerRicevente(
+  giocatoriIds: readonly string[],
+  stato: StatoLega,
+  mondo: MondoIndicizzato,
+  stagione: StagioneSimulata,
+  config: ConfigurazioneScambi,
+  frequenzaLega: ReadonlyMap<RuoloMantra, number>,
+  ricevente: SquadraSalvata,
+): number {
+  return giocatoriIds.reduce(
+    (somma, id) =>
+      somma + valoreGiocatorePerRicevente(id, stato, mondo, stagione, config, frequenzaLega, ricevente),
+    0,
+  );
+}
+
 /* ------------------------------------------------------------------ */
 /* Personalita' e decisione dei bot                                    */
 /* ------------------------------------------------------------------ */
@@ -247,7 +313,10 @@ export function decisioneBot(
   }
 
   const frequenza = frequenzaRuoli(stato, mondo);
-  const valoreOfferto = valoreGiocatori(scambio.offerti, stato, mondo, stagione, config, frequenza);
+  const bot = trovaSquadra(stato, scambio.aSquadraId);
+  // Quello che il bot riceve vale anche quanto gli serve (SPEC 7.1 punto 3);
+  // quello che cede resta al valore di mercato, che non dipende da lui.
+  const valoreOfferto = valoreGiocatoriPerRicevente(scambio.offerti, stato, mondo, stagione, config, frequenza, bot);
   const valoreRichiesto = valoreGiocatori(scambio.richiesti, stato, mondo, stagione, config, frequenza);
 
   if (valoreOfferto < valoreRichiesto * (1 - config.bot.sogliaRifiutoAutomatico)) {
