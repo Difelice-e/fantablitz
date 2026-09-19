@@ -17,6 +17,7 @@ import { archivioServizio, contesto, RADICE } from '../../../src/dati.ts';
 import { providerDallAmbiente } from '../../../../jobs/src/ai/provider.ts';
 import { vistaStagione } from '../../../../jobs/src/lega.ts';
 import { generaNarrativaGiornate } from '../../../../jobs/src/narrativa.ts';
+import { proponiScambiSpontanei } from '../../../../jobs/src/scambiSpontanei.ts';
 
 export const dynamic = 'force-dynamic';
 // La simulazione di una stagione intera non sta nei limiti di una funzione
@@ -78,6 +79,7 @@ export async function POST(richiesta: Request): Promise<Response> {
     const aggiornato = { ...stato, giornateGiocate: fino };
     const vista = vistaStagione(aggiornato, c);
     await generaNarrativaGiornate(archivioServizio, aggiornato, c, vista, provider, da, fino);
+    await proponiScambiSpontanei(archivioServizio, aggiornato, c, vista.mondo, c.scambi, da, fino);
 
     giocate.push({ lega: id, da, a: fino, su: totale });
   }

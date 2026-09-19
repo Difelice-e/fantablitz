@@ -56,7 +56,7 @@ npm run importa -- fixtures/rose.csv
 | 3 — Import Fantalab | ✅ `/jobs` |
 | 4 — Ciclo di gioco, fantavoto | ✅ `/jobs` + `/fanta` |
 | 5 — Interfaccia | ✅ `/web`, autenticazione compresa |
-| 6 — Bot: valutazione e scambi | 🚧 proposta/accettazione/rifiuto/ritiro e valutazione fatte; bot che propongono per primi no — vedi §6 |
+| 6 — Bot: valutazione e scambi | ✅ tranne il livello sociale (aspetta una scheda personaggio) — vedi §6 |
 | 7 — Strato AI | 🚧 cronaca partita ed editoriale di lega fatti, con Groq vero e testato; voci di mercato e chat dei bot no — vedi §7 |
 | 8 — Fine stagione | ⬜ |
 
@@ -296,9 +296,41 @@ mondo), e `/fanta` non deve poter guardare il secondo (regola 7).
   la soglia di rifiuto automatico (`sogliaRifiutoAutomatico`) nessun rumore
   può far accettare un'offerta palesemente sbilanciata; oltre il tetto
   stagionale (`tettoScambiPerStagione`) il bot rifiuta senza nemmeno valutare.
+- **Buchi in rosa** (SPEC 7.1 punto 3): `valoreGiocatorePerRicevente` corregge
+  il valore di un giocatore in base a quanto la squadra che lo riceverebbe
+  copre già il suo ruolo — la stessa `fattoreScarsita` della scarsità di lega,
+  calcolata sulla frequenza dei ruoli di una sola rosa invece che di tutte.
+  Un bot che valuta un'offerta la vede quindi valere di più se gli riempie un
+  buco vero. Resta aperta solo la correzione per i **crediti residui**: non
+  ha un uso reale finché il mercato intra-stagione resta chiuso e non esiste
+  l'asta nativa.
+- **I bot propongono anche di loro iniziativa** (`scambiSpontanei.ts`), non
+  solo rispondono. Un bot per giornata ci pensa al massimo una volta, con
+  probabilità `1 / proponiOgniGiornate` — senza un ritmo, un bot con una rosa
+  scoperta proporrebbe scambi a ogni giornata giocata. Trova il suo ruolo
+  Mantra più scoperto (`ruoloPiuScoperto`) e i giocatori che può permettersi
+  di cedere (`giocatoriCedibili`: chi copre un ruolo duplicato, dal più al
+  meno pagato), poi cerca un accordo che superi **due** simulazioni con
+  `decisioneBot`: la accetterebbe la squadra bersaglio, se fosse un bot? E la
+  accetterebbe lui, al contrario? Solo se entrambe dicono di sì lo propone
+  per davvero. Riusa `decisioneBot` invece di scrivere un secondo giudizio,
+  anche quando la squadra bersaglio è una persona — lì non è una previsione
+  del suo gusto, solo un modo di non arrivarle con un'offerta palesemente
+  sbilanciata.
+  **Bug trovato e corretto durante l'implementazione**: il primo tentativo
+  iterava `for (const bot of stato.squadre)` scorrendo le squadre bot una
+  giornata alla volta; se il primo bot completava uno scambio con un altro
+  bot a metà giornata, i bot successivi vedevano ancora la rosa di prima del
+  cambio (l'array `stato.squadre` era stato catturato una volta sola
+  all'inizio del giro) e proponevano scambi con giocatori già spostati altrove
+  — errore a runtime, non un caso limite silenzioso. Corretto scorrendo gli
+  **id** delle squadre bot (decisi una volta) e rileggendo la squadra fresca
+  da `stato.squadre` a ogni iterazione.
 - `web/app/squadre/[id]/scambi/` — propone (checkbox sui propri giocatori e su
   quelli della controparte scelta), risponde alle proposte ricevute, ritira le
-  proprie in attesa, mostra lo storico. Le scritture passano da
+  proprie in attesa, mostra lo storico — comprese le proposte che un bot ha
+  fatto di sua iniziativa: arrivano nella stessa lista di quelle umane, senza
+  bisogno di una schermata a parte. Le scritture passano da
   `archivioServizio` (chiave di servizio), non dall'archivio della richiesta:
   uno scambio accettato tocca le rose di *due* squadre, e la RLS su `rose` non
   lascia scrivere niente dal sito nemmeno per la propria — solo il job e
@@ -307,14 +339,19 @@ mondo), e `/fanta` non deve poter guardare il secondo (regola 7).
 - Tabella `scambi` su Supabase: solo lettura via RLS (`e_della_lega`, come
   formazioni e rose), nessuna policy di scrittura — stessa scelta di
   `leghe`/`squadre`/`rose`.
-- **Non implementato**: correzione di valore per buchi in rosa e crediti
-  residui (SPEC 7.1 punto 3, parte restante — i crediti residui non hanno un
-  uso reale finché il mercato intra-stagione resta chiuso), bot che propongono
-  scambi per primi (oggi rispondono soltanto), il livello sociale di SPEC 7.2.
+- **Provato con le rose reali** di `/fixtures` su una stagione intera di 38
+  giornate coi parametri di default: circa 25 proposte spontanee, la maggior
+  parte accettate, distribuite fra le squadre senza che nessuna sforasse il
+  tetto — vedi `jobs/test/scambiSpontanei.test.ts` per i numeri e i casi di
+  guardia (tetto raggiunto, proposta già in attesa).
+- **Non implementato**: la correzione per i crediti residui (sopra) e il
+  livello sociale di SPEC 7.2 (aspetta una scheda personaggio — nome,
+  carattere, tic linguistici — non ancora progettata).
 - **Non testato in un browser reale** (l'estensione Chrome non era connessa
   in questa sessione): build di produzione riuscita, tipi corretti, e la
-  logica di dominio (`valutazione.ts`, `scambi.ts`) provata a fondo in
-  `jobs/test/` con le rose reali di `/fixtures` — non la schermata.
+  logica di dominio (`valutazione.ts`, `scambi.ts`, `scambiSpontanei.ts`)
+  provata a fondo in `jobs/test/` con le rose reali di `/fixtures` — non la
+  schermata.
 
 ---
 
@@ -387,7 +424,14 @@ Sono in fondo a `SPEC.md` §11. Quelle che contano adesso:
   rivedere se in una stagione vera emergessero scambi concordati fra amici per
   favorire una squadra a scapito della lega.
 - **Taratura di `fanta/config/scambi.json`.** Valori di partenza plausibili,
-  non ancora provati su una stagione giocata da persone vere.
+  non ancora provati su una stagione giocata da persone vere — compreso il
+  nuovo `proponiOgniGiornate` dei bot spontanei.
+- **I bot spontanei valutano una persona come se fosse un bot** (§6): per
+  decidere se un'offerta è ragionevole da mandare a un umano, simulano la sua
+  risposta con `decisioneBot` e la sua stessa personalità generata dal seme.
+  Non è quello che farebbe davvero — è la stima più onesta disponibile senza
+  sapere niente del suo gusto. Da rivedere se producesse offerte che sembrano
+  sensate al codice ma strane a chi le riceve.
 - **Il piano gratuito di Groq limita i token al minuto, non le chiamate al
   giorno.** Vedi §7. Da rivedere se, con una lega vera che gioca una giornata
   al giorno, il fallback da template si vedesse più spesso di quanto sembri
