@@ -79,17 +79,10 @@ export function disponi(
   const peso = opzioni.pesoContinuita ?? PESO_CONTINUITA;
   const pesoPriorita = opzioni.pesoPriorita ?? PESO_PRIORITA;
 
-  if (rosa.length < modulo.slot.length) {
-    return {
-      modulo,
-      titolari: new Map(),
-      slotScoperti: modulo.slot.map((s) => s.id),
-      adattati: [],
-      costo: Number.POSITIVE_INFINITY,
-      completa: false,
-    };
-  }
-
+  // Con meno giocatori che caselle non ci si arrende: si riempiono le caselle
+  // che si possono riempire e le altre restano scoperte. Arrendersi in blocco
+  // significherebbe mandare in campo zero uomini invece di dieci, e quindi
+  // zero fantapunti invece di sessanta.
   const costi = modulo.slot.map((slot) =>
     rosa.map((giocatore, i) => {
       const esito = regole.valuta(giocatore, slot, modulo);

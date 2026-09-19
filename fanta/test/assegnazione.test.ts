@@ -84,9 +84,45 @@ describe('assegnazione ottima', () => {
     strictEqual(new Set(usati).size, usati.length);
   });
 
-  it('gestisce l’insieme vuoto e rifiuta i casi impossibili', () => {
+  it('gestisce l’insieme vuoto', () => {
     deepStrictEqual(assegnazioneOttima([]).perRiga, []);
-    throws(() => assegnazioneOttima([[0, 0], [0, 0], [0, 0]]), /solo 2 candidati/);
+  });
+
+  it('con meno candidati che caselle riempie quelle che puo’', () => {
+    // E' il caso vero di una squadra a cui restano meno di undici giocatori con
+    // un voto. Arrendersi in blocco vorrebbe dire mandare in campo zero uomini
+    // invece di due, e prendere zero fantapunti invece di una dozzina.
+    const esito = assegnazioneOttima([[1, 5], [4, 2], [3, 3]]);
+    strictEqual(esito.righeScoperte.length, 1, 'una casella deve restare scoperta');
+    const assegnate = esito.perRiga.filter((c) => c >= 0);
+    strictEqual(assegnate.length, 2, 'le altre due vanno riempite');
+    strictEqual(new Set(assegnate).size, 2, 'lo stesso candidato non puo’ occupare due caselle');
+  });
+
+  it('con meno candidati che caselle sceglie comunque l’ottimo', () => {
+    // Tre caselle, due candidati. L'abbinamento migliore e' 1 sulla prima e 2
+    // sulla seconda (costo 3): un algoritmo goloso che parte dalla terza riga
+    // sprecherebbe un candidato su una casella che costava uguale a tutti.
+    const esito = assegnazioneOttima([[1, 9], [9, 2], [5, 5]]);
+    strictEqual(esito.costo, 3);
+    deepStrictEqual(esito.perRiga, [0, 1, -1]);
+    deepStrictEqual(esito.righeScoperte, [2]);
+  });
+
+  it('nessun candidato: tutte le caselle restano scoperte', () => {
+    const esito = assegnazioneOttima([[], [], []]);
+    deepStrictEqual(esito.perRiga, [-1, -1, -1]);
+    deepStrictEqual(esito.righeScoperte, [0, 1, 2]);
+    strictEqual(esito.costo, 0);
+  });
+
+  it('i candidati vietati non vengono usati nemmeno quando mancano candidati', () => {
+    // Due caselle, un solo candidato, e per una delle due e' vietato: quella
+    // casella deve restare scoperta, non essere riempita a forza.
+    const esito = assegnazioneOttima([[VIETATO], [2]]);
+    deepStrictEqual(esito.perRiga, [-1, 0]);
+    deepStrictEqual(esito.righeScoperte, [0]);
+    strictEqual(esito.costo, 2);
   });
 
   it('e’ deterministica', () => {
