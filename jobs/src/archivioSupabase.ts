@@ -110,6 +110,7 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
         modalita: lega.modalita,
         budget: lega.budget,
         giornateGiocate: lega.giornate_giocate,
+        amministratore: lega.amministratore,
         squadre: ((squadre.data ?? []) as RigaSquadra[]).map((s) => ({
           id: s.id,
           nome: s.nome,
@@ -148,7 +149,8 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
             modalita: stato.modalita,
             budget: stato.budget,
             giornate_giocate: stato.giornateGiocate,
-          } satisfies Omit<RigaLega, 'amministratore'>)
+            amministratore: stato.amministratore,
+          } satisfies RigaLega)
         ).error,
         'scrittura della lega',
       );

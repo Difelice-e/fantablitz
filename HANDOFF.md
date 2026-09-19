@@ -178,26 +178,38 @@ ENOENT su un file di configurazione, si guarda lì.
 
 ## 5. L'autenticazione, come funziona
 
-Link magico via email, nessuna password (`SPEC.md` §9), su Supabase Auth.
+Mail e password su Supabase Auth (`SPEC.md` §9). **Non più link magico**: è
+stato tolto, non solo affiancato — la decisione è stata "la password lo
+sostituisce".
 
 - `web/proxy.ts` (si chiamava `middleware.ts` prima di Next 16, rinominato:
   vedi la trappola in §7) rinfresca la sessione a ogni richiesta e rimanda a
   `/login` chi non ha fatto login. `/api/gioca` è escluso dal matcher: si
   protegge da solo con `CRON_SECRET` e non ha un utente.
-- `/login` manda il link magico (`web/app/login/`); `/auth/callback` lo
-  riceve e scambia il codice per una sessione; `/auth/signout` esce.
+- `/login` (`web/app/login/`) ha tre modalità sulla stessa pagina, scelte da
+  `?modo=`: **accedi** (default), **registrati**, **reset**. Tre azioni
+  distinte in `azioni.ts`: `accedi`, `registrati`, `richiediReset`.
+- **La registrazione è aperta** (chiunque può creare un account): è
+  l'evoluzione della regola 8 annotata in `SPEC.md` §1 — un account da solo
+  non vede né tocca nessuna lega, serve comunque un invito.
+- `/auth/callback` scambia il codice PKCE per una sessione — lo stesso
+  meccanismo serve sia per confermare la mail di una registrazione sia per il
+  link di reset password, distinti dal parametro `next` nell'URL di
+  reindirizzamento. `/auth/nuova-password` è dove si sceglie la nuova
+  password dopo un reset. `/auth/signout` esce.
 - `web/src/supabase/server.ts` costruisce il client Supabase **della
   richiesta corrente**, coi cookie di sessione: le policy RLS vedono la mail
   di chi chiede, invece di essere scavalcate.
 - `web/src/dati.ts` distingue due archivi: `archivioServizio` (chiave di
-  servizio, solo per `/api/gioca`) e `archivioPerRichiesta()` (per-richiesta,
-  usato da tutte le pagine e dalle azioni del sito). Confonderli riaprirebbe
-  esattamente il buco che l'autenticazione doveva chiudere.
+  servizio, per `/api/gioca` e per l'amministrazione) e
+  `archivioPerRichiesta()` (per-richiesta, usato dalle pagine e dalle azioni
+  che un giocatore normale può toccare). Confonderli riaprirebbe esattamente
+  il buco che l'autenticazione doveva chiudere.
 - Il salvataggio della formazione (`web/app/squadre/[id]/formazione/azioni.ts`)
-  ora chiama `archivio.salvaFormazione` (una riga sola) invece di
-  `archivio.scrivi` sull'intero stato: con l'archivio per-richiesta la RLS
-  non concede scritture su `leghe`/`squadre`/`rose` a un utente autenticato,
-  solo su `formazioni`.
+  chiama `archivio.salvaFormazione` (una riga sola) invece di `archivio.scrivi`
+  sull'intero stato: con l'archivio per-richiesta la RLS non concede
+  scritture su `leghe`/`squadre`/`rose` a un utente autenticato, solo su
+  `formazioni`.
 - Chi apre la formazione di una squadra che non è la sua la vede in sola
   lettura: l'interfaccia non propone nemmeno i controlli di modifica, anche
   se la RLS li bloccherebbe comunque lato database. Se la squadra non ha
@@ -205,35 +217,53 @@ Link magico via email, nessuna password (`SPEC.md` §9), su Supabase Auth.
   altro"), e un'etichetta BOT compare ovunque la squadra è nominata
   (classifica, giornate, rosa, formazione).
 
-### L'amministrazione (`/admin`)
+### L'amministrazione (`/admin`) e l'ingresso autonomo (`/entra`)
 
-Creare una lega, importare le rose e assegnare le squadre sono ora schermate
-del sito, non solo comandi da terminale (i comandi restano, per chi preferisce
-lavorare da riga di comando o senza browser).
+Creare una lega, importare le rose e assegnare le squadre sono schermate del
+sito, non solo comandi da terminale (i comandi restano, per chi preferisce
+lavorare da riga di comando o senza browser). C'è anche un secondo modo di
+entrare in una squadra, in stile Fantaleghe: nome lega + parola d'ordine,
+scelta autonoma fra le squadre libere.
 
-- `ADMIN_EMAIL` (una sola mail, in `.env`) decide chi vede la voce
-  "Amministrazione" nel menu e può usare `/admin`. Non è per-lega: con dieci
-  amici e una lega alla volta un ruolo per lega sarebbe over-engineering. La
-  colonna `leghe.amministratore` nello schema Supabase resta inutilizzata,
-  per quando (e se) servirà davvero un admin diverso per lega.
+- **Due livelli di amministrazione**, in `web/src/admin.ts`:
+  `sonoAmministratore()` è globale (`ADMIN_EMAIL`, una sola mail: oggi è
+  l'unica che può creare leghe). `amministraLega(stato)` è per lega
+  (`leghe.amministratore`, popolato alla creazione con la mail di chi l'ha
+  creata): può assegnarne le squadre e impostarne la parola d'ordine.
+  `ADMIN_EMAIL` passa comunque entrambi i controlli, su qualunque lega.
+  Oggi coincidono sempre — solo lui crea leghe — ma il secondo è già pronto
+  per quando altri potranno creare le proprie.
 - `web/app/admin/` — form per creare una lega da un export Fantalab (CSV
-  caricato dal browser, stesso parser della CLI) e l'elenco delle leghe
-  esistenti.
+  caricato dal browser, stesso parser della CLI) e l'elenco delle leghe.
 - `web/app/admin/squadre/[legaId]/` — una riga per squadra con la mail del
-  proprietario: vuota vuol dire bot. È l'invito (regola 8): senza
-  un'assegnazione qui, quella mail non vede niente.
-- Le azioni di `/admin` girano con `archivioServizio` (chiave di servizio),
-  non con l'archivio della richiesta: sono operazioni di chi gestisce il
-  sito, gated da `sonoAmministratore()` invece che dalla RLS — la RLS non
-  concede comunque scritture su `leghe`/`squadre`/`rose` a un utente
-  autenticato qualsiasi, quindi l'amministrazione non potrebbe funzionare
-  sull'archivio per-richiesta nemmeno volendo.
-- **Non testato in un browser vero in questa sessione:** l'estensione Chrome
-  non era connessa. Verificato invece: build di produzione riuscita (il
-  compilatore delle Server Actions di Next accetta i file), tipi corretti, e
-  la stessa identica logica di importazione già provata con successo dalla
-  CLI sullo stesso file (`fixtures/rose.csv`). La prima cosa da fare aprendo
-  il sito è provare a creare una lega da `/admin` con un file vero.
+  proprietario (vuota vuol dire bot), e un campo per impostare la parola
+  d'ordine della lega.
+- **La parola d'ordine non passa mai dall'archivio generico.** Vive solo in
+  Supabase (`leghe.parola_ordine_hash`, mai in chiaro — hash bcrypt via
+  pgcrypto, `imposta_parola_lega`), perché è un meccanismo specifico di RLS,
+  non uno stato "deciso da una persona" nel senso del contratto `Archivio`.
+  Impostarla richiede la chiave di servizio (`clientServizio()` in
+  `web/src/dati.ts`): nessun'altra chiave ha i permessi.
+- `web/app/entra/` — chi conosce nome lega e parola d'ordine vede le squadre
+  libere di quella lega (`squadre_libere`) e ne sceglie una
+  (`rivendica_squadra`). Le due funzioni sono `security definer` in
+  `public` (non `private`): a differenza delle funzioni di supporto delle
+  policy RLS, il sito le deve chiamare via RPC per conto di un utente
+  autenticato che non è ancora entrato in nessuna lega — per questo *devono*
+  stare in `public`, dove PostgREST le espone. Restano fuori portata di
+  `anon`: **due migrazioni** sono servite a toglierne l'accesso davvero
+  (revocare da `PUBLIC` non basta: Supabase concede l'esecuzione ai ruoli
+  `anon`/`authenticated` direttamente, non allo pseudo-ruolo `PUBLIC` — vedi
+  `supabase/migrazioni/20260919010326_...`).
+- **Testato end-to-end senza browser** (l'estensione Chrome non era
+  connessa): un utente vero registrato via API, confermato con la chiave di
+  servizio, autenticato, e usato per chiamare `squadre_libere` e
+  `rivendica_squadra` direttamente contro Supabase — password sbagliata
+  vuota, `anon` negato, password giusta trova la squadra libera e la
+  assegna, e dopo la RLS normale (`e_della_lega`) la lascia vedere la lega.
+  **Non testato**: il form `/entra` e il form di creazione lega/imposta
+  password in un browser vero — build di produzione riuscita, tipi corretti,
+  logica identica a quella già provata da terminale o via API.
 
 ---
 

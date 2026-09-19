@@ -12,8 +12,9 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { archivioServizio, contesto } from '../../src/dati.ts';
-import { sonoAmministratore } from '../../src/admin.ts';
+import { archivioServizio, clientServizio, contesto } from '../../src/dati.ts';
+import { amministraLega, sonoAmministratore } from '../../src/admin.ts';
+import { configurato, emailUtente } from '../../src/supabase/server.ts';
 import { contestoDaSeed, importaRose } from '../../../jobs/src/importa.ts';
 import { statoDaImport } from '../../../jobs/src/lega.ts';
 import type { Modalita } from '../../../fanta/src/tipi.ts';
@@ -79,7 +80,11 @@ export async function creaLega(dati: FormData): Promise<EsitoCreazione> {
     };
   }
 
-  const stato = statoDaImport({ id, nome, seme: id, modalita, budget }, importato.squadre);
+  // Chi crea la lega ne e' l'amministratore. In locale senza Supabase non
+  // c'e' nessuno autenticato: resta null, come oggi.
+  const amministratore = configurato() ? await emailUtente() : null;
+
+  const stato = statoDaImport({ id, nome, seme: id, modalita, budget, amministratore }, importato.squadre);
   await archivioServizio.scrivi(stato);
 
   revalidatePath('/', 'layout');
@@ -97,12 +102,11 @@ export async function assegnaSquadra(
   squadraId: string,
   mailGrezza: string,
 ): Promise<EsitoAssegnazione> {
-  if (!(await sonoAmministratore())) {
-    return { riuscito: false, messaggio: 'Riservato all’amministratore.' };
-  }
-
   const stato = await archivioServizio.leggi(legaId);
   if (!stato) return { riuscito: false, messaggio: 'Lega non trovata.' };
+  if (!(await amministraLega(stato))) {
+    return { riuscito: false, messaggio: 'Riservato all’amministratore della lega.' };
+  }
 
   const squadra = stato.squadre.find((s) => s.id === squadraId);
   if (!squadra) return { riuscito: false, messaggio: 'Squadra non trovata.' };
@@ -118,4 +122,33 @@ export async function assegnaSquadra(
     riuscito: true,
     messaggio: mail ? `Assegnata a ${mail}.` : 'Torna un bot: nessun proprietario.',
   };
+}
+
+export type EsitoParola = { riuscito: boolean; messaggio: string };
+
+/**
+ * Imposta o cambia la parola d'ordine della lega, per l'ingresso autonomo
+ * (nome lega + parola). L'hash e il confronto restano in Postgres
+ * (`imposta_parola_lega`, pgcrypto): qui non passa mai in chiaro se non
+ * verso quella funzione, e non si salva mai.
+ */
+export async function impostaParolaLega(legaId: string, parola: string): Promise<EsitoParola> {
+  const stato = await archivioServizio.leggi(legaId);
+  if (!stato) return { riuscito: false, messaggio: 'Lega non trovata.' };
+  if (!(await amministraLega(stato))) {
+    return { riuscito: false, messaggio: 'Riservato all’amministratore della lega.' };
+  }
+  if (parola.trim().length < 6) {
+    return { riuscito: false, messaggio: 'La parola d’ordine deve avere almeno 6 caratteri.' };
+  }
+
+  const client = clientServizio();
+  if (!client) {
+    return { riuscito: false, messaggio: 'Supabase non è configurato: la parola d’ordine vive solo lì.' };
+  }
+
+  const { error } = await client.rpc('imposta_parola_lega', { lega_id: legaId, parola: parola.trim() });
+  if (error) return { riuscito: false, messaggio: `Errore: ${error.message}` };
+
+  return { riuscito: true, messaggio: 'Parola d’ordine impostata.' };
 }

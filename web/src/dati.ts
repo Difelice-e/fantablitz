@@ -15,7 +15,8 @@
 
 import { join } from 'node:path';
 import { archivioSuFile, type Archivio, type StatoLega } from '../../jobs/src/archivio.ts';
-import { archivioDallAmbiente, archivioSupabase } from '../../jobs/src/archivioSupabase.ts';
+import { archivioDallAmbiente, archivioSupabase, clientSupabase } from '../../jobs/src/archivioSupabase.ts';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   caricaContesto, formazionePerGiornata, legaDaStato, rosaDi, vistaStagione,
   type ContestoMondo,
@@ -52,6 +53,19 @@ export const archivioServizio: Archivio = archivioDallAmbiente(
 export async function archivioPerRichiesta(): Promise<Archivio> {
   if (!configurato()) return archivioSuFile(CARTELLA_LEGHE);
   return archivioSupabase(await creaClientServer());
+}
+
+/**
+ * Il client Supabase con la chiave di servizio, per le funzioni RPC che
+ * neanche l'amministrazione puo' chiamare con l'archivio della richiesta
+ * (es. `imposta_parola_lega`, concessa solo a `service_role`). `null` senza
+ * Supabase configurato: quella funzionalita' resta assente in locale.
+ */
+export function clientServizio(): SupabaseClient | null {
+  const url = process.env['NEXT_PUBLIC_SUPABASE_URL'];
+  const chiave = process.env['SUPABASE_SERVICE_ROLE_KEY'];
+  if (!url || !chiave) return null;
+  return clientSupabase({ url, chiave });
 }
 
 /* ------------------------------------------------------------------ */

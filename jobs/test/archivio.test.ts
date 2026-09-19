@@ -32,6 +32,7 @@ function statoDiProva(modifiche: Partial<StatoLega> = {}): StatoLega {
     modalita: 'classic',
     budget: 500,
     giornateGiocate: 0,
+    amministratore: null,
     squadre: [
       { id: 'Uno', nome: 'Uno', proprietario: null, giocatori: [{ giocatoreId: 'a', prezzo: 10 }] },
       { id: 'Due', nome: 'Due', proprietario: null, giocatori: [{ giocatoreId: 'b', prezzo: 20 }] },
@@ -243,7 +244,7 @@ describe('formazioni nel tempo', () => {
 describe('creazione da un import', () => {
   it('trasforma le squadre importate in stato salvabile', () => {
     const stato = statoDaImport(
-      { id: 'x', nome: 'X', seme: 's', modalita: 'mantra', budget: 500 },
+      { id: 'x', nome: 'X', seme: 's', modalita: 'mantra', budget: 500, amministratore: 'admin@prova.it' },
       [
         { nome: 'Alfa', giocatori: [{ giocatoreId: 'a', idEsterno: 1, prezzo: 30 }], spesa: 30, creditiResidui: 470, copertura: [] },
       ],
@@ -252,6 +253,7 @@ describe('creazione da un import', () => {
     strictEqual(stato.giornateGiocate, 0, 'una lega nuova non ha giocato niente');
     strictEqual(stato.formazioni.length, 0);
     strictEqual(stato.squadre[0]!.giocatori[0]!.prezzo, 30, 'il prezzo pagato si conserva');
+    strictEqual(stato.amministratore, 'admin@prova.it', 'chi crea la lega ne e\' amministratore');
   });
 });
 

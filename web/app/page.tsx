@@ -11,19 +11,21 @@ export default async function Classifica() {
     return (
       <section className="riquadro">
         <h1>Nessuna lega</h1>
-        {admin ? (
+        {admin && (
           <>
-            <p className="spiega">Non c’è ancora nessuna lega. Creane una dall’amministrazione.</p>
+            <p className="spiega">Vuoi crearne una nuova? Vai all’amministrazione.</p>
             <p className="azioni">
               <a href="/admin">Vai all’amministrazione</a>
             </p>
           </>
-        ) : (
-          <p className="spiega">
-            Non c’è ancora nessuna lega, o non sei ancora stato assegnato a una squadra. Chiedi
-            all’amministratore.
-          </p>
         )}
+        <p className="spiega">
+          Non sei ancora in nessuna lega: aspetta che l’amministratore ti assegni una squadra,
+          oppure entra da solo se conosci il nome della lega e la sua parola d’ordine.
+        </p>
+        <p className="azioni">
+          <a href="/entra">Entra in una lega</a>
+        </p>
       </section>
     );
   }

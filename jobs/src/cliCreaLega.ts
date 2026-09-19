@@ -26,6 +26,7 @@ type Opzioni = {
   modalita: Modalita;
   budget: number;
   archivio: string;
+  amministratore: string | null;
 };
 
 /** Un id stabile e leggibile a partire dal nome. */
@@ -48,6 +49,7 @@ function leggiArgomenti(argv: string[]): Opzioni {
     modalita: 'classic',
     budget: 500,
     archivio: join(RADICE, 'dati', 'leghe'),
+    amministratore: null,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -63,6 +65,7 @@ function leggiArgomenti(argv: string[]): Opzioni {
       case '--seme': o.seme = valore(); break;
       case '--budget': o.budget = Number(valore()); break;
       case '--archivio': o.archivio = resolve(valore()); break;
+      case '--amministratore': o.amministratore = valore(); break;
       case '--modalita': {
         const m = valore();
         if (m !== 'classic' && m !== 'mantra') throw new Error(`Modalita’ sconosciuta: ${m}`);

@@ -132,7 +132,7 @@ tbody tr:last-child td { border-bottom: none; }
   color: var(--tenue);
 }
 
-.etichetta-bot {
+.etichetta, .etichetta-bot {
   display: inline-block;
   margin-left: 0.4rem;
   padding: 0.05rem 0.35rem;
@@ -143,6 +143,11 @@ tbody tr:last-child td { border-bottom: none; }
   letter-spacing: 0.03em;
   color: var(--tenue);
   vertical-align: middle;
+}
+
+.etichetta.ok {
+  border-color: var(--positivo);
+  color: var(--positivo);
 }
 
 /* --- scontri ------------------------------------------------------- */
