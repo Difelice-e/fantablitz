@@ -15,29 +15,44 @@
 
 import { join } from 'node:path';
 import { archivioSuFile, type Archivio, type StatoLega } from '../../jobs/src/archivio.ts';
-import { archivioDallAmbiente } from '../../jobs/src/archivioSupabase.ts';
+import { archivioDallAmbiente, archivioSupabase } from '../../jobs/src/archivioSupabase.ts';
 import {
   caricaContesto, formazionePerGiornata, legaDaStato, rosaDi, vistaStagione,
   type ContestoMondo,
 } from '../../jobs/src/lega.ts';
 import type { EsitoCiclo } from '../../jobs/src/ciclo.ts';
 import type { Formazione, Schierabile } from '../../fanta/src/tipi.ts';
+import { configurato, creaClientServer } from './supabase/server.ts';
 
 export const RADICE = join(process.cwd(), '..');
 const CARTELLA_LEGHE = process.env['FANTABLITZ_ARCHIVIO'] ?? join(RADICE, 'dati', 'leghe');
 
 /**
- * L’archivio: il database se e' configurato, il file altrimenti.
+ * L'archivio di servizio: usa la chiave che scavalca la RLS.
  *
- * Non e' una scorciatoia per lo sviluppo. E' quello che permette di far
- * girare il sito e i test senza un database, e di non avere due strade
- * diverse fra sviluppo e produzione se non nell'ultimo metro: sopra questa
- * riga, nessuno sa da dove arrivano i dati.
+ * Lo usa solo il job serale (`/api/gioca`), che lavora per conto della lega e
+ * non di una persona: non c'e' nessuna sessione da cui prendere i cookie.
+ * Le pagine e le azioni del sito devono usare `archivioPerRichiesta` qui
+ * sotto, non questo: altrimenti l'accesso su invito (regola 8) varrebbe solo
+ * sulla carta.
  */
-export const archivio: Archivio = archivioDallAmbiente(
+export const archivioServizio: Archivio = archivioDallAmbiente(
   process.env,
   archivioSuFile(CARTELLA_LEGHE),
 );
+
+/**
+ * L'archivio della richiesta corrente: porta i cookie di sessione, quindi le
+ * policy RLS vedono la mail di chi sta chiedendo invece di essere scavalcate.
+ *
+ * Senza Supabase configurato si torna al file, com'era prima
+ * dell'autenticazione: e' il modo di far girare il sito in locale senza un
+ * database.
+ */
+export async function archivioPerRichiesta(): Promise<Archivio> {
+  if (!configurato()) return archivioSuFile(CARTELLA_LEGHE);
+  return archivioSupabase(await creaClientServer());
+}
 
 /* ------------------------------------------------------------------ */
 /* Contesto, caricato una volta sola                                   */
@@ -72,13 +87,14 @@ export async function stagioneDi(stato: StatoLega): Promise<EsitoCiclo> {
 /* ------------------------------------------------------------------ */
 
 export async function legaPredefinita(): Promise<StatoLega | null> {
+  const archivio = await archivioPerRichiesta();
   const leghe = await archivio.elenca();
   const prima = leghe[0];
   return prima ? archivio.leggi(prima.id) : null;
 }
 
 export async function leggiLega(legaId: string): Promise<StatoLega | null> {
-  return archivio.leggi(legaId);
+  return (await archivioPerRichiesta()).leggi(legaId);
 }
 
 /* ------------------------------------------------------------------ */

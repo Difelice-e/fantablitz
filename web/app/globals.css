@@ -132,6 +132,19 @@ tbody tr:last-child td { border-bottom: none; }
   color: var(--tenue);
 }
 
+.etichetta-bot {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--bordo);
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--tenue);
+  vertical-align: middle;
+}
+
 /* --- scontri ------------------------------------------------------- */
 
 .scontro {

@@ -1,10 +1,15 @@
+import { fileURLToPath } from 'node:url';
 import type { NextConfig } from 'next';
 
 // Un solo `.env`, nella radice del progetto. Next.js legge solo il proprio, ma
 // il sito e i job devono vedere le stesse variabili: due file finirebbero per
 // divergere, e il bug si manifesterebbe solo in produzione.
+//
+// `fileURLToPath`, non `.pathname`: su Windows `new URL(...).pathname` da'
+// `/C:/Utenti/...`, con la barra davanti alla lettera del disco, che Turbopack
+// non riesce a canonicalizzare ("os error 123").
 try {
-  process.loadEnvFile(new URL('../.env', import.meta.url).pathname);
+  process.loadEnvFile(fileURLToPath(new URL('../.env', import.meta.url)));
 } catch {
   // In produzione le variabili arrivano dall'ambiente e il file non esiste.
 }
@@ -22,7 +27,7 @@ const config: NextConfig = {
   // il pacchetto pubblicato non conterrebbe il seed, e il sito online
   // risponderebbe "file non trovato" a ogni pagina mentre in locale funziona
   // tutto. E' il classico errore che si scopre solo dopo il primo deploy.
-  outputFileTracingRoot: new URL('..', import.meta.url).pathname,
+  outputFileTracingRoot: fileURLToPath(new URL('..', import.meta.url)),
   outputFileTracingIncludes: {
     '/**': [
       '../seed/out/mondo.json',

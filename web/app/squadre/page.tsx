@@ -29,6 +29,7 @@ export default async function Squadre() {
               <td className="numero">{posizione.get(s.id) ?? '—'}</td>
               <td>
                 <a href={`/squadre/${encodeURIComponent(s.id)}`}>{s.nome}</a>
+                {s.proprietario === null && <span className="etichetta-bot">BOT</span>}
               </td>
               <td className="numero">{s.giocatori.length}</td>
               <td className="numero">{s.giocatori.reduce((a, g) => a + g.prezzo, 0)}</td>

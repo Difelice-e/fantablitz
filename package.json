@@ -22,7 +22,8 @@
     "dev": "npm run dev --workspace web",
     "build": "npm run build --workspace web",
     "crea-lega": "npm run crea-lega --workspace jobs",
-    "gioca": "npm run gioca --workspace jobs"
+    "gioca": "npm run gioca --workspace jobs",
+    "assegna-squadra": "npm run assegna-squadra --workspace jobs"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

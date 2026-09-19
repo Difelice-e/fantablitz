@@ -13,7 +13,7 @@
  * stesso numero.
  */
 
-import { archivio, contesto, RADICE } from '../../../src/dati.ts';
+import { archivioServizio, contesto, RADICE } from '../../../src/dati.ts';
 import { vistaStagione } from '../../../../jobs/src/lega.ts';
 
 export const dynamic = 'force-dynamic';
@@ -55,21 +55,21 @@ export async function POST(richiesta: Request): Promise<Response> {
     return Response.json({ errore: 'quante deve essere un intero positivo' }, { status: 400 });
   }
 
-  const leghe = await archivio.elenca();
+  const leghe = await archivioServizio.elenca();
   if (leghe.length === 0) return Response.json({ giocate: [], nota: 'nessuna lega in archivio' });
 
   const c = await contesto();
   const giocate: { lega: string; da: number; a: number; su: number }[] = [];
 
   for (const { id } of leghe) {
-    const stato = await archivio.leggi(id);
+    const stato = await archivioServizio.leggi(id);
     if (!stato) continue;
 
     const totale = vistaStagione({ ...stato, giornateGiocate: 0 }, c).calendario.giornate.length;
     if (stato.giornateGiocate >= totale) continue;
 
     const fino = Math.min(totale, stato.giornateGiocate + quante);
-    await archivio.segnaGiornateGiocate(id, fino);
+    await archivioServizio.segnaGiornateGiocate(id, fino);
     giocate.push({ lega: id, da: stato.giornateGiocate + 1, a: fino, su: totale });
   }
 

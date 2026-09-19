@@ -28,7 +28,10 @@ export default async function Rosa({ params }: { params: Promise<{ id: string }>
   return (
     <>
       <section className="riquadro">
-        <h1>{squadra.nome}</h1>
+        <h1>
+          {squadra.nome}
+          {squadra.proprietario === null && <span className="etichetta-bot">BOT</span>}
+        </h1>
         <p className="spiega">
           {riga
             ? `${riga.punti} punti in ${riga.giocate} giornate, ${riga.fantapunti.toFixed(1)} fantapunti.`

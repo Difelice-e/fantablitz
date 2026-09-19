@@ -11,7 +11,8 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { archivio, contesto, leggiLega } from '../../../../src/dati.ts';
+import { archivioPerRichiesta, contesto, leggiLega } from '../../../../src/dati.ts';
+import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
 import { formazioneAutomatica, rosaDi, salvataDaFormazione } from '../../../../../jobs/src/lega.ts';
 import { disponi, validaFormazione } from '../../../../../fanta/src/schieramento.ts';
 import type { Formazione } from '../../../../../fanta/src/tipi.ts';
@@ -51,6 +52,14 @@ export async function salvaFormazione(
   const squadra = stato.squadre.find((s) => s.id === squadraId);
   if (!squadra) return { riuscito: false, messaggio: 'Squadra non trovata.', problemi: [] };
 
+  // Con Supabase configurato la RLS impedirebbe comunque la scrittura, ma un
+  // controllo qui da' un messaggio leggibile invece di un errore del
+  // database: l'interfaccia non deve nemmeno provarci per la squadra di un
+  // altro.
+  if (configurato() && (await emailUtente()) !== squadra.proprietario) {
+    return { riuscito: false, messaggio: 'Questa non è la tua squadra.', problemi: [] };
+  }
+
   const c = await contesto();
   const regole = c.regole[stato.modalita];
   const rosa = rosaDi(squadra, c);
@@ -69,14 +78,12 @@ export async function salvaFormazione(
   // non si tocca: il suo risultato e' gia' stato letto da tutti, e permettere
   // di cambiarla significherebbe poter riscrivere il passato.
   const giornata = stato.giornateGiocate + 1;
-  const altre = stato.formazioni.filter(
-    (f) => !(f.squadraId === squadraId && f.giornata === giornata),
-  );
 
-  await archivio.scrivi({
-    ...stato,
-    formazioni: [...altre, salvataDaFormazione(squadraId, giornata, formazione)],
-  });
+  // Una riga sola: e' il motivo per cui questo metodo esiste invece di
+  // `scrivi` sull'intero stato. Con l'archivio della richiesta e' anche
+  // l'unica cosa che la RLS lascia scrivere a un utente autenticato.
+  const archivio = await archivioPerRichiesta();
+  await archivio.salvaFormazione(legaId, salvataDaFormazione(squadraId, giornata, formazione));
 
   revalidatePath('/', 'layout');
   return { riuscito: true, messaggio: `Formazione salvata per la giornata ${giornata}.`, problemi: [] };

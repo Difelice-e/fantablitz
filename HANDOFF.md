@@ -55,14 +55,14 @@ npm run importa -- fixtures/rose.csv
 | 2 — Schieramento classic e Mantra | ✅ `/fanta` |
 | 3 — Import Fantalab | ✅ `/jobs` |
 | 4 — Ciclo di gioco, fantavoto | ✅ `/jobs` + `/fanta` |
-| 5 — Interfaccia | ✅ `/web` — **manca l'autenticazione** |
+| 5 — Interfaccia | ✅ `/web`, autenticazione compresa |
 | 6 — Bot: valutazione e scambi | ⬜ |
 | 7 — Strato AI | ⬜ |
 | 8 — Fine stagione | ⬜ |
 
-**Il lavoro in corso è l'autenticazione.** Il database è pronto, il codice del
-sito no: oggi chiunque apra il sito può schierare per chiunque. In locale va
-bene, in rete no.
+**L'autenticazione è in codice** (link magico, Supabase Auth, RLS): vedi §5
+qui sotto per come funziona e §4 per i passi manuali che restano prima del
+primo deploy vero.
 
 ---
 
@@ -132,9 +132,10 @@ farlo:
    È la cosa che fa partire tutto. `web/vercel.json` (col cron serale) viene
    letto solo se la Root Directory è `web`: Vercel legge il `vercel.json` della
    Root Directory, uno nella radice del repo verrebbe ignorato.
-2. **Settings → Environment Variables**, le quattro di `.env.example`:
+2. **Settings → Environment Variables**, le cinque di `.env.example`:
    `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
-   `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`.
+   `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, `ADMIN_EMAIL` (la tua mail:
+   è quella che vede la voce "Amministrazione" nel sito).
 3. Rilanciare il deploy su `main` dopo aver unito il branch di lavoro.
 
 ### Una trappola già disinnescata
@@ -151,22 +152,64 @@ ENOENT su un file di configurazione, si guarda lì.
 
 ---
 
-## 5. Il prossimo pezzo: l'autenticazione
+## 5. L'autenticazione, come funziona
 
-Il disegno è già deciso, manca il codice.
+Link magico via email, nessuna password (`SPEC.md` §9), su Supabase Auth.
 
-- **Link magico via email**, nessuna password (`SPEC.md` §9). Supabase Auth.
-- Librerie già installate: `@supabase/ssr` e `@supabase/supabase-js` in `/web`.
-- Serve un client Supabase per-richiesta che porti i cookie di sessione, così
-  le policy RLS vedano la mail di chi sta chiedendo. Oggi
-  `web/src/dati.ts` usa un archivio con la chiave di servizio, che **scavalca**
-  la RLS: va bene per il job serale, non per le pagine.
-- Serve un comando per assegnare le squadre: `squadre.proprietario` è la mail,
-  e oggi è `null` ovunque. Senza, nessuno vede niente. L'abbinamento
-  squadra → email lo fornisce il proprietario in locale, non va chiesto in chat.
-- La pagina di schieramento deve permettere di schierare **solo** la propria
-  squadra. La RLS lo impedisce già lato database, ma l'interfaccia non deve
-  nemmeno proporlo.
+- `web/proxy.ts` (si chiamava `middleware.ts` prima di Next 16, rinominato:
+  vedi la trappola in §7) rinfresca la sessione a ogni richiesta e rimanda a
+  `/login` chi non ha fatto login. `/api/gioca` è escluso dal matcher: si
+  protegge da solo con `CRON_SECRET` e non ha un utente.
+- `/login` manda il link magico (`web/app/login/`); `/auth/callback` lo
+  riceve e scambia il codice per una sessione; `/auth/signout` esce.
+- `web/src/supabase/server.ts` costruisce il client Supabase **della
+  richiesta corrente**, coi cookie di sessione: le policy RLS vedono la mail
+  di chi chiede, invece di essere scavalcate.
+- `web/src/dati.ts` distingue due archivi: `archivioServizio` (chiave di
+  servizio, solo per `/api/gioca`) e `archivioPerRichiesta()` (per-richiesta,
+  usato da tutte le pagine e dalle azioni del sito). Confonderli riaprirebbe
+  esattamente il buco che l'autenticazione doveva chiudere.
+- Il salvataggio della formazione (`web/app/squadre/[id]/formazione/azioni.ts`)
+  ora chiama `archivio.salvaFormazione` (una riga sola) invece di
+  `archivio.scrivi` sull'intero stato: con l'archivio per-richiesta la RLS
+  non concede scritture su `leghe`/`squadre`/`rose` a un utente autenticato,
+  solo su `formazioni`.
+- Chi apre la formazione di una squadra che non è la sua la vede in sola
+  lettura: l'interfaccia non propone nemmeno i controlli di modifica, anche
+  se la RLS li bloccherebbe comunque lato database. Se la squadra non ha
+  proprietario il messaggio lo dice esplicitamente (è un bot, non "di un
+  altro"), e un'etichetta BOT compare ovunque la squadra è nominata
+  (classifica, giornate, rosa, formazione).
+
+### L'amministrazione (`/admin`)
+
+Creare una lega, importare le rose e assegnare le squadre sono ora schermate
+del sito, non solo comandi da terminale (i comandi restano, per chi preferisce
+lavorare da riga di comando o senza browser).
+
+- `ADMIN_EMAIL` (una sola mail, in `.env`) decide chi vede la voce
+  "Amministrazione" nel menu e può usare `/admin`. Non è per-lega: con dieci
+  amici e una lega alla volta un ruolo per lega sarebbe over-engineering. La
+  colonna `leghe.amministratore` nello schema Supabase resta inutilizzata,
+  per quando (e se) servirà davvero un admin diverso per lega.
+- `web/app/admin/` — form per creare una lega da un export Fantalab (CSV
+  caricato dal browser, stesso parser della CLI) e l'elenco delle leghe
+  esistenti.
+- `web/app/admin/squadre/[legaId]/` — una riga per squadra con la mail del
+  proprietario: vuota vuol dire bot. È l'invito (regola 8): senza
+  un'assegnazione qui, quella mail non vede niente.
+- Le azioni di `/admin` girano con `archivioServizio` (chiave di servizio),
+  non con l'archivio della richiesta: sono operazioni di chi gestisce il
+  sito, gated da `sonoAmministratore()` invece che dalla RLS — la RLS non
+  concede comunque scritture su `leghe`/`squadre`/`rose` a un utente
+  autenticato qualsiasi, quindi l'amministrazione non potrebbe funzionare
+  sull'archivio per-richiesta nemmeno volendo.
+- **Non testato in un browser vero in questa sessione:** l'estensione Chrome
+  non era connessa. Verificato invece: build di produzione riuscita (il
+  compilatore delle Server Actions di Next accetta i file), tipi corretti, e
+  la stessa identica logica di importazione già provata con successo dalla
+  CLI sullo stesso file (`fixtures/rose.csv`). La prima cosa da fare aprendo
+  il sito è provare a creare una lega da `/admin` con un file vero.
 
 ---
 
@@ -210,6 +253,12 @@ Sono in fondo a `SPEC.md` §11. Le due che contano adesso:
   mandava in campo *zero* uomini invece di dieci. Ora `assegnazioneOttima`
   imbottisce la matrice con candidati fittizi. C'è un test che sorveglia
   l'intera stagione.
+- **Su Windows, `next dev`/`next build` con Turbopack non partivano affatto:**
+  `web/next.config.ts` costruiva i percorsi con `new URL(...).pathname`, che
+  su Windows dà `/C:/Utenti/...` — la barra davanti alla lettera del disco fa
+  fallire la canonicalizzazione di Turbopack ("os error 123"). Corretto con
+  `fileURLToPath` da `node:url`. Se il sito non parte più con un errore
+  simile, si guarda lì prima che altrove.
 
 ---
 

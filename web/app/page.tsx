@@ -1,4 +1,5 @@
 import { legaPredefinita, stagioneDi } from '../src/dati.ts';
+import { sonoAmministratore } from '../src/admin.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -6,18 +7,28 @@ export default async function Classifica() {
   const lega = await legaPredefinita();
 
   if (!lega) {
+    const admin = await sonoAmministratore();
     return (
       <section className="riquadro">
         <h1>Nessuna lega</h1>
-        <p className="spiega">
-          Non c’è ancora nessuna lega in archivio. Creane una da riga di comando, partendo da un
-          export di Fantalab:
-        </p>
-        <pre>npm run crea-lega -- fixtures/rose.csv --nome &quot;Lega degli amici&quot;</pre>
+        {admin ? (
+          <>
+            <p className="spiega">Non c’è ancora nessuna lega. Creane una dall’amministrazione.</p>
+            <p className="azioni">
+              <a href="/admin">Vai all’amministrazione</a>
+            </p>
+          </>
+        ) : (
+          <p className="spiega">
+            Non c’è ancora nessuna lega, o non sei ancora stato assegnato a una squadra. Chiedi
+            all’amministratore.
+          </p>
+        )}
       </section>
     );
   }
 
+  const proprietari = new Map(lega.squadre.map((s) => [s.id, s.proprietario]));
   const stagione = await stagioneDi(lega);
   const totale = stagione.calendario.giornate.length;
 
@@ -59,6 +70,7 @@ export default async function Classifica() {
                   <td className="numero">{i + 1}</td>
                   <td>
                     <a href={`/squadre/${encodeURIComponent(r.squadraId)}`}>{r.squadraId}</a>
+                    {proprietari.get(r.squadraId) === null && <span className="etichetta-bot">BOT</span>}
                   </td>
                   <td className="numero">
                     <strong>{r.punti}</strong>

@@ -24,6 +24,9 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
   const giornata = stagione.giornate.find((g) => g.numero === numero);
   const nomi = await nomiGiocatori();
   const nome = (id: string): string => nomi.get(id) ?? id;
+  const proprietari = new Map(lega.squadre.map((s) => [s.id, s.proprietario]));
+  const bot = (squadraId: string): React.ReactNode =>
+    proprietari.get(squadraId) === null && <span className="etichetta-bot">BOT</span>;
 
   if (!giornata) return <p className="vuoto">Giornata non trovata.</p>;
 
@@ -38,6 +41,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
           <div className="scontro" key={`${s.casaId}-${s.ospiteId}`}>
             <span className="casa">
               <a href={`/squadre/${encodeURIComponent(s.casaId)}`}>{s.casaId}</a>
+              {bot(s.casaId)}
             </span>
             <span className="punteggio">
               {s.golCasa}–{s.golOspite}
@@ -47,6 +51,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
             </span>
             <span>
               <a href={`/squadre/${encodeURIComponent(s.ospiteId)}`}>{s.ospiteId}</a>
+              {bot(s.ospiteId)}
             </span>
           </div>
         ))}
@@ -77,6 +82,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
                 <tr key={s.squadraId}>
                   <td>
                     <a href={`/squadre/${encodeURIComponent(s.squadraId)}`}>{s.squadraId}</a>
+                    {bot(s.squadraId)}
                   </td>
                   <td>
                     {s.cambi.length === 0
@@ -98,6 +104,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
             <div key={s.squadraId}>
               <h3>
                 {s.squadraId} — {s.punteggio.fantapunti.toFixed(1)}
+                {bot(s.squadraId)}
               </h3>
               <table>
                 <tbody>

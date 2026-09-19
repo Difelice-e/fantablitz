@@ -8,7 +8,8 @@
     "typecheck": "tsc --noEmit",
     "ciclo": "node --experimental-strip-types src/cliCiclo.ts",
     "crea-lega": "node --experimental-strip-types src/cliCreaLega.ts",
-    "gioca": "node --experimental-strip-types src/cliGioca.ts"
+    "gioca": "node --experimental-strip-types src/cliGioca.ts",
+    "assegna-squadra": "node --experimental-strip-types src/cliAssegnaSquadra.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0"
