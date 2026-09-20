@@ -9,8 +9,9 @@
 
 import { randomUUID } from 'node:crypto';
 import type { StagioneSimulata } from '../../engine/src/stagione.ts';
+import type { Schierabile } from '../../fanta/src/tipi.ts';
 import { trovaSquadra, type Archivio, type ScambioSalvato, type StatoLega } from './archivio.ts';
-import type { ContestoMondo } from './lega.ts';
+import { rosaDi, type ContestoMondo } from './lega.ts';
 import { decisioneBot, type ConfigurazioneScambi } from './valutazione.ts';
 
 export type PropostaScambio = {
@@ -22,8 +23,19 @@ export type PropostaScambio = {
   richiesti: string[];
 };
 
-/** Controlla che una proposta sia sensata: squadre diverse, rose vere, niente doppioni. */
-export function validaProposta(stato: StatoLega, p: PropostaScambio): void {
+/**
+ * Controlla che una proposta sia sensata: squadre diverse, rose vere, niente
+ * doppioni, e che le due rose risultanti restino valide per la modalita'
+ * della lega.
+ *
+ * **Non impone parita' di ruolo fra ceduti e ricevuti** (decisione del
+ * proprietario, issue #14): il Mantra non lo richiede. L'unico vincolo e'
+ * quello che il regolamento impone gia' a qualunque rosa — il minimo di
+ * giocatori e di portieri (`RegoleSchieramento.validaRosa`, lo stesso
+ * controllo dell'import) — cosi' non si duplica una seconda nozione di
+ * "rosa valida" divergente da quella usata all'asta.
+ */
+export function validaProposta(stato: StatoLega, c: ContestoMondo, p: PropostaScambio): void {
   if (p.daSquadraId === p.aSquadraId) {
     throw new Error('Una squadra non puo’ scambiare con se stessa');
   }
@@ -47,6 +59,27 @@ export function validaProposta(stato: StatoLega, p: PropostaScambio): void {
   for (const id of p.richiesti) {
     if (!rosaA.has(id)) throw new Error(`Il giocatore ${id} non e’ nella rosa di ${a.nome}`);
   }
+
+  const offertiSet = new Set(p.offerti);
+  const richiestiSet = new Set(p.richiesti);
+  const daDopo = {
+    ...da,
+    giocatori: [...da.giocatori.filter((g) => !offertiSet.has(g.giocatoreId)), ...a.giocatori.filter((g) => richiestiSet.has(g.giocatoreId))],
+  };
+  const aDopo = {
+    ...a,
+    giocatori: [...a.giocatori.filter((g) => !richiestiSet.has(g.giocatoreId)), ...da.giocatori.filter((g) => offertiSet.has(g.giocatoreId))],
+  };
+
+  const regole = c.regole[stato.modalita];
+  const segnala = (nome: string, rosa: readonly Schierabile[]): void => {
+    const problemi = regole.validaRosa(rosa);
+    if (problemi.length > 0) {
+      throw new Error(`Dopo lo scambio, ${nome} non avrebbe piu’ una rosa valida: ${problemi.map((pr) => pr.messaggio).join(' ')}`);
+    }
+  };
+  segnala(da.nome, rosaDi(daDopo, c));
+  segnala(a.nome, rosaDi(aDopo, c));
 }
 
 /** Gli scambi che riguardano una squadra, i piu' recenti prima. */
@@ -91,7 +124,7 @@ export async function proponiScambio(
   config: ConfigurazioneScambi,
   proposta: PropostaScambio,
 ): Promise<EsitoProposta> {
-  validaProposta(stato, proposta);
+  validaProposta(stato, contesto, proposta);
   const a = trovaSquadra(stato, proposta.aSquadraId);
   const base = nuovoScambio(proposta);
 
