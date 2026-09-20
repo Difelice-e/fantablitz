@@ -1,7 +1,8 @@
 import { archivioServizio, clientServizio } from '../../../../src/dati.ts';
-import { amministraLega } from '../../../../src/admin.ts';
+import { amministraLega, siamoInLocale } from '../../../../src/admin.ts';
 import RigaSquadra from './RigaSquadra.tsx';
 import ParolaLega from './ParolaLega.tsx';
+import SimulaOra from './SimulaOra.tsx';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,6 +73,13 @@ export default async function AssegnaSquadre({
         <h2>Parola d’ordine {parolaImpostata && <span className="etichetta ok">IMPOSTATA</span>}</h2>
         <ParolaLega legaId={stato.id} />
       </section>
+
+      {siamoInLocale() && (
+        <section className="riquadro">
+          <h2>Simulazione on-demand</h2>
+          <SimulaOra legaId={stato.id} />
+        </section>
+      )}
 
       <p className="azioni">
         <a href="/admin">Torna all’amministrazione</a>

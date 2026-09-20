@@ -31,3 +31,15 @@ export async function amministraLega(stato: StatoLega): Promise<boolean> {
   if (!email) return false;
   return email === stato.amministratore || email === process.env['ADMIN_EMAIL'];
 }
+
+/**
+ * Siamo in un ambiente locale, non su Vercel?
+ *
+ * Vercel imposta `VERCEL` in ogni suo ambiente — produzione, preview e anche
+ * `vercel dev` — quindi la sua assenza e' il segnale che serve al pulsante
+ * admin "simula ora" (issue #12): deve restare invisibile appena il sito gira
+ * davvero online, anche in preview, non solo in produzione.
+ */
+export function siamoInLocale(): boolean {
+  return !process.env['VERCEL'];
+}

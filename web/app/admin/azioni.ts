@@ -13,10 +13,12 @@
 
 import { revalidatePath } from 'next/cache';
 import { archivioServizio, clientServizio, contesto } from '../../src/dati.ts';
-import { amministraLega, sonoAmministratore } from '../../src/admin.ts';
+import { amministraLega, siamoInLocale, sonoAmministratore } from '../../src/admin.ts';
 import { configurato, emailUtente } from '../../src/supabase/server.ts';
 import { contestoDaSeed, importaRose } from '../../../jobs/src/importa.ts';
 import { statoDaImport } from '../../../jobs/src/lega.ts';
+import { giocaGiornate } from '../../../jobs/src/cicloGiornaliero.ts';
+import { providerDallAmbiente } from '../../../jobs/src/ai/provider.ts';
 import type { Modalita } from '../../../fanta/src/tipi.ts';
 
 /** Lo stesso slug di `jobs/src/cliCreaLega.ts`: un id stabile e leggibile dal nome. */
@@ -41,6 +43,8 @@ export async function creaLega(dati: FormData): Promise<EsitoCreazione> {
   const modalitaGrezza = String(dati.get('modalita') ?? '');
   const budget = Number(dati.get('budget'));
   const file = dati.get('file');
+  const squadreAttesaGrezza = String(dati.get('squadreAttese') ?? '').trim();
+  const giornateAlGiornoGrezzo = Number(dati.get('giornateAlGiorno') ?? '1');
 
   if (!nome) return { riuscito: false, messaggio: 'Manca il nome della lega.', avvisi: [] };
   if (modalitaGrezza !== 'classic' && modalitaGrezza !== 'mantra') {
@@ -56,6 +60,16 @@ export async function creaLega(dati: FormData): Promise<EsitoCreazione> {
       avvisi: [],
     };
   }
+  let squadreAttese: number | undefined;
+  if (squadreAttesaGrezza !== '') {
+    squadreAttese = Number(squadreAttesaGrezza);
+    if (!Number.isInteger(squadreAttese) || squadreAttese < 2) {
+      return { riuscito: false, messaggio: 'Numero di partecipanti non valido.', avvisi: [] };
+    }
+  }
+  if (!Number.isInteger(giornateAlGiornoGrezzo) || giornateAlGiornoGrezzo < 1) {
+    return { riuscito: false, messaggio: 'Giornate al giorno non valido.', avvisi: [] };
+  }
 
   const modalita: Modalita = modalitaGrezza;
   const id = identificativo(nome);
@@ -69,7 +83,7 @@ export async function creaLega(dati: FormData): Promise<EsitoCreazione> {
   const contenuto = await file.text();
   const importato = importaRose(
     contenuto,
-    contestoDaSeed(c.mondo, c.riferimenti, regole, { budget }),
+    contestoDaSeed(c.mondo, c.riferimenti, regole, { budget, squadreAttese }),
   );
 
   if (!importato.riuscito) {
@@ -84,7 +98,10 @@ export async function creaLega(dati: FormData): Promise<EsitoCreazione> {
   // c'e' nessuno autenticato: resta null, come oggi.
   const amministratore = configurato() ? await emailUtente() : null;
 
-  const stato = statoDaImport({ id, nome, seme: id, modalita, budget, amministratore }, importato.squadre);
+  const stato = statoDaImport(
+    { id, nome, seme: id, modalita, budget, amministratore, giornateAlGiorno: giornateAlGiornoGrezzo },
+    importato.squadre,
+  );
   await archivioServizio.scrivi(stato);
 
   revalidatePath('/', 'layout');
@@ -121,6 +138,45 @@ export async function assegnaSquadra(
   return {
     riuscito: true,
     messaggio: mail ? `Assegnata a ${mail}.` : 'Torna un bot: nessun proprietario.',
+  };
+}
+
+export type EsitoSimulazione = { riuscito: boolean; messaggio: string };
+
+/**
+ * Simula subito il ciclo di una lega, senza aspettare l'orario fisso del
+ * cron (issue #12): utile per testare senza aspettare la sera. Passa dalla
+ * stessa `giocaGiornate` che chiama `/api/gioca` — un solo percorso, cosi'
+ * il pulsante non puo' divergere dal job automatico ne' romperne
+ * l'idempotenza.
+ *
+ * Riservata all'amministratore della lega e solo in locale
+ * (`siamoInLocale()`): online chiunque conoscesse l'indirizzo della pagina
+ * potrebbe far avanzare la lega a piacimento, e il cron automatico basta e
+ * avanza per la produzione.
+ */
+export async function simulaOraAzione(legaId: string): Promise<EsitoSimulazione> {
+  if (!siamoInLocale()) {
+    return { riuscito: false, messaggio: 'Disponibile solo in locale, non online.' };
+  }
+
+  const stato = await archivioServizio.leggi(legaId);
+  if (!stato) return { riuscito: false, messaggio: 'Lega non trovata.' };
+  if (!(await amministraLega(stato))) {
+    return { riuscito: false, messaggio: 'Riservato all’amministratore della lega.' };
+  }
+
+  const c = await contesto();
+  const provider = providerDallAmbiente(process.env);
+  const { da, fino } = await giocaGiornate(archivioServizio, c, provider, stato, stato.giornateAlGiorno);
+
+  revalidatePath('/', 'layout');
+  return {
+    riuscito: true,
+    messaggio:
+      fino > da
+        ? `Giocate le giornate da ${da} a ${fino}.`
+        : `Giocata la giornata ${fino}.`,
   };
 }
 
