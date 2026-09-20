@@ -1,13 +1,14 @@
 import { legaPredefinita, posizioneAttuale, stagioneDi } from '../src/dati.ts';
-import { sonoAmministratore } from '../src/admin.ts';
+import { siamoInLocale, sonoAmministratore } from '../src/admin.ts';
+import { orarioCicloLocale } from '../src/ciclo.ts';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Classifica() {
   const lega = await legaPredefinita();
+  const admin = await sonoAmministratore();
 
   if (!lega) {
-    const admin = await sonoAmministratore();
     return (
       <section className="riquadro">
         <h1>Nessuna lega</h1>
@@ -50,8 +51,16 @@ export default async function Classifica() {
 
         {lega.giornateGiocate === 0 ? (
           <p className="vuoto">
-            Schiera la formazione, poi gioca la prima giornata con{' '}
-            <code>npm run gioca -- {lega.id}</code>.
+            Schiera la formazione: la prima giornata si gioca da sola ogni sera, verso le{' '}
+            {orarioCicloLocale()} (ora italiana).
+            {admin && siamoInLocale() && (
+              <>
+                {' '}
+                Se vuoi testare subito senza aspettare, usa «Simula la giornata adesso» nella{' '}
+                <a href={`/admin/squadre/${encodeURIComponent(lega.id)}`}>pagina di amministrazione</a>{' '}
+                della lega.
+              </>
+            )}
           </p>
         ) : (
           <table>
