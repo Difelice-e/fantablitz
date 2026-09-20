@@ -65,8 +65,8 @@ Tutti i valori sono parametri, con i default indicati.
 - Panchina: ordinata per priorità
 
 **Ritmo**
-- `giornate_per_ciclo`: default 1, parametrizzabile (una stagione dura 38 / N giorni)
-- Orario del ciclo: fisso, serale
+- `giornate_per_ciclo`: default 1, **parametrizzabile per lega alla creazione** (`StatoLega.giornateAlGiorno`, issue #13) — una stagione dura 38 / N giorni
+- Orario del ciclo: **fisso, serale, uguale per tutte le leghe** — non è un parametro di lega, nemmeno in fase 2. Il piano gratuito di Vercel esegue un solo cron al giorno (`web/vercel.json`), alla stessa ora per chiunque: renderlo configurabile per lega richiederebbe piani a pagamento o un secondo scheduler, e non vale il costo per un'app fra dieci amici. Decisione riconfermata in sessione discutendo l'issue #13
 - Durata carriera: 1–5 anni, **modificabile in corsa**
 
 **Economia**
@@ -320,6 +320,7 @@ Requisiti dell'importatore:
 - Validazione della composizione, **dipendente dalla modalità** (§4): in `mantra` minimo 23 giocatori con almeno 2 portieri; in `classic` esattamente 25 con quote 3-8-8-6. I file di esempio forniti rispettano la composizione classic esatta
 - I file di esempio forniti sono le **fixture dei test**. Riferimento del caso tipico: 10 squadre da 25 giocatori (3-8-8-6), spesa tra 482 e 500 crediti, prezzi da 1 a 222
 - Verifica già effettuata sui file reali: **tutti i 250 id delle rose di esempio trovano corrispondenza nel listone 2026/27**, nessun id duplicato, nessuno tra i ceduti. Il join è esatto
+- **Numero di partecipanti** (facoltativo, issue #13): chi crea la lega può dichiarare quante squadre si aspetta di trovare nel CSV; se il numero non torna, l'import si rifiuta con un errore invece di creare una lega con una squadra mancante o di troppo
 
 **Dopo l'import**, mostrare per ogni squadra la **copertura dei moduli**: quali degli 11 schemi Mantra riesce a schierare senza malus, quali solo con adattamenti, quali non copre affatto. Con rose da 25 e quote classic (3-8-8-6) la copertura è tipicamente parziale, ed è un'informazione che l'utente vuole vedere subito.
 

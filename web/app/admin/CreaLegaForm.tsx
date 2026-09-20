@@ -40,6 +40,42 @@ export default function CreaLegaForm() {
       </p>
       <p>
         <label>
+          Numero di partecipanti{' '}
+          <input
+            type="number"
+            name="squadreAttese"
+            min={2}
+            step={2}
+            placeholder="facoltativo"
+            style={{ width: '6rem' }}
+          />
+        </label>
+        <br />
+        <small className="spiega">
+          Se lo indichi, la creazione si rifiuta se il CSV contiene un numero diverso di squadre —
+          utile per accorgersi subito di un file sbagliato o incompleto.
+        </small>
+      </p>
+      <p>
+        <label>
+          Giornate al giorno{' '}
+          <input
+            type="number"
+            name="giornateAlGiorno"
+            defaultValue={1}
+            min={1}
+            required
+            style={{ width: '6rem' }}
+          />
+        </label>
+        <br />
+        <small className="spiega">
+          Quante giornate gioca il ciclo automatico di ogni sera (una stagione dura 38 diviso questo
+          numero di giorni).
+        </small>
+      </p>
+      <p>
+        <label>
           Export delle rose (Fantalab, CSV)
           <br />
           <input type="file" name="file" accept=".csv,text/csv" required />
