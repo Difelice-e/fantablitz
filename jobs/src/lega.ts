@@ -262,6 +262,8 @@ export function statoDaImport(
     budget: number;
     /** Chi crea la lega ne e' l'amministratore (regola: vedi SPEC.md §9). */
     amministratore: string | null;
+    /** Quante giornate gioca il job automatico a ogni ciclo (SPEC §4 `giornate_per_ciclo`). Default 1. */
+    giornateAlGiorno?: number;
   },
   squadre: readonly SquadraImportata[],
 ): StatoLega {
@@ -273,6 +275,7 @@ export function statoDaImport(
     modalita: dati.modalita,
     budget: dati.budget,
     giornateGiocate: 0,
+    giornateAlGiorno: dati.giornateAlGiorno ?? 1,
     amministratore: dati.amministratore,
     squadre: squadre.map((s) => ({
       // Il nome della squadra e' anche il suo identificativo: viene dall'export

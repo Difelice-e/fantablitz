@@ -163,6 +163,14 @@ export type StatoLega = {
   /** Quante giornate sono state giocate. Le successive non esistono ancora. */
   giornateGiocate: number;
   /**
+   * Quante giornate gioca il job automatico a ogni ciclo (SPEC §4
+   * `giornate_per_ciclo`): il "ritmo" della lega. L'orario resta invece fisso
+   * per tutte le leghe (stesso §4, "Orario del ciclo: fisso, serale") — il
+   * piano gratuito di Vercel esegue un solo cron al giorno, alla stessa ora
+   * per chiunque, quindi non e' un parametro di lega.
+   */
+  giornateAlGiorno: number;
+  /**
    * La mail di chi ha creato la lega: puo' assegnare le sue squadre e
    * impostarne la parola d'ordine. Non e' un ruolo globale, e' per lega.
    */
@@ -177,7 +185,7 @@ export type StatoLega = {
   vociMercato: VociMercatoSalvate[];
 };
 
-export const VERSIONE_STATO = 5;
+export const VERSIONE_STATO = 6;
 
 /* ------------------------------------------------------------------ */
 /* Il contratto                                                        */
@@ -276,6 +284,10 @@ export function validaStatoLega(s: StatoLega): StatoLega {
   esigi(s.id.length > 0, 'la lega deve avere un id');
   esigi(s.seme.length > 0, 'la lega deve avere un seme');
   esigi(s.giornateGiocate >= 0, 'le giornate giocate non possono essere negative');
+  esigi(
+    Number.isInteger(s.giornateAlGiorno) && s.giornateAlGiorno >= 1,
+    `giornateAlGiorno deve essere un intero positivo, ricevuto ${s.giornateAlGiorno}`,
+  );
   esigi(s.squadre.length > 0, 'una lega senza squadre non e’ una lega');
 
   const viste = new Set<string>();

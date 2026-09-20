@@ -35,6 +35,7 @@ type RigaLega = {
   modalita: 'classic' | 'mantra';
   budget: number;
   giornate_giocate: number;
+  giornate_al_giorno: number;
   amministratore: string | null;
 };
 
@@ -251,6 +252,7 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
         modalita: lega.modalita,
         budget: lega.budget,
         giornateGiocate: lega.giornate_giocate,
+        giornateAlGiorno: lega.giornate_al_giorno,
         amministratore: lega.amministratore,
         squadre: ((squadre.data ?? []) as RigaSquadra[]).map((s) => ({
           id: s.id,
@@ -296,6 +298,7 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
             modalita: stato.modalita,
             budget: stato.budget,
             giornate_giocate: stato.giornateGiocate,
+            giornate_al_giorno: stato.giornateAlGiorno,
             amministratore: stato.amministratore,
           } satisfies RigaLega)
         ).error,
