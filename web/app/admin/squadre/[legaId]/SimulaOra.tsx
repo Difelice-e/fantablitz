@@ -18,7 +18,8 @@ export default function SimulaOra({ legaId }: { legaId: string }) {
     <>
       <p className="spiega">
         Gioca subito il ciclo di questa lega, senza aspettare l’orario fisso del job automatico —
-        utile per testare. Visibile solo qui in locale: online lo fa da solo il cron ogni sera.
+        utile per testare o per non aspettare la sera. Visibile solo al superadmin: il cron continua
+        comunque a giocarla da solo ogni sera.
       </p>
       <div className="azioni">
         <button className="secondario" onClick={simula} disabled={inCorso}>

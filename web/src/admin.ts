@@ -2,7 +2,10 @@
  * Due livelli di amministrazione.
  *
  * `sonoAmministratore()` e' globale, in `ADMIN_EMAIL`: oggi e' l'unica mail
- * che puo' creare una lega, perche' la fase attuale ha un solo creatore.
+ * che puo' creare una lega, perche' la fase attuale ha un solo creatore — ed
+ * e' anche il superadmin che vede il pulsante "simula ora" (issue #12), in
+ * produzione compresa: e' un'azione riservata a lui solo, non a chiunque
+ * amministri una singola lega.
  *
  * `amministraLega(stato)` e' per lega: chi l'ha creata (`stato.amministratore`)
  * puo' assegnarne le squadre e impostarne la parola d'ordine. `ADMIN_EMAIL`
@@ -30,16 +33,4 @@ export async function amministraLega(stato: StatoLega): Promise<boolean> {
   const email = await emailUtente();
   if (!email) return false;
   return email === stato.amministratore || email === process.env['ADMIN_EMAIL'];
-}
-
-/**
- * Siamo in un ambiente locale, non su Vercel?
- *
- * Vercel imposta `VERCEL` in ogni suo ambiente — produzione, preview e anche
- * `vercel dev` — quindi la sua assenza e' il segnale che serve al pulsante
- * admin "simula ora" (issue #12): deve restare invisibile appena il sito gira
- * davvero online, anche in preview, non solo in produzione.
- */
-export function siamoInLocale(): boolean {
-  return !process.env['VERCEL'];
 }

@@ -479,6 +479,8 @@ Il secondo punto tocca la RLS in un modo che il primo non tocca: nessuno vede un
 
 **Cron**: il piano gratuito di Vercel esegue un cron al giorno, sufficiente anche con `giornate_per_ciclo > 1` perché il job cicla N giornate in sequenza. Se servisse più di un'esecuzione al giorno, l'alternativa gratuita è un workflow schedulato su GitHub Actions che chiama l'endpoint del job.
 
+**Simulazione on-demand** (issue #12): il superadmin globale (`ADMIN_EMAIL`, `sonoAmministratore()`) ha un pulsante nella pagina di amministrazione di ogni lega per giocarne subito il ciclo, senza aspettare l'orario fisso — comodo per testare, ed **è disponibile anche in produzione**, deliberatamente: è riservato a un solo account, non a chiunque amministri una singola lega (`amministraLega()` non basta qui). Passa dalla stessa `giocaGiornate` (`jobs/src/cicloGiornaliero.ts`) del cron automatico, che continua comunque a girare da solo ogni sera.
+
 **Limiti dei piani gratuiti da conoscere**: Supabase mette in pausa i progetti inattivi (il job giornaliero li tiene svegli), spazio dell'ordine di qualche centinaio di MB (sufficiente: una stagione a 10 squadre pesa pochi MB). Piano B in caso di limiti stretti: VPS da pochi euro con Postgres e app in Docker.
 
 ### Schema dati (traccia)

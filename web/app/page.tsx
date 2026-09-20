@@ -1,5 +1,5 @@
 import { legaPredefinita, posizioneAttuale, stagioneDi } from '../src/dati.ts';
-import { siamoInLocale, sonoAmministratore } from '../src/admin.ts';
+import { sonoAmministratore } from '../src/admin.ts';
 import { orarioCicloLocale } from '../src/ciclo.ts';
 
 export const dynamic = 'force-dynamic';
@@ -53,7 +53,7 @@ export default async function Classifica() {
           <p className="vuoto">
             Schiera la formazione: la prima giornata si gioca da sola ogni sera, verso le{' '}
             {orarioCicloLocale()} (ora italiana).
-            {admin && siamoInLocale() && (
+            {admin && (
               <>
                 {' '}
                 Se vuoi testare subito senza aspettare, usa «Simula la giornata adesso» nella{' '}

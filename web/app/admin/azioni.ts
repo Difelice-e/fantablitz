@@ -13,7 +13,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { archivioServizio, clientServizio, contesto } from '../../src/dati.ts';
-import { amministraLega, siamoInLocale, sonoAmministratore } from '../../src/admin.ts';
+import { amministraLega, sonoAmministratore } from '../../src/admin.ts';
 import { configurato, emailUtente } from '../../src/supabase/server.ts';
 import { contestoDaSeed, importaRose } from '../../../jobs/src/importa.ts';
 import { statoDaImport } from '../../../jobs/src/lega.ts';
@@ -150,21 +150,19 @@ export type EsitoSimulazione = { riuscito: boolean; messaggio: string };
  * il pulsante non puo' divergere dal job automatico ne' romperne
  * l'idempotenza.
  *
- * Riservata all'amministratore della lega e solo in locale
- * (`siamoInLocale()`): online chiunque conoscesse l'indirizzo della pagina
- * potrebbe far avanzare la lega a piacimento, e il cron automatico basta e
- * avanza per la produzione.
+ * Riservata al superadmin globale (`sonoAmministratore()`, `ADMIN_EMAIL`),
+ * anche online: deliberatamente piu' stretta di `amministraLega`, che
+ * lascerebbe passare anche chi amministra una singola lega. Chi puo' far
+ * avanzare una lega a piacimento dev'essere un solo account, non uno per
+ * lega.
  */
 export async function simulaOraAzione(legaId: string): Promise<EsitoSimulazione> {
-  if (!siamoInLocale()) {
-    return { riuscito: false, messaggio: 'Disponibile solo in locale, non online.' };
+  if (!(await sonoAmministratore())) {
+    return { riuscito: false, messaggio: 'Riservato all’amministratore.' };
   }
 
   const stato = await archivioServizio.leggi(legaId);
   if (!stato) return { riuscito: false, messaggio: 'Lega non trovata.' };
-  if (!(await amministraLega(stato))) {
-    return { riuscito: false, messaggio: 'Riservato all’amministratore della lega.' };
-  }
 
   const c = await contesto();
   const provider = providerDallAmbiente(process.env);

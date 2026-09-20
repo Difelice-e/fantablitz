@@ -1,5 +1,5 @@
 import { archivioServizio, clientServizio } from '../../../../src/dati.ts';
-import { amministraLega, siamoInLocale } from '../../../../src/admin.ts';
+import { amministraLega, sonoAmministratore } from '../../../../src/admin.ts';
 import RigaSquadra from './RigaSquadra.tsx';
 import ParolaLega from './ParolaLega.tsx';
 import SimulaOra from './SimulaOra.tsx';
@@ -74,7 +74,7 @@ export default async function AssegnaSquadre({
         <ParolaLega legaId={stato.id} />
       </section>
 
-      {siamoInLocale() && (
+      {(await sonoAmministratore()) && (
         <section className="riquadro">
           <h2>Simulazione on-demand</h2>
           <SimulaOra legaId={stato.id} />
