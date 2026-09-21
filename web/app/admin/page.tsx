@@ -38,7 +38,7 @@ export default async function Admin() {
                 <tr key={l.id}>
                   <td>{l.nome}</td>
                   <td>
-                    <a href={`/admin/squadre/${encodeURIComponent(l.id)}`}>Assegna squadre</a>
+                    <a href={`/leghe/${encodeURIComponent(l.id)}/admin`}>Assegna squadre</a>
                   </td>
                 </tr>
               ))}

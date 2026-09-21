@@ -80,10 +80,6 @@ export default async function AssegnaSquadre({
           <SimulaOra legaId={stato.id} />
         </section>
       )}
-
-      <p className="azioni">
-        <a href="/admin">Torna all’amministrazione</a>
-      </p>
     </>
   );
 }

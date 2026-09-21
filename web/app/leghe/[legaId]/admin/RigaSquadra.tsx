@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { assegnaSquadra } from '../../azioni.ts';
+import { assegnaSquadra } from '../../../admin/azioni.ts';
 
 export default function RigaSquadra({
   legaId,

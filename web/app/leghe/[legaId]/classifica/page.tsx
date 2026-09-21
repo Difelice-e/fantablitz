@@ -15,6 +15,16 @@ export default async function Classifica({ params }: { params: Promise<{ legaId:
   const nomeSquadra = (squadraId: string): string =>
     lega.squadre.find((s) => s.id === squadraId)?.nome ?? squadraId;
 
+  // Fantamedia subita: non e' un campo di RigaClassificaFanta (fanta/src/classifica.ts),
+  // si somma dai risultati delle giornate gia' giocate, gia' disponibili qui.
+  const fantapuntiSubiti = new Map<string, number>();
+  for (const giornata of stagione.giornate) {
+    for (const s of giornata.scontri) {
+      fantapuntiSubiti.set(s.casaId, (fantapuntiSubiti.get(s.casaId) ?? 0) + s.fantapuntiOspite);
+      fantapuntiSubiti.set(s.ospiteId, (fantapuntiSubiti.get(s.ospiteId) ?? 0) + s.fantapuntiCasa);
+    }
+  }
+
   return (
     <>
       <section className="riquadro">
@@ -40,8 +50,10 @@ export default async function Classifica({ params }: { params: Promise<{ legaId:
                 <th className="numero">P</th>
                 <th className="numero">GF</th>
                 <th className="numero">GS</th>
+                <th className="numero">DR</th>
                 <th className="numero">Fantapunti</th>
-                <th className="numero">Media</th>
+                <th className="numero">FM</th>
+                <th className="numero">FMa</th>
               </tr>
             </thead>
             <tbody>
@@ -61,9 +73,13 @@ export default async function Classifica({ params }: { params: Promise<{ legaId:
                   <td className="numero">{r.perse}</td>
                   <td className="numero">{r.golFatti}</td>
                   <td className="numero">{r.golSubiti}</td>
+                  <td className="numero">{r.golFatti - r.golSubiti}</td>
                   <td className="numero">{r.fantapunti.toFixed(1)}</td>
                   <td className="numero">
                     {r.giocate > 0 ? (r.fantapunti / r.giocate).toFixed(1) : '—'}
+                  </td>
+                  <td className="numero">
+                    {r.giocate > 0 ? ((fantapuntiSubiti.get(r.squadraId) ?? 0) / r.giocate).toFixed(1) : '—'}
                   </td>
                 </tr>
               ))}

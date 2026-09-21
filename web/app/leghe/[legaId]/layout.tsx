@@ -39,9 +39,7 @@ export default async function LayoutLega({
     { href: `${radice}/calendario`, etichetta: 'Calendario' },
     { href: `${radice}/classifica`, etichetta: 'Classifica' },
     { href: `${radice}/sala-stampa`, etichetta: 'Sala stampa' },
-    ...(admin
-      ? [{ href: `/admin/squadre/${encodeURIComponent(stato.id)}`, etichetta: 'Amministrazione' }]
-      : []),
+    ...(admin ? [{ href: `${radice}/admin`, etichetta: 'Amministrazione' }] : []),
   ];
 
   return (
