@@ -15,6 +15,8 @@ deve elencare esattamente queste, nello stesso ordine.
 | `20260919160000` | `tabella_chat` | tabella `chat` (reazioni dei bot a eventi scatenanti, SPEC 7.2), sola lettura via RLS |
 | `20260919180000` | `albo_doro_e_voci_mercato` | tabelle `albo_doro` e `voci_mercato` (fine stagione, SPEC 5.8 e 8), sola lettura via RLS |
 | `20260920120000` | `giornate_al_giorno` | colonna `leghe.giornate_al_giorno`, il ritmo di lega (SPEC §4 `giornate_per_ciclo`), issue #13 |
+| `20260921120000` | `cache_stagione` | tabella `cache_stagione`: cache del ricalcolo di `vistaStagione`, scritta dal job che gioca una giornata, nessuna policy (solo chiave di servizio) |
+| `20260921123000` | `cache_stagione_compressa` | `dati` da `jsonb` a `text`: il mondo simulato contiene l'intera stagione fin dall'inizio, il JSON non compresso arriva a 9-10 MB e la scrittura va in timeout |
 
 Non si modifica una migrazione già applicata: se ne aggiunge un'altra. Un file
 cambiato dopo l'applicazione racconta una storia diversa da quella del

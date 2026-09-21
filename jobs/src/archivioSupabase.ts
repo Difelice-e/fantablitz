@@ -19,12 +19,14 @@
  * controllo che sta nel database non si puo' dimenticare di chiamare.
  */
 
+import { gunzipSync, gzipSync } from 'node:zlib';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import {
   validaStatoLega, VERSIONE_STATO,
   type Archivio, type CronacaSalvata, type EditorialeSalvato, type FormazioneSalvata,
   type MessaggioChat, type ScambioSalvato, type StatoLega, type VerdettoStagione, type VociMercatoSalvate,
 } from './archivio.ts';
+import type { EsitoCiclo } from './ciclo.ts';
 
 /* ------------------------------------------------------------------ */
 
@@ -88,6 +90,21 @@ type RigaVerdetto = {
   fantapunti_campione: number;
 };
 type RigaVociMercato = { lega_id: string; stagione: number; testo: string; fonte: string };
+// `dati` e' testo, non jsonb: il mondo simulato contiene l'intera stagione
+// fin dall'inizio (regola 3, funzione pura del seme), quindi anche a
+// giornate_giocate 0 il JSON e' sui 9-10 MB — troppo per una scrittura
+// diretta (va in timeout). Compresso (gzip) e passato come base64 scende
+// sotto il MB. E' un dettaglio di questa sola implementazione: il contratto
+// `Archivio` continua a parlare di `EsitoCiclo`, non di stringhe compresse.
+type RigaCacheStagione = { lega_id: string; giornate_giocate: number; dati: string };
+
+function comprimi(vista: EsitoCiclo): string {
+  return gzipSync(Buffer.from(JSON.stringify(vista))).toString('base64');
+}
+
+function decomprimi(dati: string): EsitoCiclo {
+  return JSON.parse(gunzipSync(Buffer.from(dati, 'base64')).toString('utf8')) as EsitoCiclo;
+}
 
 /** Un errore di Supabase diventa un errore leggibile, col contesto di cosa si stava facendo. */
 function esigiRiuscito(errore: { message: string } | null, cosa: string): void {
@@ -470,9 +487,14 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
         );
       }
 
+      // `upsert`, non `update`: verso un bot `proponiScambio` (jobs/src/scambi.ts)
+      // risolve subito, senza passare da `proponiScambio` qui sotto — la riga
+      // non esiste ancora. Un `update` su una riga assente non fallisce e non
+      // scrive niente: lo scambio spostava i giocatori ma spariva dallo
+      // storico, senza errore che lo segnalasse. `upsert` copre sia questo
+      // caso (crea) sia la risposta a una proposta gia' in attesa (aggiorna).
       esigiRiuscito(
-        (await client.from('scambi').update(aRigaScambio(legaId, scambio)).eq('id', scambio.id))
-          .error,
+        (await client.from('scambi').upsert(aRigaScambio(legaId, scambio))).error,
         `risoluzione dello scambio ${scambio.id}`,
       );
     },
@@ -516,6 +538,34 @@ export function archivioSupabase(client: SupabaseClient): Archivio {
       const { data, error } = await client.from('leghe').select('id, nome').order('nome');
       esigiRiuscito(error, 'elenco delle leghe');
       return (data ?? []) as { id: string; nome: string }[];
+    },
+
+    async leggiVistaStagioneCache(legaId) {
+      // Errore, riga assente, o testo che non decomprime: si trattano tutti
+      // uguali, chi chiama ricalcola dal vivo (vedi il commento in cima ad
+      // archivio.ts). Non e' `esigiRiuscito`: un errore qui non deve far
+      // fallire la pagina, solo farle fare il lavoro che avrebbe fatto senza
+      // questa cache.
+      const { data, error } = await client
+        .from('cache_stagione')
+        .select('giornate_giocate, dati')
+        .eq('lega_id', legaId)
+        .maybeSingle<RigaCacheStagione>();
+      if (error || !data) return null;
+      try {
+        return { giornateGiocate: data.giornate_giocate, vista: decomprimi(data.dati) };
+      } catch {
+        return null;
+      }
+    },
+
+    async scriviVistaStagioneCache(legaId, giornateGiocate, vista) {
+      // Anche qui non e' `esigiRiuscito`: se la scrittura fallisce, la
+      // prossima lettura torna null e ricalcola dal vivo — non deve far
+      // fallire il job che ha appena giocato la giornata per davvero.
+      await client
+        .from('cache_stagione')
+        .upsert({ lega_id: legaId, giornate_giocate: giornateGiocate, dati: comprimi(vista) });
     },
   };
 }

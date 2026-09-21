@@ -19,7 +19,7 @@
  * (lega, stagione, giornata, partita) invece di far scorrere uno stato casuale.
  */
 
-import type { MondoIndicizzato } from '../../engine/src/mondo.ts';
+import type { Giocatore, MondoIndicizzato } from '../../engine/src/mondo.ts';
 import type { ParametriMotore, ParametriVoto } from '../../engine/src/configurazione.ts';
 import type { PrestazioneGiocatore } from '../../engine/src/stagione.ts';
 import { simulaStagione, type StagioneSimulata } from '../../engine/src/stagione.ts';
@@ -244,7 +244,17 @@ export function eseguiCiclo(
           ...lega,
           squadre: lega.squadre.map((s) => {
             const salvata = opzioni.formazioneDi!(s.id, n);
-            return salvata ? { ...s, formazione: salvata } : s;
+            if (!salvata) return s;
+            // La rosa usata per l'adattamento deve essere quella di allora, non
+            // quella attuale: uno scambio fatto dopo questa giornata non puo'
+            // cambiare chi era disponibile in panchina per sostituire. Si
+            // ricostruisce dai soli id della formazione salvata, cercandoli nel
+            // mondo (dati puri, indipendenti da chi possiede oggi il giocatore).
+            const idRosaStorica = [...salvata.titolari.values(), ...salvata.panchina];
+            const rosaStorica = idRosaStorica
+              .map((id) => mondo.giocatorePerId.get(id))
+              .filter((g): g is Giocatore => g !== undefined);
+            return { ...s, formazione: salvata, rosa: rosaStorica.length > 0 ? rosaStorica : s.rosa };
           }),
         }
       : lega;

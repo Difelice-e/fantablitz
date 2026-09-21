@@ -92,9 +92,25 @@ export function contesto(): Promise<ContestoMondo> {
 
 let ultima: { chiave: string; esito: EsitoCiclo } | null = null;
 
+/**
+ * Tre livelli, dal piu' al meno economico. La variabile in memoria basta da
+ * sola in locale (un processo solo, vive a lungo); su Vercel, dove ogni
+ * richiesta puo' capitare su un'istanza fredda diversa, quella spesso parte
+ * da zero — la cache scritta dal job (`archivioServizio.scriviVistaStagioneCache`,
+ * dentro `giocaGiornate`) sopravvive fra le istanze e copre quel caso.
+ * Il ricalcolo dal vivo resta l'ultimo passo, non sparisce: e' quello che
+ * garantisce che il risultato sia sempre corretto anche senza le prime due.
+ */
 export async function stagioneDi(stato: StatoLega): Promise<EsitoCiclo> {
   const chiave = JSON.stringify(stato);
   if (ultima?.chiave === chiave) return ultima.esito;
+
+  const cache = await archivioServizio.leggiVistaStagioneCache(stato.id);
+  if (cache && cache.giornateGiocate === stato.giornateGiocate) {
+    ultima = { chiave, esito: cache.vista };
+    return cache.vista;
+  }
+
   const esito = vistaStagione(stato, await contesto());
   ultima = { chiave, esito };
   return esito;

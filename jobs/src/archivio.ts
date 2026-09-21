@@ -26,10 +26,22 @@
  * e si salvano per davvero — "mai generazione al caricamento della pagina" —
  * altrimenti ogni visita alla schermata delle giornate ripagherebbe la stessa
  * cronaca in quota Groq.
+ *
+ * **`vistaStagione` (jobs/src/lega.ts) ha la stessa eccezione, per lo stesso
+ * motivo con un costo diverso**: e' un ricalcolo, non una chiamata esterna,
+ * ma rigioca l'intera storia della lega a ogni chiamata (SPEC 6, idempotenza
+ * vista dal contatore) — su un'istanza serverless fredda quel costo si paga a
+ * ogni visita, non solo la prima. `leggiVistaStagioneCache`/
+ * `scriviVistaStagioneCache` non sono una quarta cosa "che ha deciso una
+ * persona": sono un dettaglio implementativo, best-effort. Una lettura che
+ * torna `null`, o una `giornateGiocate` che non corrisponde piu' allo stato
+ * attuale, si tratta esattamente come una cache assente — chi chiama ricalcola
+ * dal vivo, come farebbe senza questi due metodi.
  */
 
 import { mkdir, readFile, readdir, rename, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
+import type { EsitoCiclo } from './ciclo.ts';
 
 /* ------------------------------------------------------------------ */
 /* Lo stato                                                            */
@@ -255,6 +267,14 @@ export type Archivio = {
   /** Salva le voci di mercato di una stagione in arrivo. Rigenerarle sostituisce, come `salvaEditoriale`. */
   salvaVociMercato(legaId: string, voci: VociMercatoSalvate): Promise<void>;
   elenca(): Promise<{ id: string; nome: string }[]>;
+  /**
+   * Cache best-effort di `vistaStagione` (vedi il commento in cima al file).
+   * `null` se non c'e' una cache, non se la lega non esiste: chi chiama non
+   * deve distinguere i due casi, in entrambi ricalcola dal vivo.
+   */
+  leggiVistaStagioneCache(legaId: string): Promise<{ giornateGiocate: number; vista: EsitoCiclo } | null>;
+  /** Scrive la cache. Sovrascrive quella precedente: una riga per lega, non una storia che cresce. */
+  scriviVistaStagioneCache(legaId: string, giornateGiocate: number, vista: EsitoCiclo): Promise<void>;
 };
 
 /* ------------------------------------------------------------------ */
@@ -538,6 +558,15 @@ export function archivioSuFile(cartella: string): Archivio {
       }
       return leghe.sort((a, b) => a.nome.localeCompare(b.nome));
     },
+
+    // Su file il processo e' uno solo e vive a lungo quanto serve: la cache
+    // in memoria di `stagioneDi` (web/src/dati.ts) gia' evita il ricalcolo
+    // entro lo stesso processo. Il problema che questa cache risolve —
+    // un'istanza diversa a ogni richiesta — qui non esiste.
+    async leggiVistaStagioneCache() {
+      return null;
+    },
+    async scriviVistaStagioneCache() {},
   };
 }
 
@@ -623,5 +652,10 @@ export function archivioInMemoria(iniziale: StatoLega[] = []): Archivio {
         .map((s) => ({ id: s.id, nome: s.nome }))
         .sort((a, b) => a.nome.localeCompare(b.nome));
     },
+
+    async leggiVistaStagioneCache() {
+      return null;
+    },
+    async scriviVistaStagioneCache() {},
   };
 }
