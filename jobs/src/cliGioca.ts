@@ -14,11 +14,8 @@ import { resolve, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { providerDallAmbiente } from './ai/provider.ts';
 import { archivioSuFile } from './archivio.ts';
-import { generaChatGiornate } from './chat.ts';
-import { chiudiStagioniAttraversate } from './fineStagione.ts';
-import { caricaContesto, vistaStagione } from './lega.ts';
-import { generaNarrativaGiornate } from './narrativa.ts';
-import { proponiScambiSpontanei } from './scambiSpontanei.ts';
+import { giocaGiornate } from './cicloGiornaliero.ts';
+import { caricaContesto } from './lega.ts';
 import { giornatePerStagione, posizioneStagione } from './stagioni.ts';
 
 const RADICE = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -32,7 +29,7 @@ try {
 async function principale(): Promise<number> {
   const argv = process.argv.slice(2);
   let legaId = '';
-  let quante = 1;
+  let quante: number | null = null;
   let cartella = join(RADICE, 'dati', 'leghe');
 
   for (let i = 0; i < argv.length; i++) {
@@ -67,27 +64,11 @@ async function principale(): Promise<number> {
   // "totale" di giornate oltre cui fermarsi, solo la prossima stagione.
   const gps = giornatePerStagione(contesto.mondo);
 
-  const da = stato.giornateGiocate + 1;
-  const fino = stato.giornateGiocate + quante;
-
-  const aggiornato = { ...stato, giornateGiocate: fino };
-  await archivio.scrivi(aggiornato);
-
   const provider = providerDallAmbiente(process.env);
-  await chiudiStagioniAttraversate(archivio, aggiornato, contesto, provider, da, fino);
-
-  // Rilegge: chiudere una stagione puo' aver scritto l'albo d'oro e le voci
-  // di mercato, e vista/narrativa/scambi/chat devono vederli aggiornati.
-  const dopoChiusura = (await archivio.leggi(aggiornato.id))!;
-  const vista = vistaStagione(dopoChiusura, contesto);
-
-  await generaNarrativaGiornate(archivio, dopoChiusura, contesto, vista, provider, da, fino);
-  await proponiScambiSpontanei(archivio, dopoChiusura, contesto, vista.mondo, contesto.scambi, da, fino);
-
-  // Rilegge di nuovo: gli scambi spontanei possono aver cambiato `stato.scambi`,
-  // e la chat deve vederli per reagire agli scambi appena conclusi.
-  const conScambiFreschi = (await archivio.leggi(aggiornato.id))!;
-  await generaChatGiornate(archivio, conScambiFreschi, contesto, vista, provider, da, fino);
+  // Senza --quante esplicito si usa il ritmo configurato per la lega
+  // (`giornateAlGiorno`, issue #13), non piu' un 1 fisso.
+  const { da, fino, vista } = await giocaGiornate(archivio, contesto, provider, stato, quante ?? stato.giornateAlGiorno);
+  const dopoChiusura = (await archivio.leggi(legaId))!;
 
   for (const giornata of vista.giornate.filter((g) => g.numero >= da)) {
     console.log(`\nGIORNATA ${giornata.numero}`);

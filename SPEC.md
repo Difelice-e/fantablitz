@@ -65,8 +65,8 @@ Tutti i valori sono parametri, con i default indicati.
 - Panchina: ordinata per priorità
 
 **Ritmo**
-- `giornate_per_ciclo`: default 1, parametrizzabile (una stagione dura 38 / N giorni)
-- Orario del ciclo: fisso, serale
+- `giornate_per_ciclo`: default 1, **parametrizzabile per lega alla creazione** (`StatoLega.giornateAlGiorno`, issue #13) — una stagione dura 38 / N giorni
+- Orario del ciclo: **fisso, serale, uguale per tutte le leghe** — non è un parametro di lega, nemmeno in fase 2. Il piano gratuito di Vercel esegue un solo cron al giorno (`web/vercel.json`), alla stessa ora per chiunque: renderlo configurabile per lega richiederebbe piani a pagamento o un secondo scheduler, e non vale il costo per un'app fra dieci amici. Decisione riconfermata in sessione discutendo l'issue #13
 - Durata carriera: 1–5 anni, **modificabile in corsa**
 
 **Economia**
@@ -320,6 +320,7 @@ Requisiti dell'importatore:
 - Validazione della composizione, **dipendente dalla modalità** (§4): in `mantra` minimo 23 giocatori con almeno 2 portieri; in `classic` esattamente 25 con quote 3-8-8-6. I file di esempio forniti rispettano la composizione classic esatta
 - I file di esempio forniti sono le **fixture dei test**. Riferimento del caso tipico: 10 squadre da 25 giocatori (3-8-8-6), spesa tra 482 e 500 crediti, prezzi da 1 a 222
 - Verifica già effettuata sui file reali: **tutti i 250 id delle rose di esempio trovano corrispondenza nel listone 2026/27**, nessun id duplicato, nessuno tra i ceduti. Il join è esatto
+- **Numero di partecipanti** (facoltativo, issue #13): chi crea la lega può dichiarare quante squadre si aspetta di trovare nel CSV; se il numero non torna, l'import si rifiuta con un errore invece di creare una lega con una squadra mancante o di troppo
 
 **Dopo l'import**, mostrare per ogni squadra la **copertura dei moduli**: quali degli 11 schemi Mantra riesce a schierare senza malus, quali solo con adattamenti, quali non copre affatto. Con rose da 25 e quote classic (3-8-8-6) la copertura è tipicamente parziale, ed è un'informazione che l'utente vuole vedere subito.
 
@@ -478,6 +479,8 @@ Quattro generatori distinti, tutti eseguiti **dentro il job serale** e salvati a
 Il secondo punto tocca la RLS in un modo che il primo non tocca: nessuno vede una riga di `squadre` finché non è già `e_della_lega` (cioè finché una squadra non è già sua). Due funzioni `security definer` in `public` — non `private`, perché il sito le deve chiamare via RPC per conto di un utente che non è ancora membro di nessuna lega — risolvono il cerchio: `squadre_libere(nome_lega, parola)` verifica la password e restituisce solo le squadre libere di quella lega; `rivendica_squadra(nome_lega, parola, squadra)` assegna la scelta con un solo `UPDATE` con la guardia nel `WHERE`, cosi' due persone che scelgono la stessa squadra nello stesso istante non riescono entrambe. La parola d'ordine si salva come hash (pgcrypto, bcrypt), mai in chiaro. Restano fuori portata di `anon`: la prima revoca non bastava, perché Supabase concede l'esecuzione ai ruoli `anon`/`authenticated` direttamente e non allo pseudo-ruolo `PUBLIC` — c'è voluta una seconda migrazione apposta (`supabase/migrazioni/`).
 
 **Cron**: il piano gratuito di Vercel esegue un cron al giorno, sufficiente anche con `giornate_per_ciclo > 1` perché il job cicla N giornate in sequenza. Se servisse più di un'esecuzione al giorno, l'alternativa gratuita è un workflow schedulato su GitHub Actions che chiama l'endpoint del job.
+
+**Simulazione on-demand** (issue #12): il superadmin globale (`ADMIN_EMAIL`, `sonoAmministratore()`) ha un pulsante nella pagina di amministrazione di ogni lega per giocarne subito il ciclo, senza aspettare l'orario fisso — comodo per testare, ed **è disponibile anche in produzione**, deliberatamente: è riservato a un solo account, non a chiunque amministri una singola lega (`amministraLega()` non basta qui). Passa dalla stessa `giocaGiornate` (`jobs/src/cicloGiornaliero.ts`) del cron automatico, che continua comunque a girare da solo ogni sera.
 
 **Limiti dei piani gratuiti da conoscere**: Supabase mette in pausa i progetti inattivi (il job giornaliero li tiene svegli), spazio dell'ordine di qualche centinaio di MB (sufficiente: una stagione a 10 squadre pesa pochi MB). Piano B in caso di limiti stretti: VPS da pochi euro con Postgres e app in Docker.
 

@@ -2,7 +2,10 @@
  * Due livelli di amministrazione.
  *
  * `sonoAmministratore()` e' globale, in `ADMIN_EMAIL`: oggi e' l'unica mail
- * che puo' creare una lega, perche' la fase attuale ha un solo creatore.
+ * che puo' creare una lega, perche' la fase attuale ha un solo creatore — ed
+ * e' anche il superadmin che vede il pulsante "simula ora" (issue #12), in
+ * produzione compresa: e' un'azione riservata a lui solo, non a chiunque
+ * amministri una singola lega.
  *
  * `amministraLega(stato)` e' per lega: chi l'ha creata (`stato.amministratore`)
  * puo' assegnarne le squadre e impostarne la parola d'ordine. `ADMIN_EMAIL`

@@ -3,6 +3,7 @@
  *
  *   npm run crea-lega -- fixtures/rose.csv --nome "Lega degli amici"
  *   npm run crea-lega -- rose.csv --modalita mantra --seme lega-2026
+ *   npm run crea-lega -- rose.csv --squadre-attese 10 --giornate-al-giorno 2
  *
  * E' il passo che oggi sostituisce l'asta nativa (fase 2): l'asta si fa su
  * Fantalab, si esporta, e da qui in poi la lega vive qui.
@@ -27,6 +28,10 @@ type Opzioni = {
   budget: number;
   archivio: string;
   amministratore: string | null;
+  /** Se indicato, l'import fallisce se il CSV non contiene esattamente queste squadre. */
+  squadreAttese: number | undefined;
+  /** Quante giornate gioca il ciclo automatico ogni sera (SPEC §4 `giornate_per_ciclo`). */
+  giornateAlGiorno: number;
 };
 
 /** Un id stabile e leggibile a partire dal nome. */
@@ -50,6 +55,8 @@ function leggiArgomenti(argv: string[]): Opzioni {
     budget: 500,
     archivio: join(RADICE, 'dati', 'leghe'),
     amministratore: null,
+    squadreAttese: undefined,
+    giornateAlGiorno: 1,
   };
 
   for (let i = 0; i < argv.length; i++) {
@@ -66,6 +73,8 @@ function leggiArgomenti(argv: string[]): Opzioni {
       case '--budget': o.budget = Number(valore()); break;
       case '--archivio': o.archivio = resolve(valore()); break;
       case '--amministratore': o.amministratore = valore(); break;
+      case '--squadre-attese': o.squadreAttese = Number(valore()); break;
+      case '--giornate-al-giorno': o.giornateAlGiorno = Number(valore()); break;
       case '--modalita': {
         const m = valore();
         if (m !== 'classic' && m !== 'mantra') throw new Error(`Modalita’ sconosciuta: ${m}`);
@@ -85,6 +94,12 @@ function leggiArgomenti(argv: string[]): Opzioni {
   // Il seme decide il campionato: se non lo si sceglie, lo decide il nome, cosi'
   // ricreare la stessa lega da' lo stesso mondo.
   if (o.seme === '') o.seme = o.id;
+  if (o.squadreAttese !== undefined && (!Number.isInteger(o.squadreAttese) || o.squadreAttese < 2)) {
+    throw new Error(`--squadre-attese deve essere un intero almeno 2, ricevuto ${o.squadreAttese}`);
+  }
+  if (!Number.isInteger(o.giornateAlGiorno) || o.giornateAlGiorno < 1) {
+    throw new Error(`--giornate-al-giorno deve essere un intero positivo, ricevuto ${o.giornateAlGiorno}`);
+  }
   return o;
 }
 
@@ -95,7 +110,10 @@ async function principale(): Promise<number> {
 
   const importato = importaRose(
     await readFile(o.file, 'utf8'),
-    contestoDaSeed(contesto.mondo, contesto.riferimenti, regole, { budget: o.budget }),
+    contestoDaSeed(contesto.mondo, contesto.riferimenti, regole, {
+      budget: o.budget,
+      squadreAttese: o.squadreAttese,
+    }),
   );
 
   if (!importato.riuscito) {

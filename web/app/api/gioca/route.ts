@@ -3,23 +3,25 @@
  *
  *   POST /api/gioca            con Authorization: Bearer $CRON_SECRET
  *
- * E' lo stesso lavoro di `npm run gioca`, e infatti la logica non e' qui: sta
- * in `/jobs`, e questo file la avvolge in una richiesta HTTP. Il giorno in cui
- * il cron cambiasse casa, cambierebbe questo file e nient'altro.
+ * E' lo stesso lavoro di `npm run gioca`, e la logica non e' qui davvero: sta
+ * in `jobs/src/cicloGiornaliero.ts` (`giocaGiornate`), condivisa anche col
+ * pulsante admin on-demand (issue #12). Questo file la avvolge in una
+ * richiesta HTTP e nient'altro.
  *
  * **E' idempotente**, e non per una guardia: l'unica cosa che scrive e'
  * `giornateGiocate`. I risultati non si salvano, si ricalcolano dal seme e
  * dalle formazioni. Chiamarlo due volte sulla stessa giornata riscrive lo
  * stesso numero.
+ *
+ * Senza `?quante=`, ogni lega gioca il proprio ritmo configurato
+ * (`giornateAlGiorno`, issue #13) invece di un 1 fisso per tutte. Con
+ * `?quante=`, il valore esplicito sovrascrive quello di ogni lega — comodo
+ * per un test manuale, non usato dal cron automatico.
  */
 
 import { archivioServizio, contesto, RADICE } from '../../../src/dati.ts';
 import { providerDallAmbiente } from '../../../../jobs/src/ai/provider.ts';
-import { vistaStagione } from '../../../../jobs/src/lega.ts';
-import { generaChatGiornate } from '../../../../jobs/src/chat.ts';
-import { chiudiStagioniAttraversate } from '../../../../jobs/src/fineStagione.ts';
-import { generaNarrativaGiornate } from '../../../../jobs/src/narrativa.ts';
-import { proponiScambiSpontanei } from '../../../../jobs/src/scambiSpontanei.ts';
+import { giocaGiornate } from '../../../../jobs/src/cicloGiornaliero.ts';
 
 export const dynamic = 'force-dynamic';
 // La simulazione di una stagione intera non sta nei limiti di una funzione
@@ -55,8 +57,9 @@ export async function POST(richiesta: Request): Promise<Response> {
     return Response.json({ errore: 'non autorizzato' }, { status: 401 });
   }
 
-  const quante = Number(new URL(richiesta.url).searchParams.get('quante') ?? '1');
-  if (!Number.isInteger(quante) || quante < 1) {
+  const quanteGrezzo = new URL(richiesta.url).searchParams.get('quante');
+  const quanteFisso = quanteGrezzo === null ? null : Number(quanteGrezzo);
+  if (quanteFisso !== null && (!Number.isInteger(quanteFisso) || quanteFisso < 1)) {
     return Response.json({ errore: 'quante deve essere un intero positivo' }, { status: 400 });
   }
 
@@ -71,29 +74,9 @@ export async function POST(richiesta: Request): Promise<Response> {
     const stato = await archivioServizio.leggi(id);
     if (!stato) continue;
 
-    // Le stagioni si susseguono senza fine (SPEC 5.8): non c'e' piu' un
-    // "totale" di giornate oltre cui fermarsi, solo la prossima stagione.
-    const da = stato.giornateGiocate + 1;
-    const fino = stato.giornateGiocate + quante;
-    await archivioServizio.segnaGiornateGiocate(id, fino);
-
-    const aggiornato = { ...stato, giornateGiocate: fino };
-    await chiudiStagioniAttraversate(archivioServizio, aggiornato, c, provider, da, fino);
-
-    // Rilegge: chiudere una stagione puo' aver scritto l'albo d'oro e le
-    // voci di mercato, e vista/narrativa/scambi/chat devono vederli.
-    const dopoChiusura = (await archivioServizio.leggi(aggiornato.id))!;
-    const vista = vistaStagione(dopoChiusura, c);
-
-    await generaNarrativaGiornate(archivioServizio, dopoChiusura, c, vista, provider, da, fino);
-    await proponiScambiSpontanei(archivioServizio, dopoChiusura, c, vista.mondo, c.scambi, da, fino);
-
-    // Rilegge di nuovo: gli scambi spontanei possono aver cambiato
-    // `stato.scambi`, e la chat deve vederli per reagire agli scambi appena
-    // conclusi.
-    const conScambiFreschi = (await archivioServizio.leggi(aggiornato.id))!;
-    await generaChatGiornate(archivioServizio, conScambiFreschi, c, vista, provider, da, fino);
-
+    const { da, fino } = await giocaGiornate(
+      archivioServizio, c, provider, stato, quanteFisso ?? stato.giornateAlGiorno,
+    );
     giocate.push({ lega: id, da, a: fino });
   }
 

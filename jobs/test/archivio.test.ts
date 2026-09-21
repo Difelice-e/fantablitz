@@ -32,6 +32,7 @@ function statoDiProva(modifiche: Partial<StatoLega> = {}): StatoLega {
     modalita: 'classic',
     budget: 500,
     giornateGiocate: 0,
+    giornateAlGiorno: 1,
     amministratore: null,
     squadre: [
       { id: 'Uno', nome: 'Uno', proprietario: null, giocatori: [{ giocatoreId: 'a', prezzo: 10 }] },
@@ -59,6 +60,18 @@ describe('validazione dello stato', () => {
     // Un file lasciato indietro da una versione precedente deve fermarsi qui,
     // non tre schermate piu' avanti.
     throws(() => validaStatoLega(statoDiProva({ versione: 99 })), /versione 99/);
+  });
+
+  it('accetta giornateAlGiorno al minimo', () => {
+    ok(validaStatoLega(statoDiProva({ giornateAlGiorno: 1 })));
+  });
+
+  it('rifiuta giornateAlGiorno sotto 1', () => {
+    throws(() => validaStatoLega(statoDiProva({ giornateAlGiorno: 0 })), /giornateAlGiorno/);
+  });
+
+  it('rifiuta giornateAlGiorno non intero', () => {
+    throws(() => validaStatoLega(statoDiProva({ giornateAlGiorno: 1.5 })), /giornateAlGiorno/);
   });
 
   it('rifiuta lo stesso giocatore in due rose', () => {
