@@ -63,7 +63,7 @@ describe('validaProposta', () => {
     const id = stato.squadre[0]!.id;
     const g = stato.squadre[0]!.giocatori[0]!.giocatoreId;
     throws(
-      () => validaProposta(stato, { daSquadraId: id, aSquadraId: id, offerti: [g], richiesti: [g] }),
+      () => validaProposta(stato, contestoMondo, { daSquadraId: id, aSquadraId: id, offerti: [g], richiesti: [g] }),
       /se stessa/,
     );
   });
@@ -73,7 +73,7 @@ describe('validaProposta', () => {
     const [uno, due] = stato.squadre;
     throws(
       () =>
-        validaProposta(stato, {
+        validaProposta(stato, contestoMondo, {
           daSquadraId: uno!.id, aSquadraId: due!.id,
           offerti: ['non-esiste'], richiesti: [due!.giocatori[0]!.giocatoreId],
         }),
@@ -81,13 +81,53 @@ describe('validaProposta', () => {
     );
   });
 
-  it('accetta una proposta sensata', () => {
+  it('accetta una proposta sensata anche fra ruoli diversi', () => {
+    // Regola del proprietario (issue #14): il Mantra non impone parita' di
+    // ruolo negli scambi. Un difensore per un centrocampista deve passare,
+    // finche' entrambe le rose restano valide.
     const stato = statoDiProva();
     const [uno, due] = stato.squadre;
-    validaProposta(stato, {
+    const offerto = uno!.giocatori.find(
+      (g) => mondo.giocatorePerId.get(g.giocatoreId)?.ruoloClassico === 'D',
+    )!;
+    const richiesto = due!.giocatori.find(
+      (g) => mondo.giocatorePerId.get(g.giocatoreId)?.ruoloClassico === 'C',
+    )!;
+    validaProposta(stato, contestoMondo, {
       daSquadraId: uno!.id, aSquadraId: due!.id,
-      offerti: [uno!.giocatori[0]!.giocatoreId], richiesti: [due!.giocatori[0]!.giocatoreId],
+      offerti: [offerto.giocatoreId], richiesti: [richiesto.giocatoreId],
     });
+  });
+
+  it('accetta un pacchetto multiplo che non pareggia i ruoli, purche’ le rose restino valide', () => {
+    const stato = statoDiProva();
+    const [uno, due] = stato.squadre;
+    validaProposta(stato, contestoMondo, {
+      daSquadraId: uno!.id, aSquadraId: due!.id,
+      offerti: uno!.giocatori.slice(0, 2).map((g) => g.giocatoreId),
+      richiesti: [due!.giocatori[0]!.giocatoreId],
+    });
+  });
+
+  it('rifiuta uno scambio che farebbe scendere una rosa sotto il minimo portieri', () => {
+    const stato = statoDiProva();
+    const [uno, due] = stato.squadre;
+    const portieriUno = uno!.giocatori.filter(
+      (g) => mondo.giocatorePerId.get(g.giocatoreId)?.ruoliMantra.includes('Por'),
+    );
+    ok(portieriUno.length >= 2, 'la fixture deve avere almeno due portieri da poter cedere');
+    const nonPortiereDue = due!.giocatori.find(
+      (g) => !mondo.giocatorePerId.get(g.giocatoreId)?.ruoliMantra.includes('Por'),
+    )!;
+    throws(
+      () =>
+        validaProposta(stato, contestoMondo, {
+          daSquadraId: uno!.id, aSquadraId: due!.id,
+          offerti: portieriUno.map((g) => g.giocatoreId),
+          richiesti: [nonPortiereDue.giocatoreId],
+        }),
+      /rosa valida/,
+    );
   });
 });
 
@@ -117,10 +157,14 @@ describe('proponiScambio verso un bot', () => {
     const [unoBot, dueBot] = stato.squadre;
     const archivio = archivioInMemoria([stato]);
 
-    // Meta' della rosa dell'una contro un solo economico dell'altra: un
-    // affare cosi' sbilanciato a favore del bot bersaglio si risolve sempre
-    // con un'accettazione, qualunque sia il rumore configurato.
-    const offerti = unoBot!.giocatori.slice(0, Math.ceil(unoBot!.giocatori.length / 2)).map((g) => g.giocatoreId);
+    // I due piu' costosi (portieri esclusi, per non toccare il minimo
+    // portieri) contro un solo economico dell'altra: un affare cosi'
+    // sbilanciato a favore del bot bersaglio si risolve sempre con
+    // un'accettazione, qualunque sia il rumore configurato.
+    const nonPortieri = unoBot!.giocatori.filter(
+      (g) => !mondo.giocatorePerId.get(g.giocatoreId)?.ruoliMantra.includes('Por'),
+    );
+    const offerti = [...nonPortieri].sort((a, b) => b.prezzo - a.prezzo).slice(0, 2).map((g) => g.giocatoreId);
     const piuEconomico = [...dueBot!.giocatori].sort((a, b) => a.prezzo - b.prezzo)[0]!;
 
     const esito = await proponiScambio(archivio, stato, contestoMondo, stagione, configScambi, {

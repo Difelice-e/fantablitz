@@ -385,6 +385,7 @@ L'ordine di ricerca vale per entrambe le modalità: la strategia chiede alle `Re
 - **Con i bot**: i bot propongono e valutano
 - Anti-exploit obbligatori: rumore nella valutazione, **margine richiesto sopra la parità**, tetto di scambi per stagione, rifiuto automatico delle proposte palesemente sbilanciate
 - Mercato intra-stagione **chiuso**: solo scambi, nessun acquisto
+- **Nessuna parità di ruolo richiesta** (decisione del proprietario): uno scambio non deve pareggiare i ruoli Mantra fra ceduti e ricevuti, un difensore per un centrocampista è valido. L'unico vincolo è quello che vale per qualunque rosa — il minimo di giocatori e il minimo di portieri (§4) — verificato sulle due rose risultanti con lo stesso controllo dell'import (`RegoleSchieramento.validaRosa`)
 
 ### 6.6 Trasferimenti e rosa
 
