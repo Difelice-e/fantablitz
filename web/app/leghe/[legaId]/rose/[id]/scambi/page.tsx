@@ -1,7 +1,7 @@
-import { legaPredefinita, nomiGiocatori } from '../../../../src/dati.ts';
-import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
-import { scambiDiSquadra } from '../../../../../jobs/src/scambi.ts';
-import type { ScambioSalvato } from '../../../../../jobs/src/archivio.ts';
+import { legaAutorizzata, nomiGiocatori } from '../../../../../../src/dati.ts';
+import { configurato, emailUtente } from '../../../../../../src/supabase/server.ts';
+import { scambiDiSquadra } from '../../../../../../../jobs/src/scambi.ts';
+import type { ScambioSalvato } from '../../../../../../../jobs/src/archivio.ts';
 import ScambioForm from './ScambioForm.tsx';
 import RispostaScambio from './RispostaScambio.tsx';
 
@@ -14,12 +14,17 @@ const ETICHETTA_STATO: Record<ScambioSalvato['stato'], string> = {
   ritirato: 'Ritirato',
 };
 
-export default async function PaginaScambi({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PaginaScambi({
+  params,
+}: {
+  params: Promise<{ legaId: string; id: string }>;
+}) {
+  const { legaId, id } = await params;
   const squadraId = decodeURIComponent(id);
-  const lega = await legaPredefinita();
-  if (!lega) return <p className="vuoto">Nessuna lega in archivio.</p>;
+  const lega = await legaAutorizzata(decodeURIComponent(legaId));
+  if (!lega) return <p className="vuoto">Lega non disponibile.</p>;
 
+  const radice = `/leghe/${encodeURIComponent(lega.id)}`;
   const squadra = lega.squadre.find((s) => s.id === squadraId);
   if (!squadra) {
     return (
@@ -62,7 +67,7 @@ export default async function PaginaScambi({ params }: { params: Promise<{ id: s
             : 'Storico degli scambi di questa squadra: fa parte del gioco, come vedere la rosa degli avversari.'}
         </p>
         <p className="azioni">
-          <a href={`/squadre/${encodeURIComponent(squadraId)}`}>Torna alla rosa</a>
+          <a href={`${radice}/rose/${encodeURIComponent(squadraId)}`}>Torna alla rosa</a>
         </p>
       </section>
 

@@ -1,11 +1,14 @@
-import { legaPredefinita, stagioneDi } from '../../src/dati.ts';
+import { legaAutorizzata, stagioneDi } from '../../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Squadre() {
-  const lega = await legaPredefinita();
-  if (!lega) return <p className="vuoto">Nessuna lega in archivio.</p>;
+export default async function Squadre({ params }: { params: Promise<{ legaId: string }> }) {
+  const { legaId } = await params;
+  const id = decodeURIComponent(legaId);
+  const lega = await legaAutorizzata(id);
+  if (!lega) return <p className="vuoto">Lega non disponibile.</p>;
 
+  const radice = `/leghe/${encodeURIComponent(lega.id)}`;
   const stagione = await stagioneDi(lega);
   const posizione = new Map(stagione.classifica.map((r, i) => [r.squadraId, i + 1]));
 
@@ -28,13 +31,13 @@ export default async function Squadre() {
             <tr key={s.id}>
               <td className="numero">{posizione.get(s.id) ?? '—'}</td>
               <td>
-                <a href={`/squadre/${encodeURIComponent(s.id)}`}>{s.nome}</a>
+                <a href={`${radice}/rose/${encodeURIComponent(s.id)}`}>{s.nome}</a>
                 {s.proprietario === null && <span className="etichetta-bot">BOT</span>}
               </td>
               <td className="numero">{s.giocatori.length}</td>
               <td className="numero">{s.giocatori.reduce((a, g) => a + g.prezzo, 0)}</td>
               <td>
-                <a href={`/squadre/${encodeURIComponent(s.id)}/formazione`}>Schiera</a>
+                <a href={`${radice}/rose/${encodeURIComponent(s.id)}/formazione`}>Schiera</a>
               </td>
             </tr>
           ))}

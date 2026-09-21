@@ -1,22 +1,25 @@
-import { contesto, legaPredefinita, nomiGiocatori, stagioneDi } from '../../../src/dati.ts';
-import { giornatePerStagione, posizioneStagione } from '../../../../jobs/src/stagioni.ts';
+import { contesto, legaAutorizzata, nomiGiocatori, stagioneDi } from '../../../../../src/dati.ts';
+import { giornatePerStagione, posizioneStagione } from '../../../../../../jobs/src/stagioni.ts';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Giornata({ params }: { params: Promise<{ n: string }> }) {
-  const { n } = await params;
+export default async function Giornata({
+  params,
+}: {
+  params: Promise<{ legaId: string; n: string }>;
+}) {
+  const { legaId, n } = await params;
   const numero = Number(n);
-  const lega = await legaPredefinita();
-  if (!lega) return <p className="vuoto">Nessuna lega in archivio.</p>;
+  const lega = await legaAutorizzata(decodeURIComponent(legaId));
+  if (!lega) return <p className="vuoto">Lega non disponibile.</p>;
+
+  const radice = `/leghe/${encodeURIComponent(lega.id)}`;
 
   if (!Number.isInteger(numero) || numero < 1 || numero > lega.giornateGiocate) {
     return (
       <section className="riquadro">
         <h1>Giornata {n}</h1>
-        <p className="avviso">
-          Questa giornata non è ancora stata giocata. Si gioca con{' '}
-          <code>npm run gioca -- {lega.id}</code>.
-        </p>
+        <p className="avviso">Questa giornata non è ancora stata giocata.</p>
       </section>
     );
   }
@@ -63,7 +66,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
         {giornata.scontri.map((s) => (
           <div className="scontro" key={`${s.casaId}-${s.ospiteId}`}>
             <span className="casa">
-              <a href={`/squadre/${encodeURIComponent(s.casaId)}`}>{s.casaId}</a>
+              <a href={`${radice}/rose/${encodeURIComponent(s.casaId)}`}>{s.casaId}</a>
               {bot(s.casaId)}
             </span>
             <span className="punteggio">
@@ -73,7 +76,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
               </span>
             </span>
             <span>
-              <a href={`/squadre/${encodeURIComponent(s.ospiteId)}`}>{s.ospiteId}</a>
+              <a href={`${radice}/rose/${encodeURIComponent(s.ospiteId)}`}>{s.ospiteId}</a>
               {bot(s.ospiteId)}
             </span>
           </div>
@@ -86,7 +89,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
           {verdettoPrecedente && (
             <p className="spiega">
               La stagione {verdettoPrecedente.stagione} l’ha vinta{' '}
-              <a href={`/squadre/${encodeURIComponent(verdettoPrecedente.campioneSquadraId)}`}>
+              <a href={`${radice}/rose/${encodeURIComponent(verdettoPrecedente.campioneSquadraId)}`}>
                 {nomeSquadra(verdettoPrecedente.campioneSquadraId)}
               </a>
               {bot(verdettoPrecedente.campioneSquadraId)}, con {verdettoPrecedente.puntiCampione} punti e{' '}
@@ -184,7 +187,7 @@ export default async function Giornata({ params }: { params: Promise<{ n: string
               {giornata.squadre.map((s) => (
                 <tr key={s.squadraId}>
                   <td>
-                    <a href={`/squadre/${encodeURIComponent(s.squadraId)}`}>{s.squadraId}</a>
+                    <a href={`${radice}/rose/${encodeURIComponent(s.squadraId)}`}>{s.squadraId}</a>
                     {bot(s.squadraId)}
                   </td>
                   <td>

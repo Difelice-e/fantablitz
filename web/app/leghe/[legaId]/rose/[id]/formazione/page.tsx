@@ -1,15 +1,20 @@
-import { contesto, formazioneDaSchierare, legaPredefinita, rosaInVista } from '../../../../src/dati.ts';
-import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
+import { contesto, formazioneDaSchierare, legaAutorizzata, rosaInVista } from '../../../../../../src/dati.ts';
+import { configurato, emailUtente } from '../../../../../../src/supabase/server.ts';
 import Schieramento, { type DatiSchieramento } from './schieramento.tsx';
 
 export const dynamic = 'force-dynamic';
 
-export default async function PaginaFormazione({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function PaginaFormazione({
+  params,
+}: {
+  params: Promise<{ legaId: string; id: string }>;
+}) {
+  const { legaId, id } = await params;
   const squadraId = decodeURIComponent(id);
-  const lega = await legaPredefinita();
-  if (!lega) return <p className="vuoto">Nessuna lega in archivio.</p>;
+  const lega = await legaAutorizzata(decodeURIComponent(legaId));
+  if (!lega) return <p className="vuoto">Lega non disponibile.</p>;
 
+  const radice = `/leghe/${encodeURIComponent(lega.id)}`;
   const squadra = lega.squadre.find((s) => s.id === squadraId);
   if (!squadra) {
     return (
@@ -102,7 +107,7 @@ export default async function PaginaFormazione({ params }: { params: Promise<{ i
           </tbody>
         </table>
         <p className="azioni">
-          <a href={`/squadre/${encodeURIComponent(squadraId)}`}>Torna alla rosa</a>
+          <a href={`${radice}/rose/${encodeURIComponent(squadraId)}`}>Torna alla rosa</a>
         </p>
       </section>
     );

@@ -11,11 +11,11 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { archivioPerRichiesta, contesto, leggiLega } from '../../../../src/dati.ts';
-import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
-import { formazioneAutomatica, rosaDi, salvataDaFormazione } from '../../../../../jobs/src/lega.ts';
-import { disponi, validaFormazione } from '../../../../../fanta/src/schieramento.ts';
-import type { Formazione } from '../../../../../fanta/src/tipi.ts';
+import { archivioPerRichiesta, contesto, leggiLega } from '../../../../../../src/dati.ts';
+import { configurato, emailUtente } from '../../../../../../src/supabase/server.ts';
+import { formazioneAutomatica, rosaDi, salvataDaFormazione } from '../../../../../../../jobs/src/lega.ts';
+import { disponi, validaFormazione } from '../../../../../../../fanta/src/schieramento.ts';
+import type { Formazione } from '../../../../../../../fanta/src/tipi.ts';
 
 export type FormazioneGrezza = {
   modulo: string;

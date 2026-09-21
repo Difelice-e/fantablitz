@@ -1,11 +1,14 @@
-import { legaPredefinita, posizioneAttuale, stagioneDi } from '../../src/dati.ts';
+import { legaAutorizzata, posizioneAttuale, stagioneDi } from '../../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Giornate() {
-  const lega = await legaPredefinita();
-  if (!lega) return <p className="vuoto">Nessuna lega in archivio.</p>;
+export default async function Giornate({ params }: { params: Promise<{ legaId: string }> }) {
+  const { legaId } = await params;
+  const id = decodeURIComponent(legaId);
+  const lega = await legaAutorizzata(id);
+  if (!lega) return <p className="vuoto">Lega non disponibile.</p>;
 
+  const radice = `/leghe/${encodeURIComponent(lega.id)}`;
   const stagione = await stagioneDi(lega);
   // Cresce di stagione in stagione (SPEC 5.8): non e' un tetto fisso, e' fin
   // dove arriva il calendario della stagione in corso.
@@ -14,7 +17,7 @@ export default async function Giornate() {
 
   return (
     <section className="riquadro">
-      <h1>Giornate</h1>
+      <h1>Calendario</h1>
       <p className="spiega">
         Stagione {posizione.stagione}: {posizione.giornataStagionale} giornate giocate su{' '}
         {posizione.giornatePerStagione}. Le giornate non ancora giocate non si possono aprire: i
@@ -26,7 +29,9 @@ export default async function Giornate() {
           const giocata = n <= lega.giornateGiocate;
           return (
             <div key={n} className="scontro">
-              <span className="casa">{giocata ? <a href={`/giornate/${n}`}>Giornata {n}</a> : `Giornata ${n}`}</span>
+              <span className="casa">
+                {giocata ? <a href={`${radice}/calendario/${n}`}>Giornata {n}</a> : `Giornata ${n}`}
+              </span>
               <span className="punteggio" />
               <span style={{ color: 'var(--tenue)', fontSize: '0.8rem' }}>
                 {giocata ? 'giocata' : 'da giocare'}

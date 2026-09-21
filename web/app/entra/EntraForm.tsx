@@ -8,7 +8,7 @@ export default function EntraForm() {
   const [parola, setParola] = useState('');
   const [squadre, setSquadre] = useState<SquadraLibera[] | null>(null);
   const [messaggio, setMessaggio] = useState<{ testo: string; ok: boolean } | null>(null);
-  const [fatto, setFatto] = useState<string | null>(null);
+  const [fatto, setFatto] = useState<{ testo: string; legaId: string } | null>(null);
   const [inCorso, avvia] = useTransition();
 
   function cerca(): void {
@@ -26,18 +26,19 @@ export default function EntraForm() {
 
   function scegli(squadraId: string): void {
     avvia(async () => {
+      const legaId = squadre?.find((s) => s.squadraId === squadraId)?.legaId;
       const esito = await scegliSquadra(nomeLega, parola, squadraId);
       setMessaggio({ testo: esito.messaggio, ok: esito.riuscito });
-      if (esito.riuscito) setFatto(esito.messaggio);
+      if (esito.riuscito && legaId) setFatto({ testo: esito.messaggio, legaId });
     });
   }
 
   if (fatto) {
     return (
       <>
-        <p className="avviso ok">{fatto}</p>
+        <p className="avviso ok">{fatto.testo}</p>
         <p className="azioni">
-          <a href="/">Vai alla lega</a>
+          <a href={`/leghe/${encodeURIComponent(fatto.legaId)}/dashboard`}>Vai alla lega</a>
         </p>
       </>
     );
