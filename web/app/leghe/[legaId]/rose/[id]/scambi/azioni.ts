@@ -12,12 +12,12 @@
  */
 
 import { revalidatePath } from 'next/cache';
-import { archivioServizio, contesto, stagioneDi } from '../../../../src/dati.ts';
-import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
+import { archivioServizio, contesto, stagioneDi } from '../../../../../../src/dati.ts';
+import { configurato, emailUtente } from '../../../../../../src/supabase/server.ts';
 import {
   proponiScambio, ritiraScambio, rispondiScambio, type PropostaScambio,
-} from '../../../../../jobs/src/scambi.ts';
-import type { StatoLega } from '../../../../../jobs/src/archivio.ts';
+} from '../../../../../../../jobs/src/scambi.ts';
+import type { StatoLega } from '../../../../../../../jobs/src/archivio.ts';
 
 export type EsitoAzioneScambio = { riuscito: boolean; messaggio: string };
 

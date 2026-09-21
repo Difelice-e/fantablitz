@@ -24,7 +24,8 @@ import {
 import type { EsitoCiclo } from '../../jobs/src/ciclo.ts';
 import { giornatePerStagione, posizioneStagione, type PosizioneStagione } from '../../jobs/src/stagioni.ts';
 import type { Formazione, Schierabile } from '../../fanta/src/tipi.ts';
-import { configurato, creaClientServer } from './supabase/server.ts';
+import { configurato, creaClientServer, emailUtente } from './supabase/server.ts';
+import { amministraLega } from './admin.ts';
 
 export const RADICE = join(process.cwd(), '..');
 const CARTELLA_LEGHE = process.env['FANTABLITZ_ARCHIVIO'] ?? join(RADICE, 'dati', 'leghe');
@@ -110,15 +111,68 @@ export async function posizioneAttuale(stato: StatoLega): Promise<PosizioneAttua
 /* Lettura                                                             */
 /* ------------------------------------------------------------------ */
 
-export async function legaPredefinita(): Promise<StatoLega | null> {
-  const archivio = await archivioPerRichiesta();
-  const leghe = await archivio.elenca();
-  const prima = leghe[0];
-  return prima ? archivio.leggi(prima.id) : null;
-}
-
 export async function leggiLega(legaId: string): Promise<StatoLega | null> {
   return (await archivioPerRichiesta()).leggi(legaId);
+}
+
+/**
+ * Le leghe di chi ha fatto login (issue #16): quelle dove possiede una
+ * squadra, piu' quelle che amministra pur non giocando lui stesso.
+ *
+ * La policy RLS "leghe: le proprie" (schema_lega.sql) filtra gia'
+ * `archivioPerRichiesta().elenca()` per proprieta' di una squadra — non
+ * serve una tabella di appartenenza dedicata. Il caso che la RLS non copre
+ * e' l'amministratore che non gioca: per quello si scavalca la RLS con
+ * `archivioServizio`, esattamente come gia' fa
+ * `admin/squadre/[legaId]/page.tsx`, filtrando pero' esplicitamente per la
+ * sua mail invece di mostrare tutto.
+ */
+export async function legheDiUtente(): Promise<StatoLega[]> {
+  if (!configurato()) {
+    const elenco = await archivioServizio.elenca();
+    const lette = await Promise.all(elenco.map((l) => archivioServizio.leggi(l.id)));
+    return lette.filter((s): s is StatoLega => s !== null);
+  }
+
+  const archivio = await archivioPerRichiesta();
+  const proprie = await archivio.elenca();
+  const possedute = (await Promise.all(proprie.map((l) => archivio.leggi(l.id)))).filter(
+    (s): s is StatoLega => s !== null,
+  );
+
+  const email = await emailUtente();
+  const gia = new Set(possedute.map((s) => s.id));
+  const amministrate: StatoLega[] = [];
+  if (email) {
+    for (const { id } of await archivioServizio.elenca()) {
+      if (gia.has(id)) continue;
+      const stato = await archivioServizio.leggi(id);
+      if (stato?.amministratore === email) amministrate.push(stato);
+    }
+  }
+
+  return [...possedute, ...amministrate];
+}
+
+/**
+ * Una lega, ma solo se chi la chiede ha il diritto di vederla: ci gioca (ha
+ * una squadra) o la amministra. Sostituisce `legaPredefinita()` in ogni
+ * pagina sotto `/leghe/[legaId]`, dove la lega non e' piu' "la prima
+ * trovata" ma quella nell'URL — e va verificato che sia davvero la sua.
+ *
+ * Legge con `archivioServizio` (scavalca la RLS) perche' un amministratore
+ * senza squadra propria altrimenti non passerebbe la RLS: il controllo di
+ * autorizzazione si fa qui esplicitamente, non implicitamente via RLS.
+ */
+export async function legaAutorizzata(legaId: string): Promise<StatoLega | null> {
+  const stato = await archivioServizio.leggi(legaId);
+  if (!stato) return null;
+  if (!configurato()) return stato;
+
+  const email = await emailUtente();
+  const propria = email !== null && stato.squadre.some((s) => s.proprietario === email);
+  if (propria || (await amministraLega(stato))) return stato;
+  return null;
 }
 
 /* ------------------------------------------------------------------ */

@@ -1,13 +1,19 @@
-import { legaPredefinita, rosaInVista, stagioneDi } from '../../../src/dati.ts';
+import { legaAutorizzata, rosaInVista, stagioneDi } from '../../../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
 
-export default async function Rosa({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function Rosa({
+  params,
+}: {
+  params: Promise<{ legaId: string; id: string }>;
+}) {
+  const { legaId, id } = await params;
+  const legaIdDecodificato = decodeURIComponent(legaId);
   const squadraId = decodeURIComponent(id);
-  const lega = await legaPredefinita();
-  if (!lega) return <p className="vuoto">Nessuna lega in archivio.</p>;
+  const lega = await legaAutorizzata(legaIdDecodificato);
+  if (!lega) return <p className="vuoto">Lega non disponibile.</p>;
 
+  const radice = `/leghe/${encodeURIComponent(lega.id)}`;
   const squadra = lega.squadre.find((s) => s.id === squadraId);
   if (!squadra) {
     return (
@@ -39,10 +45,10 @@ export default async function Rosa({ params }: { params: Promise<{ id: string }>
           Rosa da {rosa.length} giocatori, {spesa} crediti spesi su {lega.budget}.
         </p>
         <div className="azioni">
-          <a href={`/squadre/${encodeURIComponent(squadraId)}/formazione`}>
+          <a href={`${radice}/rose/${encodeURIComponent(squadraId)}/formazione`}>
             <button className="principale">Schiera la formazione</button>
           </a>
-          <a href={`/squadre/${encodeURIComponent(squadraId)}/scambi`}>
+          <a href={`${radice}/rose/${encodeURIComponent(squadraId)}/scambi`}>
             <button className="secondario">Scambi</button>
           </a>
         </div>

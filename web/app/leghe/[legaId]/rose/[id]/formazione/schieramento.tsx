@@ -291,7 +291,9 @@ export default function Schieramento({ dati }: { dati: DatiSchieramento }) {
           <button className="principale" onClick={salva} disabled={inCorso || scoperte > 0}>
             {inCorso ? 'Salvo…' : `Salva per la giornata ${dati.giornata}`}
           </button>
-          <a href={`/squadre/${encodeURIComponent(dati.squadraId)}`}>Torna alla rosa</a>
+          <a href={`/leghe/${encodeURIComponent(dati.legaId)}/rose/${encodeURIComponent(dati.squadraId)}`}>
+            Torna alla rosa
+          </a>
         </div>
       </section>
     </>

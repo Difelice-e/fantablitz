@@ -1,5 +1,4 @@
 import './globals.css';
-import { legaPredefinita, posizioneAttuale } from '../src/dati.ts';
 import { configurato, emailUtente } from '../src/supabase/server.ts';
 import { sonoAmministratore } from '../src/admin.ts';
 
@@ -9,10 +8,11 @@ export const metadata = {
 };
 
 export default async function Layout({ children }: { children: React.ReactNode }) {
-  const lega = await legaPredefinita();
-  const posizione = lega ? await posizioneAttuale(lega) : null;
   const email = configurato() ? await emailUtente() : null;
   const admin = await sonoAmministratore();
+  // Loggato in locale (senza Supabase, `email` e' sempre null) o su Supabase
+  // con una sessione vera: in entrambi i casi si vede "Le mie leghe".
+  const loggato = !configurato() || email !== null;
 
   return (
     <html lang="it">
@@ -23,14 +23,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
               Fanta<span>Blitz</span>
             </div>
             <p className="sottotitolo">
-              {lega && posizione
-                ? `${lega.nome} — stagione ${posizione.stagione}, giornata ${posizione.giornataStagionale} di ${posizione.giornatePerStagione}`
-                : lega
-                  ? `${lega.nome} — ${lega.giornateGiocate} giornate giocate`
-                  : 'nessuna lega'}
               {email && (
                 <>
-                  {' · '}
                   {email}{' '}
                   <form action="/auth/signout" method="post" style={{ display: 'inline' }}>
                     <button
@@ -45,9 +39,7 @@ export default async function Layout({ children }: { children: React.ReactNode }
               )}
             </p>
             <nav className="principale">
-              <a href="/">Classifica</a>
-              <a href="/giornate">Giornate</a>
-              <a href="/squadre">Squadre</a>
+              {loggato && <a href="/leghe">Le mie leghe</a>}
               {admin && <a href="/admin">Amministrazione</a>}
             </nav>
           </div>
