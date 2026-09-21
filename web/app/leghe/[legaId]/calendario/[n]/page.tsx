@@ -27,7 +27,6 @@ export default async function Giornata({
   const stagione = await stagioneDi(lega);
   const giornata = stagione.giornate.find((g) => g.numero === numero);
   const nomi = await nomiGiocatori();
-  const nome = (id: string): string => nomi.get(id) ?? id;
   const proprietari = new Map(lega.squadre.map((s) => [s.id, s.proprietario]));
   const bot = (squadraId: string): React.ReactNode =>
     proprietari.get(squadraId) === null && <span className="etichetta-bot">BOT</span>;
@@ -39,6 +38,7 @@ export default async function Giornata({
   const editoriale = lega.editoriali.find((e) => e.giornata === numero);
   const cronache = lega.cronache.filter((cr) => cr.giornata === numero);
   const chat = lega.chat.filter((m) => m.giornata === numero);
+  const nome = (id: string): string => nomi.get(id) ?? id;
   const nomeSquadra = (squadraId: string): string =>
     lega.squadre.find((s) => s.id === squadraId)?.nome ?? squadraId;
 
@@ -61,7 +61,8 @@ export default async function Giornata({
           </span>
         </h1>
         <p className="spiega">
-          Il punteggio in grande sono i gol, quello piccolo i fantapunti da cui derivano.
+          Il punteggio in grande sono i gol, quello piccolo i fantapunti da cui derivano. Clicca il
+          punteggio per il dettaglio di una partita.
         </p>
         {giornata.scontri.map((s) => (
           <div className="scontro" key={`${s.casaId}-${s.ospiteId}`}>
@@ -69,12 +70,15 @@ export default async function Giornata({
               <a href={`${radice}/rose/${encodeURIComponent(s.casaId)}`}>{s.casaId}</a>
               {bot(s.casaId)}
             </span>
-            <span className="punteggio">
+            <a
+              className="punteggio"
+              href={`${radice}/calendario/${numero}/${encodeURIComponent(s.casaId)}`}
+            >
               {s.golCasa}–{s.golOspite}
               <span className="fanta">
                 {s.fantapuntiCasa.toFixed(1)} — {s.fantapuntiOspite.toFixed(1)}
               </span>
-            </span>
+            </a>
             <span>
               <a href={`${radice}/rose/${encodeURIComponent(s.ospiteId)}`}>{s.ospiteId}</a>
               {bot(s.ospiteId)}
@@ -201,60 +205,6 @@ export default async function Giornata({
             </tbody>
           </table>
         )}
-      </section>
-
-      <section className="riquadro">
-        <h2>Tabellini</h2>
-        <div className="griglia-due">
-          {giornata.squadre.map((s) => (
-            <div key={s.squadraId}>
-              <h3>
-                {s.squadraId} — {s.punteggio.fantapunti.toFixed(1)}
-                {bot(s.squadraId)}
-              </h3>
-              <table>
-                <tbody>
-                  {s.punteggio.prestazioni.map((p) => (
-                    <tr key={p.giocatoreId}>
-                      <td>{nome(p.giocatoreId)}</td>
-                      <td className="numero">{p.voto === null ? 's.v.' : p.voto.toFixed(1)}</td>
-                      <td
-                        className="numero"
-                        style={{
-                          color:
-                            p.bonus > 0
-                              ? 'var(--positivo)'
-                              : p.bonus < 0
-                                ? 'var(--negativo)'
-                                : 'var(--tenue)',
-                        }}
-                      >
-                        {p.bonus === 0 ? '' : p.bonus > 0 ? `+${p.bonus}` : p.bonus}
-                      </td>
-                      <td className="numero">
-                        <strong>{p.fantavoto === null ? '0' : p.fantavoto.toFixed(1)}</strong>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot>
-                  <tr>
-                    <td colSpan={3} style={{ color: 'var(--tenue)' }}>
-                      {s.punteggio.difesa.applicato
-                        ? `Modificatore difesa (media ${s.punteggio.difesa.media?.toFixed(2)})`
-                        : `Modificatore difesa: ${s.punteggio.difesa.motivo}`}
-                    </td>
-                    <td className="numero">
-                      <strong>
-                        {s.punteggio.difesa.bonus > 0 ? `+${s.punteggio.difesa.bonus}` : '—'}
-                      </strong>
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          ))}
-        </div>
       </section>
     </>
   );

@@ -23,6 +23,7 @@ import {
 } from '../../jobs/src/lega.ts';
 import type { EsitoCiclo } from '../../jobs/src/ciclo.ts';
 import { giornatePerStagione, posizioneStagione, type PosizioneStagione } from '../../jobs/src/stagioni.ts';
+import { mediaVoto } from '../../jobs/src/valutazione.ts';
 import type { Formazione, Schierabile } from '../../fanta/src/tipi.ts';
 import { configurato, creaClientServer, emailUtente } from './supabase/server.ts';
 import { amministraLega } from './admin.ts';
@@ -124,7 +125,7 @@ export async function leggiLega(legaId: string): Promise<StatoLega | null> {
  * serve una tabella di appartenenza dedicata. Il caso che la RLS non copre
  * e' l'amministratore che non gioca: per quello si scavalca la RLS con
  * `archivioServizio`, esattamente come gia' fa
- * `admin/squadre/[legaId]/page.tsx`, filtrando pero' esplicitamente per la
+ * `leghe/[legaId]/admin/page.tsx`, filtrando pero' esplicitamente per la
  * sua mail invece di mostrare tutto.
  */
 export async function legheDiUtente(): Promise<StatoLega[]> {
@@ -224,6 +225,44 @@ export async function rosaInVista(
       b.prezzo - a.prezzo ||
       a.nome.localeCompare(b.nome),
   );
+}
+
+export type MvFm = { mv: number | null; fm: number | null };
+
+/**
+ * Media voto (del mondo) e fantamedia (di lega) per ogni giocatore di una
+ * rosa, fino all'ultima giornata giocata. La fantamedia non ha una funzione
+ * pronta come `mediaVoto` (`jobs/src/valutazione.ts`): si aggrega qui dalle
+ * prestazioni gia' salvate in `stagioneDi`, senza toccare `/fanta` o
+ * `/engine` per una vista di sola lettura.
+ */
+export async function mvFmDiRosa(
+  stato: StatoLega,
+  squadraId: string,
+): Promise<Map<string, MvFm>> {
+  const squadra = stato.squadre.find((s) => s.id === squadraId);
+  const risultato = new Map<string, MvFm>();
+  if (!squadra) return risultato;
+
+  const stagione = await stagioneDi(stato);
+  for (const g of squadra.giocatori) {
+    const mv = mediaVoto(g.giocatoreId, stagione.mondo, stato.giornateGiocate);
+
+    let somma = 0;
+    let conteggio = 0;
+    for (const giornata of stagione.giornate) {
+      const prestazione = giornata.squadre
+        .find((s) => s.squadraId === squadraId)
+        ?.punteggio.prestazioni.find((p) => p.giocatoreId === g.giocatoreId);
+      if (prestazione && prestazione.fantavoto !== null) {
+        somma += prestazione.fantavoto;
+        conteggio++;
+      }
+    }
+
+    risultato.set(g.giocatoreId, { mv, fm: conteggio > 0 ? somma / conteggio : null });
+  }
+  return risultato;
 }
 
 /** I nomi dei giocatori, per i tabellini. */

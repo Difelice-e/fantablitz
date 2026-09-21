@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { impostaParolaLega } from '../../azioni.ts';
+import { impostaParolaLega } from '../../../admin/azioni.ts';
 
 export default function ParolaLega({ legaId }: { legaId: string }) {
   const [parola, setParola] = useState('');

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { simulaOraAzione } from '../../azioni.ts';
+import { simulaOraAzione } from '../../../admin/azioni.ts';
 
 export default function SimulaOra({ legaId }: { legaId: string }) {
   const [messaggio, setMessaggio] = useState<{ testo: string; ok: boolean } | null>(null);
