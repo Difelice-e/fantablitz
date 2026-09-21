@@ -4,8 +4,6 @@ import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
 
 export const dynamic = 'force-dynamic';
 
-const FINESTRA = 4;
-
 export default async function Calendario({
   params,
   searchParams,
@@ -29,18 +27,18 @@ export default async function Calendario({
   const email = configurato() ? await emailUtente() : null;
   const squadraPropria = email ? lega.squadre.find((s) => s.proprietario === email) : undefined;
 
+  // Dalla giornata scelta (o quella in corso, di default) fino a fine
+  // campionato: niente finestra ne' paginazione, si scorre.
   const giornataAttuale = Math.min(lega.giornateGiocate + 1, totale);
   const richiesta = Number(daGrezzo);
-  const daPredefinito = Math.max(1, giornataAttuale - 1);
-  const da = Math.max(1, Math.min(Number.isInteger(richiesta) ? richiesta : daPredefinito, Math.max(1, totale - FINESTRA + 1)));
-  const a = Math.min(totale, da + FINESTRA - 1);
+  const da = Math.max(1, Math.min(Number.isInteger(richiesta) ? richiesta : giornataAttuale, totale));
+  const a = totale;
 
   const nomeSquadra = (squadraId: string): string =>
     lega.squadre.find((s) => s.id === squadraId)?.nome ?? squadraId;
 
-  // Il risultato delle giornate gia' giocate nella finestra mostrata: si
-  // cerca solo qui, non per tutta la stagione, che sarebbe sprecato per una
-  // finestra di poche giornate.
+  // Il risultato delle giornate gia' giocate a partire da quella scelta: non
+  // c'e' bisogno di cercarlo anche per quelle prima, che non si mostrano.
   const risultati = new Map<string, { golCasa: number; golOspite: number }>();
   for (let n = da; n <= a; n++) {
     if (n > lega.giornateGiocate) continue;
@@ -66,24 +64,15 @@ export default async function Calendario({
             href={`${radice}/calendario?da=${n}`}
             style={{
               padding: '0.2rem 0.5rem',
-              fontWeight: n >= da && n <= a ? 700 : 400,
-              color: n >= da && n <= a ? 'var(--testo)' : undefined,
-              textDecoration: n >= da && n <= a ? 'underline' : undefined,
+              fontWeight: n === da ? 700 : 400,
+              color: n === da ? 'var(--testo)' : undefined,
+              textDecoration: n === da ? 'underline' : undefined,
             }}
           >
             {n}
           </Link>
         ))}
       </div>
-
-      <p className="azioni">
-        {da > 1 && (
-          <Link href={`${radice}/calendario?da=${Math.max(1, da - FINESTRA)}`}>← Giornate precedenti</Link>
-        )}
-        {a < totale && (
-          <Link href={`${radice}/calendario?da=${a + 1}`}>Giornate successive →</Link>
-        )}
-      </p>
 
       <div className="griglia-due">
         {Array.from({ length: a - da + 1 }, (_, i) => da + i).map((n) => {

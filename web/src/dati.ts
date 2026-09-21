@@ -14,6 +14,7 @@
  */
 
 import { join } from 'node:path';
+import { cache } from 'react';
 import { archivioSuFile, type Archivio, type StatoLega } from '../../jobs/src/archivio.ts';
 import { archivioDallAmbiente, archivioSupabase, clientSupabase } from '../../jobs/src/archivioSupabase.ts';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -164,8 +165,15 @@ export async function legheDiUtente(): Promise<StatoLega[]> {
  * Legge con `archivioServizio` (scavalca la RLS) perche' un amministratore
  * senza squadra propria altrimenti non passerebbe la RLS: il controllo di
  * autorizzazione si fa qui esplicitamente, non implicitamente via RLS.
+ *
+ * `cache()` di React: il layout di `/leghe/[legaId]` la chiama per disegnare
+ * il menu, e la pagina sotto la richiama di nuovo per il proprio contenuto —
+ * senza deduplicarla e' una lettura doppia (nove query a Supabase ciascuna,
+ * `archivioServizio.leggi`) per ogni click. `cache()` la rende una sola
+ * lettura per richiesta, non fra richieste diverse: resta corretta anche
+ * se una simulazione cambia lo stato subito dopo.
  */
-export async function legaAutorizzata(legaId: string): Promise<StatoLega | null> {
+export const legaAutorizzata = cache(async (legaId: string): Promise<StatoLega | null> => {
   const stato = await archivioServizio.leggi(legaId);
   if (!stato) return null;
   if (!configurato()) return stato;
@@ -174,7 +182,7 @@ export async function legaAutorizzata(legaId: string): Promise<StatoLega | null>
   const propria = email !== null && stato.squadre.some((s) => s.proprietario === email);
   if (propria || (await amministraLega(stato))) return stato;
   return null;
-}
+});
 
 /* ------------------------------------------------------------------ */
 /* Viste per le pagine                                                 */
