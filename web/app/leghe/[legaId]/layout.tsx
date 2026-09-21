@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { legaAutorizzata, posizioneAttuale } from '../../../src/dati.ts';
 import { amministraLega } from '../../../src/admin.ts';
+import { configurato, emailUtente } from '../../../src/supabase/server.ts';
 import NavLega, { type VoceNav } from './NavLega.tsx';
 
 export const dynamic = 'force-dynamic';
@@ -34,9 +35,18 @@ export default async function LayoutLega({
   const admin = await amministraLega(stato);
   const radice = `/leghe/${encodeURIComponent(stato.id)}`;
 
+  // Il link punta gia' alla propria rosa quando se ne conosce una: risparmia
+  // il giro a vuoto su `rose/page.tsx` (legge di nuovo tutto solo per
+  // decidere dove reindirizzare) per il caso comune del click sul menu. La
+  // pagina indice resta comunque raggiungibile ed e' lei a scegliere per chi
+  // non ha una squadra propria (admin, o sviluppo locale senza login).
+  const email = configurato() ? await emailUtente() : null;
+  const propria = email ? stato.squadre.find((s) => s.proprietario === email) : undefined;
+  const hrefRose = propria ? `${radice}/rose/${encodeURIComponent(propria.id)}` : `${radice}/rose`;
+
   const voci: VoceNav[] = [
     { href: `${radice}/dashboard`, etichetta: 'Dashboard' },
-    { href: `${radice}/rose`, etichetta: 'Rose' },
+    { href: hrefRose, etichetta: 'Rose', attivoSu: `${radice}/rose` },
     { href: `${radice}/calendario`, etichetta: 'Calendario' },
     { href: `${radice}/classifica`, etichetta: 'Classifica' },
     { href: `${radice}/sala-stampa`, etichetta: 'Sala stampa' },

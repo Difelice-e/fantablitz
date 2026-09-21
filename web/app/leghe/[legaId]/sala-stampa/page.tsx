@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { legaAutorizzata } from '../../../../src/dati.ts';
+import { legaAutorizzata, stagioneDi } from '../../../../src/dati.ts';
+import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,6 +12,19 @@ export default async function SalaStampa({ params }: { params: Promise<{ legaId:
 
   const radice = `/leghe/${encodeURIComponent(stato.id)}`;
   const editoriali = [...stato.editoriali].sort((a, b) => b.giornata - a.giornata);
+
+  // Come calendario/[n]/page.tsx: il link salta direttamente al dettaglio
+  // della propria partita, invece che passare dal suo redirect.
+  const email = configurato() ? await emailUtente() : null;
+  const squadraPropria = email ? stato.squadre.find((s) => s.proprietario === email) : undefined;
+  const stagione = editoriali.length > 0 ? await stagioneDi(stato) : null;
+  const destinazioneGiornata = (giornata: number): string | undefined => {
+    const scontri = stagione?.giornate.find((g) => g.numero === giornata)?.scontri ?? [];
+    const proprio = squadraPropria
+      ? scontri.find((s) => s.casaId === squadraPropria.id || s.ospiteId === squadraPropria.id)
+      : undefined;
+    return proprio?.casaId ?? scontri[0]?.casaId;
+  };
 
   return (
     <section className="riquadro">
@@ -27,10 +41,18 @@ export default async function SalaStampa({ params }: { params: Promise<{ legaId:
       ) : (
         <table>
           <tbody>
-            {editoriali.map((e) => (
+            {editoriali.map((e) => {
+              const destinazione = destinazioneGiornata(e.giornata);
+              return (
               <tr key={e.giornata}>
                 <td className="numero" style={{ width: '3rem' }}>
-                  <Link href={`${radice}/calendario/${e.giornata}`}>G{e.giornata}</Link>
+                  {destinazione ? (
+                    <Link href={`${radice}/calendario/${e.giornata}/${encodeURIComponent(destinazione)}`}>
+                      G{e.giornata}
+                    </Link>
+                  ) : (
+                    `G${e.giornata}`
+                  )}
                 </td>
                 <td>
                   {e.testo}
@@ -44,7 +66,8 @@ export default async function SalaStampa({ params }: { params: Promise<{ legaId:
                   )}
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       )}

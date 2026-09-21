@@ -78,10 +78,25 @@ export default async function Calendario({
         {Array.from({ length: a - da + 1 }, (_, i) => da + i).map((n) => {
           const giocata = n <= lega.giornateGiocate;
           const scontri = stagione.calendario.giornate[n - 1]?.scontri ?? [];
+          // Come calendario/[n]/page.tsx: apre sempre il dettaglio di una
+          // partita, la propria se c'e'. Calcolato gia' qui (gli scontri
+          // della giornata sono gia' in mano) per evitare il giro a vuoto sul
+          // redirect di quella pagina per il caso comune del click da questa
+          // lista.
+          const scontroProprio = squadraPropria
+            ? scontri.find((s) => s.casaId === squadraPropria.id || s.ospiteId === squadraPropria.id)
+            : undefined;
+          const destinazioneGiornata = scontroProprio?.casaId ?? scontri[0]?.casaId;
           return (
             <div key={n} className="riquadro">
               <h3>
-                {giocata ? <Link href={`${radice}/calendario/${n}`}>Giornata {n} →</Link> : `Giornata ${n}`}
+                {giocata && destinazioneGiornata ? (
+                  <Link href={`${radice}/calendario/${n}/${encodeURIComponent(destinazioneGiornata)}`}>
+                    Giornata {n} →
+                  </Link>
+                ) : (
+                  `Giornata ${n}`
+                )}
                 {' '}
                 <span style={{ color: 'var(--tenue)', fontWeight: 400 }}>
                   {giocata ? 'giocata' : 'da giocare'}
