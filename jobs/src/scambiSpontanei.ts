@@ -148,10 +148,22 @@ export async function proponiScambiSpontanei(
       }
       if (!scelta) continue;
 
-      await proponiScambio(archivio, stato, contesto, stagione, config, {
-        daSquadraId: bot.id, aSquadraId: scelta.squadraId,
-        offerti: [scelta.offerto], richiesti: [scelta.giocatoreId],
-      });
+      // Il doppio controllo sopra valuta solo il valore dello scambio, non
+      // la composizione della rosa che ne risulta: in modalita' classic
+      // (composizione esatta, non un minimo) puo' ancora capitare che questo
+      // specifico scambio non sia valido. La verifica vera e' dentro
+      // `proponiScambio`, e rifiutarla qui non e' diverso dal rifiuto che
+      // riceverebbe una proposta umana: si rinuncia a questo tentativo, non
+      // si interrompe l'intero ciclo della giornata (che gia' e' andato
+      // avanti per gli altri bot).
+      try {
+        await proponiScambio(archivio, stato, contesto, stagione, config, {
+          daSquadraId: bot.id, aSquadraId: scelta.squadraId,
+          offerti: [scelta.offerto], richiesti: [scelta.giocatoreId],
+        });
+      } catch {
+        continue;
+      }
       stato = (await archivio.leggi(stato.id))!;
     }
   }

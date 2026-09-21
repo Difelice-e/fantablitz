@@ -171,4 +171,26 @@ describe('proponiScambiSpontanei', () => {
     const proposteDelBot = finale!.scambi.filter((s) => s.daSquadraId === bot.id);
     deepStrictEqual(proposteDelBot.map((s) => s.id), ['gia-proposto']);
   });
+
+  it('in classic non si interrompe anche se una proposta romperebbe la composizione esatta della rosa', async () => {
+    // Il doppio controllo di decisioneBot valuta solo il valore dello
+    // scambio, non la composizione della rosa che ne risulta: in classic
+    // (composizione esatta, non un minimo, fanta/src/classic.ts) capita che
+    // una proposta altrimenti sensata sia comunque invalida. Prima del fix,
+    // `proponiScambio` lanciava e l'intera giornata — quindi anche il cron
+    // automatico — si interrompeva; ora la singola proposta si scarta e si
+    // va avanti, come un rifiuto qualunque.
+    const esito = importaRose(roseCompleto, contestoImport('classic'));
+    if (!esito.riuscito) throw new Error('le fixture non si importano piu’');
+    const stato = statoDaImport(
+      { id: 'prova-classic', nome: 'Prova', seme: SEME, modalita: 'classic', budget: 500, amministratore: null },
+      esito.squadre,
+    );
+    const archivio = archivioInMemoria([stato]);
+
+    await proponiScambiSpontanei(archivio, stato, contestoMondo, stagione, configConProbabilitaUno(), 1, 30);
+
+    const finale = await archivio.leggi('prova-classic');
+    ok(finale !== null, 'il ciclo deve arrivare in fondo senza interrompersi');
+  });
 });

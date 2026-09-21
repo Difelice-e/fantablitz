@@ -1,48 +1,20 @@
-import { legaAutorizzata, stagioneDi } from '../../../../src/dati.ts';
+import { redirect } from 'next/navigation';
+import { legaAutorizzata } from '../../../../src/dati.ts';
+import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
 
 export const dynamic = 'force-dynamic';
 
+/** "Rose" apre sempre il dettaglio di una squadra (vedi rose/[id]): la propria, se ne hai una. */
 export default async function Squadre({ params }: { params: Promise<{ legaId: string }> }) {
   const { legaId } = await params;
   const id = decodeURIComponent(legaId);
   const lega = await legaAutorizzata(id);
   if (!lega) return <p className="vuoto">Lega non disponibile.</p>;
 
-  const radice = `/leghe/${encodeURIComponent(lega.id)}`;
-  const stagione = await stagioneDi(lega);
-  const posizione = new Map(stagione.classifica.map((r, i) => [r.squadraId, i + 1]));
+  const email = configurato() ? await emailUtente() : null;
+  const propria = email ? lega.squadre.find((s) => s.proprietario === email) : undefined;
+  const destinazione = propria ?? lega.squadre[0];
+  if (!destinazione) return <p className="vuoto">Nessuna squadra in questa lega.</p>;
 
-  return (
-    <section className="riquadro">
-      <h1>Squadre</h1>
-      <p className="spiega">Dieci squadre, {lega.modalita === 'mantra' ? 'Mantra' : 'classic'}.</p>
-      <table>
-        <thead>
-          <tr>
-            <th className="numero">#</th>
-            <th>Squadra</th>
-            <th className="numero">Giocatori</th>
-            <th className="numero">Spesa</th>
-            <th />
-          </tr>
-        </thead>
-        <tbody>
-          {lega.squadre.map((s) => (
-            <tr key={s.id}>
-              <td className="numero">{posizione.get(s.id) ?? '—'}</td>
-              <td>
-                <a href={`${radice}/rose/${encodeURIComponent(s.id)}`}>{s.nome}</a>
-                {s.proprietario === null && <span className="etichetta-bot">BOT</span>}
-              </td>
-              <td className="numero">{s.giocatori.length}</td>
-              <td className="numero">{s.giocatori.reduce((a, g) => a + g.prezzo, 0)}</td>
-              <td>
-                <a href={`${radice}/rose/${encodeURIComponent(s.id)}/formazione`}>Schiera</a>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </section>
-  );
+  redirect(`/leghe/${encodeURIComponent(lega.id)}/rose/${encodeURIComponent(destinazione.id)}`);
 }
