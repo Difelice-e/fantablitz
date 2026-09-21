@@ -14,6 +14,7 @@
 
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
+import { cache } from 'react';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export function configurato(): boolean {
@@ -49,12 +50,21 @@ export async function creaClientServer(): Promise<SupabaseClient> {
   });
 }
 
-/** La mail di chi sta guardando, o `null` se non ha fatto login (o Supabase non e' configurato). */
-export async function emailUtente(): Promise<string | null> {
+/**
+ * La mail di chi sta guardando, o `null` se non ha fatto login (o Supabase non e' configurato).
+ *
+ * Avvolta in `cache()`: `client.auth.getUser()` non legge un cookie, chiama
+ * l'endpoint `/auth/v1/user` di Supabase per validare il token. Il layout di
+ * lega, la pagina sotto, e ogni controllo di proprietario (`amministraLega`,
+ * le azioni di scambio e formazione) la richiamano tutti nella stessa
+ * richiesta: senza questa cache erano fino a 4-5 chiamate di rete alla stessa
+ * domanda, ognuna pagata per intero (Supabase e' in un'altra regione).
+ */
+export const emailUtente = cache(async (): Promise<string | null> => {
   if (!configurato()) return null;
   const client = await creaClientServer();
   const {
     data: { user },
   } = await client.auth.getUser();
   return user?.email ?? null;
-}
+});
