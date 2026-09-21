@@ -37,6 +37,18 @@ export default async function Calendario({
   const nomeSquadra = (squadraId: string): string =>
     lega.squadre.find((s) => s.id === squadraId)?.nome ?? squadraId;
 
+  // Il risultato delle giornate gia' giocate nella finestra mostrata: si
+  // cerca solo qui, non per tutta la stagione, che sarebbe sprecato per una
+  // finestra di poche giornate.
+  const risultati = new Map<string, { golCasa: number; golOspite: number }>();
+  for (let n = da; n <= a; n++) {
+    if (n > lega.giornateGiocate) continue;
+    const giornata = stagione.giornate.find((g) => g.numero === n);
+    for (const s of giornata?.scontri ?? []) {
+      risultati.set(`${n}-${s.casaId}-${s.ospiteId}`, { golCasa: s.golCasa, golOspite: s.golOspite });
+    }
+  }
+
   return (
     <section className="riquadro">
       <h1>Calendario</h1>
@@ -53,8 +65,9 @@ export default async function Calendario({
             href={`${radice}/calendario?da=${n}`}
             style={{
               padding: '0.2rem 0.5rem',
-              fontWeight: n === giornataAttuale ? 700 : 400,
-              color: n === giornataAttuale ? 'var(--testo)' : undefined,
+              fontWeight: n >= da && n <= a ? 700 : 400,
+              color: n >= da && n <= a ? 'var(--testo)' : undefined,
+              textDecoration: n >= da && n <= a ? 'underline' : undefined,
             }}
           >
             {n}
@@ -86,17 +99,13 @@ export default async function Calendario({
               </h3>
               {scontri.map((s) => {
                 const mia = squadraPropria && (s.casaId === squadraPropria.id || s.ospiteId === squadraPropria.id);
+                const risultato = risultati.get(`${n}-${s.casaId}-${s.ospiteId}`);
+                const testo = risultato
+                  ? `${nomeSquadra(s.casaId)} ${risultato.golCasa}-${risultato.golOspite} ${nomeSquadra(s.ospiteId)}`
+                  : `${nomeSquadra(s.casaId)} — ${nomeSquadra(s.ospiteId)}`;
                 return (
                   <p key={`${s.casaId}-${s.ospiteId}`} style={{ margin: '0.3rem 0', fontSize: '0.9rem' }}>
-                    {mia ? (
-                      <strong>
-                        {nomeSquadra(s.casaId)} — {nomeSquadra(s.ospiteId)}
-                      </strong>
-                    ) : (
-                      <>
-                        {nomeSquadra(s.casaId)} — {nomeSquadra(s.ospiteId)}
-                      </>
-                    )}
+                    {mia ? <strong>{testo}</strong> : testo}
                   </p>
                 );
               })}
