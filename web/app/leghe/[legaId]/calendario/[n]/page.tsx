@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { contesto, legaAutorizzata, nomiGiocatori, stagioneDi } from '../../../../../src/dati.ts';
 import { giornatePerStagione, posizioneStagione } from '../../../../../../jobs/src/stagioni.ts';
 
@@ -67,10 +68,10 @@ export default async function Giornata({
         {giornata.scontri.map((s) => (
           <div className="scontro" key={`${s.casaId}-${s.ospiteId}`}>
             <span className="casa">
-              <a href={`${radice}/rose/${encodeURIComponent(s.casaId)}`}>{s.casaId}</a>
+              <Link href={`${radice}/rose/${encodeURIComponent(s.casaId)}`}>{s.casaId}</Link>
               {bot(s.casaId)}
             </span>
-            <a
+            <Link
               className="punteggio"
               href={`${radice}/calendario/${numero}/${encodeURIComponent(s.casaId)}`}
             >
@@ -78,9 +79,9 @@ export default async function Giornata({
               <span className="fanta">
                 {s.fantapuntiCasa.toFixed(1)} — {s.fantapuntiOspite.toFixed(1)}
               </span>
-            </a>
+            </Link>
             <span>
-              <a href={`${radice}/rose/${encodeURIComponent(s.ospiteId)}`}>{s.ospiteId}</a>
+              <Link href={`${radice}/rose/${encodeURIComponent(s.ospiteId)}`}>{s.ospiteId}</Link>
               {bot(s.ospiteId)}
             </span>
           </div>
@@ -93,9 +94,9 @@ export default async function Giornata({
           {verdettoPrecedente && (
             <p className="spiega">
               La stagione {verdettoPrecedente.stagione} l’ha vinta{' '}
-              <a href={`${radice}/rose/${encodeURIComponent(verdettoPrecedente.campioneSquadraId)}`}>
+              <Link href={`${radice}/rose/${encodeURIComponent(verdettoPrecedente.campioneSquadraId)}`}>
                 {nomeSquadra(verdettoPrecedente.campioneSquadraId)}
-              </a>
+              </Link>
               {bot(verdettoPrecedente.campioneSquadraId)}, con {verdettoPrecedente.puntiCampione} punti e{' '}
               {verdettoPrecedente.fantapuntiCampione.toFixed(1)} fantapunti.
             </p>
@@ -191,7 +192,7 @@ export default async function Giornata({
               {giornata.squadre.map((s) => (
                 <tr key={s.squadraId}>
                   <td>
-                    <a href={`${radice}/rose/${encodeURIComponent(s.squadraId)}`}>{s.squadraId}</a>
+                    <Link href={`${radice}/rose/${encodeURIComponent(s.squadraId)}`}>{s.squadraId}</Link>
                     {bot(s.squadraId)}
                   </td>
                   <td>

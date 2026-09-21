@@ -1,4 +1,5 @@
 import './globals.css';
+import Link from 'next/link';
 import { configurato, emailUtente } from '../src/supabase/server.ts';
 import { sonoAmministratore } from '../src/admin.ts';
 
@@ -39,8 +40,8 @@ export default async function Layout({ children }: { children: React.ReactNode }
               )}
             </p>
             <nav className="principale">
-              {loggato && <a href="/leghe">Le mie leghe</a>}
-              {admin && <a href="/admin">Amministrazione</a>}
+              {loggato && <Link href="/leghe">Le mie leghe</Link>}
+              {admin && <Link href="/admin">Amministrazione</Link>}
             </nav>
           </div>
         </header>

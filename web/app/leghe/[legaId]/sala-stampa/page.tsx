@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata } from '../../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
@@ -29,7 +30,7 @@ export default async function SalaStampa({ params }: { params: Promise<{ legaId:
             {editoriali.map((e) => (
               <tr key={e.giornata}>
                 <td className="numero" style={{ width: '3rem' }}>
-                  <a href={`${radice}/calendario/${e.giornata}`}>G{e.giornata}</a>
+                  <Link href={`${radice}/calendario/${e.giornata}`}>G{e.giornata}</Link>
                 </td>
                 <td>
                   {e.testo}

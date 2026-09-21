@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata, posizioneAttuale, stagioneDi } from '../../../../src/dati.ts';
 import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
 
@@ -60,7 +61,7 @@ export default async function Calendario({
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginBottom: '1.5rem' }}>
         {Array.from({ length: totale }, (_, i) => i + 1).map((n) => (
-          <a
+          <Link
             key={n}
             href={`${radice}/calendario?da=${n}`}
             style={{
@@ -71,16 +72,16 @@ export default async function Calendario({
             }}
           >
             {n}
-          </a>
+          </Link>
         ))}
       </div>
 
       <p className="azioni">
         {da > 1 && (
-          <a href={`${radice}/calendario?da=${Math.max(1, da - FINESTRA)}`}>← Giornate precedenti</a>
+          <Link href={`${radice}/calendario?da=${Math.max(1, da - FINESTRA)}`}>← Giornate precedenti</Link>
         )}
         {a < totale && (
-          <a href={`${radice}/calendario?da=${a + 1}`}>Giornate successive →</a>
+          <Link href={`${radice}/calendario?da=${a + 1}`}>Giornate successive →</Link>
         )}
       </p>
 
@@ -91,7 +92,7 @@ export default async function Calendario({
           return (
             <div key={n} className="riquadro">
               <h3>
-                {giocata ? <a href={`${radice}/calendario/${n}`}>Giornata {n} →</a> : `Giornata ${n}`}
+                {giocata ? <Link href={`${radice}/calendario/${n}`}>Giornata {n} →</Link> : `Giornata ${n}`}
                 {' '}
                 <span style={{ color: 'var(--tenue)', fontWeight: 400 }}>
                   {giocata ? 'giocata' : 'da giocare'}

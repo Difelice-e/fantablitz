@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { accedi, registrati, richiediReset } from './azioni.ts';
 
 export const dynamic = 'force-dynamic';
@@ -116,19 +117,19 @@ export default async function PaginaLogin({
       <p className="spiega" style={{ marginTop: '1rem' }}>
         {[
           modo !== 'accedi' && (
-            <a key="accedi" href="/login">
+            <Link key="accedi" href="/login">
               Accedi
-            </a>
+            </Link>
           ),
           modo !== 'registrati' && (
-            <a key="registrati" href="/login?modo=registrati">
+            <Link key="registrati" href="/login?modo=registrati">
               Registrati
-            </a>
+            </Link>
           ),
           modo !== 'reset' && (
-            <a key="reset" href="/login?modo=reset">
+            <Link key="reset" href="/login?modo=reset">
               Password dimenticata?
-            </a>
+            </Link>
           ),
         ]
           .filter(Boolean)

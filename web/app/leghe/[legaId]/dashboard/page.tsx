@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata, posizioneAttuale, stagioneDi } from '../../../../src/dati.ts';
 import { amministraLega, sonoAmministratore } from '../../../../src/admin.ts';
 import { configurato, emailUtente } from '../../../../src/supabase/server.ts';
@@ -57,7 +58,7 @@ export default async function Dashboard({ params }: { params: Promise<{ legaId: 
               <>
                 {' '}
                 Se vuoi testare subito senza aspettare, usa «Simula la giornata adesso» nella{' '}
-                <a href={`${radice}/admin`}>pagina di amministrazione</a> della lega.
+                <Link href={`${radice}/admin`}>pagina di amministrazione</Link> della lega.
               </>
             )}
           </p>
@@ -78,9 +79,9 @@ export default async function Dashboard({ params }: { params: Promise<{ legaId: 
               : 'La stagione non è ancora iniziata.'}
           </p>
           <div className="azioni">
-            <a href={`${radice}/rose/${encodeURIComponent(squadraPropria.id)}`}>
+            <Link href={`${radice}/rose/${encodeURIComponent(squadraPropria.id)}`}>
               <button className="secondario">Vai alla rosa</button>
-            </a>
+            </Link>
           </div>
         </section>
       )}
@@ -105,9 +106,9 @@ export default async function Dashboard({ params }: { params: Promise<{ legaId: 
             {' '}({risultatoUltimo.fantapuntiCasa.toFixed(1)} — {risultatoUltimo.fantapuntiOspite.toFixed(1)})
           </p>
           <p className="azioni">
-            <a href={`${radice}/calendario/${ultimo.giornata.numero}/${encodeURIComponent(squadraPropria!.id)}`}>
+            <Link href={`${radice}/calendario/${ultimo.giornata.numero}/${encodeURIComponent(squadraPropria!.id)}`}>
               Vedi dettaglio
-            </a>
+            </Link>
           </p>
         </section>
       )}
@@ -139,22 +140,22 @@ export default async function Dashboard({ params }: { params: Promise<{ legaId: 
           </table>
         )}
         <p className="azioni">
-          <a href={`${radice}/classifica`}>Vai alla classifica completa</a>
+          <Link href={`${radice}/classifica`}>Vai alla classifica completa</Link>
         </p>
       </section>
 
       <section className="riquadro">
         <h2>Sezioni</h2>
         <div className="azioni">
-          <a href={`${radice}/rose`}>
+          <Link href={`${radice}/rose`}>
             <button className="secondario">Rose</button>
-          </a>
-          <a href={`${radice}/calendario`}>
+          </Link>
+          <Link href={`${radice}/calendario`}>
             <button className="secondario">Calendario</button>
-          </a>
-          <a href={`${radice}/sala-stampa`}>
+          </Link>
+          <Link href={`${radice}/sala-stampa`}>
             <button className="secondario">Sala stampa</button>
-          </a>
+          </Link>
         </div>
       </section>
 
@@ -162,9 +163,9 @@ export default async function Dashboard({ params }: { params: Promise<{ legaId: 
         <section className="riquadro">
           <p className="spiega">Modifica le impostazioni di questa lega: squadre, parola d’ordine.</p>
           <p className="azioni">
-            <a href={`${radice}/admin`}>
+            <Link href={`${radice}/admin`}>
               <button className="secondario">Impostazioni</button>
-            </a>
+            </Link>
           </p>
         </section>
       )}

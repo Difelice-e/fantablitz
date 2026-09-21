@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata, posizioneAttuale } from '../../../src/dati.ts';
 import { amministraLega } from '../../../src/admin.ts';
 import NavLega, { type VoceNav } from './NavLega.tsx';
@@ -23,7 +24,7 @@ export default async function LayoutLega({
           Nessuna lega con questo indirizzo, oppure non fai parte di questa lega.
         </p>
         <p className="azioni">
-          <a href="/leghe">Le mie leghe</a>
+          <Link href="/leghe">Le mie leghe</Link>
         </p>
       </section>
     );

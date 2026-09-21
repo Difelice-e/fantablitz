@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata, nomiGiocatori, stagioneDi } from '../../../../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +51,7 @@ export default async function DettaglioPartita({
     <>
       <section className="riquadro">
         <p className="azioni" style={{ marginBottom: '0.5rem' }}>
-          <a href={`${radice}/calendario/${numero}`}>← Giornata {numero}</a>
+          <Link href={`${radice}/calendario/${numero}`}>← Giornata {numero}</Link>
         </p>
         <h1>
           {nomeSquadra(scontro.casaId)} {scontro.golCasa}–{scontro.golOspite}{' '}

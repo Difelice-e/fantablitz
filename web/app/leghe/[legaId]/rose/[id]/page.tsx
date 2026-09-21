@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata, mvFmDiRosa, rosaInVista, stagioneDi } from '../../../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
@@ -41,7 +42,7 @@ export default async function Rosa({
             {s.id === squadraId ? (
               <strong>{s.nome}</strong>
             ) : (
-              <a href={`${radice}/rose/${encodeURIComponent(s.id)}`}>{s.nome}</a>
+              <Link href={`${radice}/rose/${encodeURIComponent(s.id)}`}>{s.nome}</Link>
             )}
             {s.proprietario === null && <span className="etichetta-bot">BOT</span>}
           </div>
@@ -61,12 +62,13 @@ export default async function Rosa({
             Rosa da {rosa.length} giocatori, {spesa} crediti spesi su {lega.budget}.
           </p>
           <div className="azioni">
-            <a href={`${radice}/rose/${encodeURIComponent(squadraId)}/formazione`}>
+            <Link href={`${radice}/rose/${encodeURIComponent(squadraId)}/formazione`}>
               <button className="principale">Schiera la formazione</button>
-            </a>
-            <a href={`${radice}/rose/${encodeURIComponent(squadraId)}/scambi`}>
+            </Link>
+            <Link href={`${radice}/rose/${encodeURIComponent(squadraId)}/scambi`}>
               <button className="secondario">Scambi</button>
-            </a>
+            </Link>
+            {/* Scarica un file, non naviga: resta un <a> normale, non <Link>. */}
             <a href={`${radice}/rose/${encodeURIComponent(squadraId)}/csv`}>Esporta CSV</a>
           </div>
         </section>
