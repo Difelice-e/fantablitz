@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 export type VoceNav = { href: string; etichetta: string };
@@ -11,9 +12,9 @@ export default function NavLega({ voci }: { voci: VoceNav[] }) {
   return (
     <nav className="principale">
       {voci.map((v) => (
-        <a key={v.href} href={v.href} className={pathname?.startsWith(v.href) ? 'attiva' : ''}>
+        <Link key={v.href} href={v.href} className={pathname?.startsWith(v.href) ? 'attiva' : ''}>
           {v.etichetta}
-        </a>
+        </Link>
       ))}
     </nav>
   );

@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { contesto, formazioneDaSchierare, legaAutorizzata, rosaInVista } from '../../../../../../src/dati.ts';
 import { configurato, emailUtente } from '../../../../../../src/supabase/server.ts';
 import Schieramento, { type DatiSchieramento } from './schieramento.tsx';
@@ -107,7 +108,7 @@ export default async function PaginaFormazione({
           </tbody>
         </table>
         <p className="azioni">
-          <a href={`${radice}/rose/${encodeURIComponent(squadraId)}`}>Torna alla rosa</a>
+          <Link href={`${radice}/rose/${encodeURIComponent(squadraId)}`}>Torna alla rosa</Link>
         </p>
       </section>
     );

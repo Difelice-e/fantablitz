@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { archivioServizio } from '../../src/dati.ts';
 import { sonoAmministratore } from '../../src/admin.ts';
 import CreaLegaForm from './CreaLegaForm.tsx';
@@ -38,7 +39,7 @@ export default async function Admin() {
                 <tr key={l.id}>
                   <td>{l.nome}</td>
                   <td>
-                    <a href={`/leghe/${encodeURIComponent(l.id)}/admin`}>Assegna squadre</a>
+                    <Link href={`/leghe/${encodeURIComponent(l.id)}/admin`}>Assegna squadre</Link>
                   </td>
                 </tr>
               ))}

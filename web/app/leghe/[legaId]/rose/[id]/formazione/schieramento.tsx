@@ -12,6 +12,7 @@
  * divergerebbe dalla prima. Qui si disegna e si sposta, non si decide.
  */
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { riempiAutomaticamente, salvaFormazione, type FormazioneGrezza } from './azioni.ts';
 
@@ -291,9 +292,9 @@ export default function Schieramento({ dati }: { dati: DatiSchieramento }) {
           <button className="principale" onClick={salva} disabled={inCorso || scoperte > 0}>
             {inCorso ? 'Salvo…' : `Salva per la giornata ${dati.giornata}`}
           </button>
-          <a href={`/leghe/${encodeURIComponent(dati.legaId)}/rose/${encodeURIComponent(dati.squadraId)}`}>
+          <Link href={`/leghe/${encodeURIComponent(dati.legaId)}/rose/${encodeURIComponent(dati.squadraId)}`}>
             Torna alla rosa
-          </a>
+          </Link>
         </div>
       </section>
     </>

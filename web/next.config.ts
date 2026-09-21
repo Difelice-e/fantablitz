@@ -20,7 +20,12 @@ try {
  * resto dell'app.
  */
 const config: NextConfig = {
-  typedRoutes: true,
+  // `typedRoutes` resterebbe spento comunque: quasi ogni link del sito porta
+  // a una pagina con un id preso dai dati (lega, squadra, giornata), non a
+  // un percorso scritto a mano — proprio i link che quel controllo non puo'
+  // verificare in anticipo. Tenerlo acceso significherebbe solo mettere
+  // "as Route" ovunque, che disattiva il controllo un punto alla volta
+  // invece che con una riga sola qui.
 
   // Il mondo simulato si legge a runtime con un percorso calcolato, e il
   // tracciamento automatico dei file non riesce a seguirlo: senza questa riga

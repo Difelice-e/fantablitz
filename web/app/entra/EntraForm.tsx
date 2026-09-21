@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { cercaSquadreLibere, scegliSquadra, type SquadraLibera } from './azioni.ts';
 
@@ -38,7 +39,7 @@ export default function EntraForm() {
       <>
         <p className="avviso ok">{fatto.testo}</p>
         <p className="azioni">
-          <a href={`/leghe/${encodeURIComponent(fatto.legaId)}/dashboard`}>Vai alla lega</a>
+          <Link href={`/leghe/${encodeURIComponent(fatto.legaId)}/dashboard`}>Vai alla lega</Link>
         </p>
       </>
     );

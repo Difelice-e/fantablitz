@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata, nomiGiocatori } from '../../../../../../src/dati.ts';
 import { configurato, emailUtente } from '../../../../../../src/supabase/server.ts';
 import { scambiDiSquadra } from '../../../../../../../jobs/src/scambi.ts';
@@ -67,7 +68,7 @@ export default async function PaginaScambi({
             : 'Storico degli scambi di questa squadra: fa parte del gioco, come vedere la rosa degli avversari.'}
         </p>
         <p className="azioni">
-          <a href={`${radice}/rose/${encodeURIComponent(squadraId)}`}>Torna alla rosa</a>
+          <Link href={`${radice}/rose/${encodeURIComponent(squadraId)}`}>Torna alla rosa</Link>
         </p>
       </section>
 

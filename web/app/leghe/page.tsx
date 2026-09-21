@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legheDiUtente, posizioneAttuale } from '../../src/dati.ts';
 import { sonoAmministratore } from '../../src/admin.ts';
 
@@ -25,7 +26,7 @@ export default async function LeMieLeghe() {
                 return (
                   <tr key={lega.id}>
                     <td>
-                      <a href={`/leghe/${encodeURIComponent(lega.id)}/dashboard`}>{lega.nome}</a>
+                      <Link href={`/leghe/${encodeURIComponent(lega.id)}/dashboard`}>{lega.nome}</Link>
                     </td>
                     <td style={{ color: 'var(--tenue)', fontSize: '0.85rem' }}>
                       {lega.giornateGiocate === 0
@@ -41,13 +42,13 @@ export default async function LeMieLeghe() {
       )}
 
       <div className="azioni" style={{ marginTop: '1rem' }}>
-        <a href="/entra">
+        <Link href="/entra">
           <button className="principale">Entra in una lega</button>
-        </a>
+        </Link>
         {admin && (
-          <a href="/admin">
+          <Link href="/admin">
             <button className="secondario">Crea una lega</button>
-          </a>
+          </Link>
         )}
       </div>
     </section>

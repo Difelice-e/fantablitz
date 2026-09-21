@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { legaAutorizzata, posizioneAttuale, stagioneDi } from '../../../../src/dati.ts';
 
 export const dynamic = 'force-dynamic';
@@ -61,7 +62,7 @@ export default async function Classifica({ params }: { params: Promise<{ legaId:
                 <tr key={r.squadraId}>
                   <td className="numero">{i + 1}</td>
                   <td>
-                    <a href={`${radice}/rose/${encodeURIComponent(r.squadraId)}`}>{r.squadraId}</a>
+                    <Link href={`${radice}/rose/${encodeURIComponent(r.squadraId)}`}>{r.squadraId}</Link>
                     {proprietari.get(r.squadraId) === null && <span className="etichetta-bot">BOT</span>}
                   </td>
                   <td className="numero">
@@ -107,9 +108,9 @@ export default async function Classifica({ params }: { params: Promise<{ legaId:
                   <tr key={v.stagione}>
                     <td className="numero">{v.stagione}</td>
                     <td>
-                      <a href={`${radice}/rose/${encodeURIComponent(v.campioneSquadraId)}`}>
+                      <Link href={`${radice}/rose/${encodeURIComponent(v.campioneSquadraId)}`}>
                         {nomeSquadra(v.campioneSquadraId)}
-                      </a>
+                      </Link>
                       {proprietari.get(v.campioneSquadraId) === null && (
                         <span className="etichetta-bot">BOT</span>
                       )}
